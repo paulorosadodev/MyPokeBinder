@@ -3,6 +3,10 @@ import { catalogPageToPhysicalIndex, getSpreadLeftIndex, physicalIndexToCatalogP
 export const BINDER_FRONT_COVER_PHYSICAL = 0;
 export const BINDER_OPEN_HOLD_MS = 0;
 export const BINDER_FLIP_MS = 320;
+export const BINDER_MOBILE_MAX_SHADOW_OPACITY = 0.35;
+export const BINDER_DESKTOP_MAX_SHADOW_OPACITY = 0.65;
+export const BINDER_MULTI_FLIP_STEP_MS = 160;
+export const BINDER_MULTI_FLIP_MIN_DELTA = 3;
 export const BINDER_PAGE_MIN_WIDTH = 384;
 export const BINDER_PAGE_MAX_WIDTH = 560;
 // Proporção da folha: altura em que o cabeçalho mais a grade 3x3 de cartas 2.5/3.5 consomem a

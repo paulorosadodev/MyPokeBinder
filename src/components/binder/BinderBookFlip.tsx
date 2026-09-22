@@ -3,8 +3,8 @@
 import { useEffect, useState, useRef, useImperativeHandle, forwardRef, memo, useCallback, createContext, useContext, useMemo, useLayoutEffect } from "react";
 import HTMLFlipBook from "react-pageflip";
 import { UserCard } from "@/types/binder";
-import { POKEMON_151, TOTAL_PAGES, SLOTS_PER_PAGE, BINDER_PHYSICAL_FRONT_COVER, catalogPageToPhysicalIndex, getBinderSheetPlan, physicalIndexToCatalogPage } from "@/lib/pokemon/constants";
-import { BINDER_FLIP_MS, BINDER_OPEN_HOLD_MS, BINDER_PAGE_HEIGHT, BINDER_PAGE_MAX_WIDTH, BINDER_PAGE_MIN_WIDTH, BINDER_PAGE_WIDTH, binderPageFlipDisableFlipByClick, canMountBinderEngine, isBinderAlreadyOnTarget, isBinderPageBusy, planBinderOpenAnimation, shouldDeferBinderPageSync, shouldUsePortraitBinder } from "@/lib/pokemon/binderOpen";
+import { POKEMON_151, TOTAL_PAGES, SLOTS_PER_PAGE, BINDER_PHYSICAL_FRONT_COVER, catalogPageToPhysicalIndex, getBinderSheetPlan, getSpreadLeftIndex, physicalIndexToCatalogPage } from "@/lib/pokemon/constants";
+import { BINDER_DESKTOP_MAX_SHADOW_OPACITY, BINDER_FLIP_MS, BINDER_MOBILE_MAX_SHADOW_OPACITY, BINDER_OPEN_HOLD_MS, BINDER_PAGE_HEIGHT, BINDER_PAGE_MAX_WIDTH, BINDER_PAGE_MIN_WIDTH, BINDER_PAGE_WIDTH, binderPageFlipDisableFlipByClick, canMountBinderEngine, isBinderAlreadyOnTarget, isBinderPageBusy, planBinderOpenAnimation, shouldDeferBinderPageSync, shouldUsePortraitBinder } from "@/lib/pokemon/binderOpen";
 import { BinderSlot } from "./BinderSlot";
 import { PokeballLogo } from "@/components/ui/PokeballLogo";
 
@@ -310,10 +310,36 @@ export const BinderBookFlip = memo(
             }
         }, []);
 
+        const multiFlipStateRef = useRef<{
+            remainingSteps: number;
+            targetPhysical: number;
+            direction: "next" | "prev";
+        } | null>(null);
+        const multiFlipTimeoutRef = useRef<number | null>(null);
+
+        const resetMultiFlip = useCallback(() => {
+            if (multiFlipTimeoutRef.current) {
+                window.clearTimeout(multiFlipTimeoutRef.current);
+                multiFlipTimeoutRef.current = null;
+            }
+            multiFlipStateRef.current = null;
+            const flip = flipBookRef.current?.pageFlip();
+            if (flip) {
+                flip.getSettings().flippingTime = BINDER_FLIP_MS;
+            }
+        }, []);
+
+        useEffect(() => {
+            return () => {
+                resetMultiFlip();
+            };
+        }, [resetMultiFlip]);
+
         useImperativeHandle(
             ref,
             () => ({
                 flipNext: () => {
+                    resetMultiFlip();
                     const flip = flipBookRef.current?.pageFlip();
                     if (!flip) return;
                     const curIndex = flip.getCurrentPageIndex();
@@ -321,6 +347,7 @@ export const BinderBookFlip = memo(
                     flip.flipNext();
                 },
                 flipPrev: () => {
+                    resetMultiFlip();
                     const flip = flipBookRef.current?.pageFlip();
                     if (!flip) return;
                     const curIndex = flip.getCurrentPageIndex();
@@ -328,20 +355,56 @@ export const BinderBookFlip = memo(
                     flip.flipPrev();
                 },
                 turnToPage: (page: number) => {
+                    resetMultiFlip();
                     const flip = flipBookRef.current?.pageFlip();
                     if (!flip) return;
                     const isPortrait = (flip.getOrientation?.() ?? (isPortraitBook ? "portrait" : "landscape")) === "portrait";
                     const physical = catalogPageToPhysicalIndex(page, isPortrait);
                     const currentIndex = flip.getCurrentPageIndex();
                     if (isBinderAlreadyOnTarget(currentIndex, physical, isPortrait)) return;
-                    flip.flip(physical);
+
+                    const reduceMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+                    if (reduceMotion) {
+                        flip.turnToPage(physical);
+                        return;
+                    }
+
+                    const currentSpread = isPortrait ? currentIndex : getSpreadLeftIndex(currentIndex);
+                    const targetSpread = isPortrait ? physical : getSpreadLeftIndex(physical);
+                    const spreadDelta = isPortrait ? physical - currentIndex : (targetSpread - currentSpread) / 2;
+
+                    let intermediateSteps = 0;
+                    if (Math.abs(spreadDelta) >= 4) {
+                        intermediateSteps = 2;
+                    } else if (Math.abs(spreadDelta) >= 2) {
+                        intermediateSteps = 1;
+                    }
+
+                    if (intermediateSteps === 0) {
+                        flip.getSettings().flippingTime = BINDER_FLIP_MS;
+                        flip.flip(physical);
+                        return;
+                    }
+
+                    const direction = spreadDelta > 0 ? "next" : "prev";
+                    multiFlipStateRef.current = {
+                        remainingSteps: intermediateSteps,
+                        targetPhysical: physical,
+                        direction,
+                    };
+                    flip.getSettings().flippingTime = 180;
+                    if (direction === "next") {
+                        flip.flipNext();
+                    } else {
+                        flip.flipPrev();
+                    }
                 },
                 getCurrentPageIndex: () => {
                     const flip = flipBookRef.current?.pageFlip();
                     return flip ? flip.getCurrentPageIndex() : 0;
                 },
             }),
-            [isPortraitBook],
+            [isPortraitBook, resetMultiFlip],
         );
 
         useEffect(() => {
@@ -413,6 +476,32 @@ export const BinderBookFlip = memo(
                 const flip = flipBookRef.current?.pageFlip();
                 const orientation = flip?.getOrientation() ?? (isPortraitBook ? "portrait" : "landscape");
                 const isPortrait = orientation === "portrait";
+
+                const multi = multiFlipStateRef.current;
+                if (multi && multi.remainingSteps > 0) {
+                    multi.remainingSteps -= 1;
+                    if (multi.remainingSteps > 0) {
+                        multiFlipTimeoutRef.current = window.setTimeout(() => {
+                            const currentFlip = flipBookRef.current?.pageFlip();
+                            if (!currentFlip) return;
+                            if (multi.direction === "next") {
+                                currentFlip.flipNext();
+                            } else {
+                                currentFlip.flipPrev();
+                            }
+                        }, 20);
+                    } else {
+                        multiFlipTimeoutRef.current = window.setTimeout(() => {
+                            const currentFlip = flipBookRef.current?.pageFlip();
+                            if (!currentFlip) return;
+                            currentFlip.getSettings().flippingTime = BINDER_FLIP_MS;
+                            currentFlip.flip(multi.targetPhysical);
+                            multiFlipStateRef.current = null;
+                        }, 20);
+                    }
+                    return;
+                }
+
                 const catalogPage = physicalIndexToCatalogPage(physicalIndex, isPortrait);
                 onPageChange(catalogPage);
             },
@@ -470,7 +559,7 @@ export const BinderBookFlip = memo(
                                 maxWidth={BINDER_PAGE_MAX_WIDTH}
                                 minHeight={isPortraitBook ? 420 : 540}
                                 maxHeight={isPortraitBook ? 760 : 820}
-                                maxShadowOpacity={0.65}
+                                maxShadowOpacity={isPortraitBook ? BINDER_MOBILE_MAX_SHADOW_OPACITY : BINDER_DESKTOP_MAX_SHADOW_OPACITY}
                                 showCover={true}
                                 mobileScrollSupport={true}
                                 swipeDistance={30}

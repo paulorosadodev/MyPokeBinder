@@ -141,10 +141,18 @@ body {
     white-space: nowrap;
 }
 
-/* Durante o flip: zero transição em silhueta / plus / nome. */
 .binder-book-stage--busy .binder-empty-slot,
 .binder-book-stage--busy .binder-empty-slot * {
     transition: none !important;
+}
+
+.binder-book-stage--busy .stf__item,
+.binder-book-stage--busy .stf__block,
+.binder-book-stage--busy .binder-book-page {
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
 }
 
 ::-webkit-scrollbar {
