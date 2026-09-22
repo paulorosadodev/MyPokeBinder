@@ -1,0 +1,40 @@
+{
+    "name": "mypokebinder",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "dev": "next dev",
+        "build": "next build",
+        "start": "next start",
+        "test": "bun test --concurrency=1",
+        "format": "prettier --write .",
+        "format:check": "prettier --check .",
+        "lint": "eslint ."
+    },
+    "dependencies": {
+        "@supabase/ssr": "^0.5.2",
+        "@supabase/supabase-js": "^2.49.1",
+        "@tailwindcss/postcss": "^4.3.3",
+        "lucide-react": "^0.477.0",
+        "next": "^15.2.1",
+        "page-flip": "^2.0.7",
+        "postcss": "^8.5.28",
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
+        "react-pageflip": "^2.0.3",
+        "sonner": "^2.0.8",
+        "swr": "^2.5.1",
+        "tailwindcss": "^4.3.3"
+    },
+    "devDependencies": {
+        "@types/node": "^22.13.9",
+        "@types/react": "^19.0.10",
+        "@types/react-dom": "^19.0.4",
+        "bun-types": "^1.4.2",
+        "eslint": "^9.21.0",
+        "eslint-config-next": "^15.2.1",
+        "eslint-plugin-unused-imports": "^4.4.1",
+        "prettier": "^3.5.3",
+        "typescript": "^5.8.2"
+    }
+}

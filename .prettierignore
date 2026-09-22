@@ -1,0 +1,10 @@
+.agents
+.cursor
+.next
+node_modules
+bun.lock
+.env*
+skills-lock.json
+public
+.scratch
+docs
