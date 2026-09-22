@@ -1,23 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import {
-    isElementFullyVisibleInViewport,
-    getPageForDexId,
-    getDesktopSpreadPages,
-    getSpreadLeftIndex,
-    catalogPageToPhysicalIndex,
-    physicalIndexToCatalogPage,
-    getBinderSheetPlan,
-    TOTAL_PAGES,
-    BINDER_HAS_TRAILING_BLANK,
-    BINDER_PHYSICAL_FRONT_COVER,
-    BINDER_PHYSICAL_INSIDE_FRONT,
-    BINDER_PHYSICAL_FIRST_PAGE,
-    BINDER_PHYSICAL_INSIDE_BACK,
-    BINDER_PHYSICAL_BACK_COVER,
-    BINDER_SHEET_COUNT,
-    BINDER_LAST_SPREAD_PAGE,
-    BINDER_CLOSED_BACK_PAGE,
-} from "@/lib/pokemon/constants";
+import { isElementFullyVisibleInViewport, getPageForDexId, getDesktopSpreadPages, getSpreadLeftIndex, catalogPageToPhysicalIndex, physicalIndexToCatalogPage, getBinderSheetPlan, TOTAL_PAGES, BINDER_HAS_TRAILING_BLANK, BINDER_PHYSICAL_FRONT_COVER, BINDER_PHYSICAL_INSIDE_FRONT, BINDER_PHYSICAL_FIRST_PAGE, BINDER_PHYSICAL_INSIDE_BACK, BINDER_PHYSICAL_BACK_COVER, BINDER_SHEET_COUNT, BINDER_LAST_SPREAD_PAGE, BINDER_CLOSED_BACK_PAGE } from "@/lib/pokemon/constants";
 
 describe("Binder Viewport and Flip Navigation Logic", () => {
     beforeEach(() => {
@@ -57,7 +39,7 @@ describe("Binder Viewport and Flip Navigation Logic", () => {
                 height: 400,
                 x: 200,
                 y: 100,
-                toJSON: () => { },
+                toJSON: () => {},
             }),
         } as unknown as Element;
 
@@ -75,7 +57,7 @@ describe("Binder Viewport and Flip Navigation Logic", () => {
                 height: 800,
                 x: 0,
                 y: 0,
-                toJSON: () => { },
+                toJSON: () => {},
             }),
         } as unknown as Element;
 
@@ -93,7 +75,7 @@ describe("Binder Viewport and Flip Navigation Logic", () => {
                 height: 410,
                 x: 100,
                 y: -10,
-                toJSON: () => { },
+                toJSON: () => {},
             }),
         } as unknown as Element;
 
@@ -111,7 +93,7 @@ describe("Binder Viewport and Flip Navigation Logic", () => {
                 height: 350,
                 x: 100,
                 y: 500,
-                toJSON: () => { },
+                toJSON: () => {},
             }),
         } as unknown as Element;
 
@@ -129,7 +111,7 @@ describe("Binder Viewport and Flip Navigation Logic", () => {
                 height: 400,
                 x: -20,
                 y: 100,
-                toJSON: () => { },
+                toJSON: () => {},
             }),
         } as unknown as Element;
 
@@ -147,7 +129,7 @@ describe("Binder Viewport and Flip Navigation Logic", () => {
                 height: 400,
                 x: 1000,
                 y: 100,
-                toJSON: () => { },
+                toJSON: () => {},
             }),
         } as unknown as Element;
 

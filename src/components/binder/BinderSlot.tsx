@@ -49,7 +49,8 @@ function useStopPageFlip<T extends HTMLElement>() {
 }
 
 export function BinderSlot({ dexId, pokemonName, card, isTrailing = false, isHighlighted = false, isDropping = false, pauseTilt = false, onClick }: BinderSlotProps) {
-    const slotRef = useStopPageFlip<HTMLElement>();
+    const divRef = useStopPageFlip<HTMLDivElement>();
+    const buttonRef = useStopPageFlip<HTMLButtonElement>();
 
     if (isTrailing) {
         return (
@@ -83,10 +84,10 @@ export function BinderSlot({ dexId, pokemonName, card, isTrailing = false, isHig
         const pokemonType = pokemon?.type ?? "normal";
 
         return (
-            <div ref={slotRef} className={`relative h-full min-h-0 w-full ${isDropping ? "z-40" : ""} ${isHighlighted ? "slot-glow ring-2 rounded-lg" : ""}`} style={glowStyle}>
+            <div ref={divRef} className={`relative h-full min-h-0 w-full ${isDropping ? "z-40" : ""} ${isHighlighted ? "slot-glow ring-2 rounded-lg" : ""}`} style={glowStyle}>
                 <div className={`relative h-full w-full ${isDropping ? "card-drop" : ""}`}>
                     <Card3DTilt key={card.id} className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={12} scale={1.15} glareOpacity={0.25} shineMode={resolveCardShine(card.card_variant, card.card_rarity)} paused={pauseTilt}>
-                        <button ref={slotRef} type="button" id={`binder-slot-${dexId}`} onClick={onClick} onMouseDownCapture={stopPageFlip} onPointerDownCapture={stopPageFlip} onTouchStartCapture={stopPageFlip} onKeyDown={handleKeyDown} aria-label={`${card.card_name}, ${formattedDex}`} className="relative flex h-full min-h-0 w-full cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent p-0 text-left outline-none hover:z-30 focus-visible:ring-2 focus-visible:ring-poke-blue">
+                        <button type="button" id={`binder-slot-${dexId}`} onClick={onClick} onMouseDownCapture={stopPageFlip} onPointerDownCapture={stopPageFlip} onTouchStartCapture={stopPageFlip} onKeyDown={handleKeyDown} aria-label={`${card.card_name}, ${formattedDex}`} className="relative flex h-full min-h-0 w-full cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent p-0 text-left outline-none hover:z-30 focus-visible:ring-2 focus-visible:ring-poke-blue">
                             <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill sizes="(max-width: 768px) 30vw, 15vw" className="pointer-events-none object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" unoptimized />
                         </button>
                     </Card3DTilt>
@@ -99,7 +100,7 @@ export function BinderSlot({ dexId, pokemonName, card, isTrailing = false, isHig
     return (
         <button
             type="button"
-            ref={slotRef}
+            ref={buttonRef}
             id={`binder-slot-${dexId}`}
             onClick={onClick}
             onKeyDown={handleKeyDown}

@@ -1,13 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import {
-    CARD_VARIANT_OPTIONS,
-    cardCopyGroupKey,
-    defaultVariant,
-    formatVariantLabel,
-    getAvailableVariants,
-    isCardVariant,
-    resolveCardShine,
-} from "../src/lib/pokemon/variant";
+import { CARD_VARIANT_OPTIONS, cardCopyGroupKey, defaultVariant, formatVariantLabel, getAvailableVariants, isCardVariant, resolveCardShine } from "../src/lib/pokemon/variant";
 
 describe("Card variant helpers", () => {
     it("filters available variants from TCGdex flags in priority order", () => {

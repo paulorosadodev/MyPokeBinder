@@ -72,12 +72,7 @@ export function Card3DTilt({ children, className = "", glareOpacity = 0.25, maxT
                 const maxDistance = Math.sqrt(Math.pow(centerX, 2) + Math.pow(centerY, 2));
                 const glareIntensity = Math.min(glareDistance / maxDistance, 1) * effectiveGlare;
 
-                const background =
-                    shineMode === "prismatic"
-                        ? `linear-gradient(${glareAngle}deg, rgba(255,255,255,0.85) 0%, rgba(251,191,36,0.45) 18%, rgba(168,85,247,0.4) 32%, rgba(34,211,238,0.35) 48%, transparent 68%)`
-                        : shineMode === "foil"
-                          ? `linear-gradient(${glareAngle}deg, rgba(255,255,255,0.9) 0%, rgba(186,230,253,0.55) 22%, rgba(125,211,252,0.35) 40%, transparent 65%)`
-                          : `linear-gradient(${glareAngle}deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.4) 30%, transparent 60%)`;
+                const background = shineMode === "prismatic" ? `linear-gradient(${glareAngle}deg, rgba(255,255,255,0.85) 0%, rgba(251,191,36,0.45) 18%, rgba(168,85,247,0.4) 32%, rgba(34,211,238,0.35) 48%, transparent 68%)` : shineMode === "foil" ? `linear-gradient(${glareAngle}deg, rgba(255,255,255,0.9) 0%, rgba(186,230,253,0.55) 22%, rgba(125,211,252,0.35) 40%, transparent 65%)` : `linear-gradient(${glareAngle}deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.4) 30%, transparent 60%)`;
 
                 setGlareStyle({
                     opacity: glareIntensity,

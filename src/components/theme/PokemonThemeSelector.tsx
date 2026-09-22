@@ -71,17 +71,7 @@ export function PokemonThemeSelector({ themeColor, onSelectColor }: PokemonTheme
                             </div>
 
                             <div className="relative flex size-20 shrink-0 items-center justify-center overflow-hidden sm:size-24">
-                                <Image
-                                    src={getPokemonThemeSelectorSpriteUrl(p.dexId)}
-                                    alt={p.pokemonName}
-                                    width={96}
-                                    height={96}
-                                    unoptimized
-                                    className="size-full object-contain drop-shadow-md [image-rendering:pixelated]"
-                                    style={{ transform: `scale(${spriteScale})` }}
-                                    priority
-                                    loading="eager"
-                                />
+                                <Image src={getPokemonThemeSelectorSpriteUrl(p.dexId)} alt={p.pokemonName} width={96} height={96} unoptimized className="size-full object-contain drop-shadow-md [image-rendering:pixelated]" style={{ transform: `scale(${spriteScale})` }} priority loading="eager" />
                             </div>
                         </div>
 

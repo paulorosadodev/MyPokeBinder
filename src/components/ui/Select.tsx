@@ -28,20 +28,7 @@ export interface SelectProps<T extends string = string> {
 
 const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
-export function Select<T extends string = string>({
-    value,
-    onChange,
-    options,
-    placeholder = "Selecione uma opção",
-    icon,
-    disabled = false,
-    className = "",
-    menuClassName = "",
-    ariaLabel = "Seletor de opções",
-    align = "left",
-    size = "md",
-    onOpenChange,
-}: SelectProps<T>) {
+export function Select<T extends string = string>({ value, onChange, options, placeholder = "Selecione uma opção", icon, disabled = false, className = "", menuClassName = "", ariaLabel = "Seletor de opções", align = "left", size = "md", onOpenChange }: SelectProps<T>) {
     const [isOpen, setIsOpen] = useState(false);
     const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
     const containerRef = useRef<HTMLDivElement | null>(null);

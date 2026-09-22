@@ -108,14 +108,7 @@ export function pageFlipLandscapeBookRect(blockWidth: number, pageHeight: number
 export function pageFlipIsPointOnCorners(globalPos: { x: number; y: number }, rect: PageFlipBookRect): boolean {
     const operatingDistance = Math.sqrt(rect.pageWidth ** 2 + rect.height ** 2) / 5;
     const bookPos = { x: globalPos.x - rect.left, y: globalPos.y - rect.top };
-    return (
-        bookPos.x > 0 &&
-        bookPos.y > 0 &&
-        bookPos.x < rect.width &&
-        bookPos.y < rect.height &&
-        (bookPos.x < operatingDistance || bookPos.x > rect.width - operatingDistance) &&
-        (bookPos.y < operatingDistance || bookPos.y > rect.height - operatingDistance)
-    );
+    return bookPos.x > 0 && bookPos.y > 0 && bookPos.x < rect.width && bookPos.y < rect.height && (bookPos.x < operatingDistance || bookPos.x > rect.width - operatingDistance) && (bookPos.y < operatingDistance || bookPos.y > rect.height - operatingDistance);
 }
 
 /** Synthetic click points used by StPageFlip flipPrev / flipNext. */

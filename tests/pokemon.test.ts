@@ -68,8 +68,7 @@ describe("Pokemon 151 Constants and Helpers", () => {
     });
 
     it("should resolve high-resolution PC box icon URLs (gen VIII icons for gens 1–8)", () => {
-        const gen8Icon = (id: number) =>
-            `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-viii/icons/${id}.png`;
+        const gen8Icon = (id: number) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-viii/icons/${id}.png`;
         expect(getPokemonBoxIconUrl(25)).toBe(gen8Icon(25));
         expect(getPokemonBoxIconUrl(384)).toBe(gen8Icon(384));
         expect(getPokemonBoxIconUrl(494)).toBe(gen8Icon(494));

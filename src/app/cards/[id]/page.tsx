@@ -460,14 +460,7 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
 
                                 <div className="flex flex-col gap-2">
                                     <label className="text-xs font-medium text-slate-400">Versão física (acabamento):</label>
-                                    <Select<CardVariant>
-                                        value={currentVariant}
-                                        onChange={handleChangeVariant}
-                                        options={VARIANT_SELECT_OPTIONS}
-                                        disabled={updatingVariant !== null}
-                                        className="w-full"
-                                        ariaLabel="Versão física da carta"
-                                    />
+                                    <Select<CardVariant> value={currentVariant} onChange={handleChangeVariant} options={VARIANT_SELECT_OPTIONS} disabled={updatingVariant !== null} className="w-full" ariaLabel="Versão física da carta" />
                                 </div>
 
                                 <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] p-3.5">

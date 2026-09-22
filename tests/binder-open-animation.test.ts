@@ -1,6 +1,26 @@
 import { describe, it, expect } from "bun:test";
 import { catalogPageToPhysicalIndex, physicalIndexToCatalogPage } from "@/lib/pokemon/constants";
-import { planBinderOpenAnimation, shouldDeferBinderPageSync, isBinderAlreadyOnTarget, isBinderPageBusy, isPageFlipPortrait, pageFlipClickWillTurnPage, pageFlipStartsUserTouch, shouldUsePortraitBinder, canMountBinderEngine, binderPageFlipDisableFlipByClick, pageFlipProgrammaticFlipAllowed, pageFlipPortraitBookRect, pageFlipLandscapeBookRect, BINDER_FRONT_COVER_PHYSICAL, BINDER_OPEN_HOLD_MS, BINDER_FLIP_MS, BINDER_PAGE_MIN_WIDTH, BINDER_MOBILE_STAGE_MAX_WIDTH, BINDER_MIN_STAGE_WIDTH_TO_MOUNT } from "@/lib/pokemon/binderOpen";
+import {
+    planBinderOpenAnimation,
+    shouldDeferBinderPageSync,
+    isBinderAlreadyOnTarget,
+    isBinderPageBusy,
+    isPageFlipPortrait,
+    pageFlipClickWillTurnPage,
+    pageFlipStartsUserTouch,
+    shouldUsePortraitBinder,
+    canMountBinderEngine,
+    binderPageFlipDisableFlipByClick,
+    pageFlipProgrammaticFlipAllowed,
+    pageFlipPortraitBookRect,
+    pageFlipLandscapeBookRect,
+    BINDER_FRONT_COVER_PHYSICAL,
+    BINDER_OPEN_HOLD_MS,
+    BINDER_FLIP_MS,
+    BINDER_PAGE_MIN_WIDTH,
+    BINDER_MOBILE_STAGE_MAX_WIDTH,
+    BINDER_MIN_STAGE_WIDTH_TO_MOUNT,
+} from "@/lib/pokemon/binderOpen";
 
 describe("Binder cover open animation plan", () => {
     it("should start closed on the front cover and target catalog page 1 in landscape", () => {

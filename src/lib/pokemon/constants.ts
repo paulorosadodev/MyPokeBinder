@@ -204,8 +204,7 @@ export function getPokemonGeneration(dexId: number): number | null {
     return range ? range.gen : null;
 }
 
-const POKEAPI_SPRITES_VERSIONS =
-    "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions";
+const POKEAPI_SPRITES_VERSIONS = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions";
 
 /** Highest-resolution PC/party icons on PokeAPI/sprites (SwSh, ~68×56px). */
 function getBoxIconVersionFolder(dexId: number): string | null {

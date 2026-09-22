@@ -6,9 +6,7 @@ describe("Pokemon Theme Selector Logic", () => {
     it("should map every theme preset to a PokeAPI front sprite URL", () => {
         THEME_PRESETS.forEach((preset) => {
             const url = getPokemonThemeSelectorSpriteUrl(preset.dexId);
-            expect(url).toMatch(
-                /^https:\/\/raw\.githubusercontent\.com\/PokeAPI\/sprites\/master\/sprites\/pokemon\/\d+\.png$/,
-            );
+            expect(url).toMatch(/^https:\/\/raw\.githubusercontent\.com\/PokeAPI\/sprites\/master\/sprites\/pokemon\/\d+\.png$/);
             expect(url.length).toBeGreaterThan(0);
         });
     });

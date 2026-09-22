@@ -288,11 +288,7 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                                     const anySelectOpen = openVariantSelectId !== null;
 
                                     return (
-                                        <div
-                                            key={card.id}
-                                            className={`group relative flex h-full flex-col justify-between gap-2 rounded-xl border p-2.5 transition-all duration-200 ${isSubmittingThis ? "border-poke-blue bg-poke-blue/15 ring-2 ring-poke-blue/40" : "border-white/10 bg-white/[0.03] hover:border-poke-blue/50 hover:bg-white/[0.07]"} ${isSelectOpen ? "z-50" : anySelectOpen ? "z-0" : ""} ${appear.className}`}
-                                            style={appear.style}
-                                        >
+                                        <div key={card.id} className={`group relative flex h-full flex-col justify-between gap-2 rounded-xl border p-2.5 transition-all duration-200 ${isSubmittingThis ? "border-poke-blue bg-poke-blue/15 ring-2 ring-poke-blue/40" : "border-white/10 bg-white/[0.03] hover:border-poke-blue/50 hover:bg-white/[0.07]"} ${isSelectOpen ? "z-50" : anySelectOpen ? "z-0" : ""} ${appear.className}`} style={appear.style}>
                                             <div className="relative aspect-[2.5/3.5] w-full shrink-0 cursor-pointer" onClick={() => handleAddCard(card)}>
                                                 <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={shineMode} paused={anySelectOpen}>
                                                     <Image src={formatTcgdexImageUrl(card.image)} alt={card.name} fill sizes="(max-width: 768px) 50vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" />
@@ -319,15 +315,7 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                                                 </div>
 
                                                 <div className="relative w-full" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-                                                    <Select<CardVariant>
-                                                        value={selectedVariant}
-                                                        onChange={(value) => setVariantsByCard((prev) => ({ ...prev, [card.id]: value }))}
-                                                        options={VARIANT_SELECT_OPTIONS}
-                                                        size="sm"
-                                                        className="!w-full sm:!w-full"
-                                                        onOpenChange={(open) => setOpenVariantSelectId(open ? card.id : null)}
-                                                        ariaLabel={`Versão física de ${card.name}`}
-                                                    />
+                                                    <Select<CardVariant> value={selectedVariant} onChange={(value) => setVariantsByCard((prev) => ({ ...prev, [card.id]: value }))} options={VARIANT_SELECT_OPTIONS} size="sm" className="!w-full sm:!w-full" onOpenChange={(open) => setOpenVariantSelectId(open ? card.id : null)} ariaLabel={`Versão física de ${card.name}`} />
                                                 </div>
                                             </div>
 
