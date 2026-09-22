@@ -209,9 +209,6 @@ export default function CollectionPage() {
         mutate();
     };
 
-    const totalPhysicalCopies = cards.length;
-    const uniquePokemonInCollection = new Set(cards.map((c) => c.pokemon_dex_id)).size;
-
     return (
         <div className="flex min-h-screen flex-col">
             <Header />
@@ -220,9 +217,6 @@ export default function CollectionPage() {
                 <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                     <div>
                         <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">Minha Coleção</h1>
-                        <p className="mt-1 text-sm text-slate-400">
-                            {totalPhysicalCopies === 1 ? "1 exemplar cadastrado" : `${totalPhysicalCopies} exemplares cadastrados`} abrangendo {uniquePokemonInCollection} de 151 Pokémon.
-                        </p>
                     </div>
 
                     <button
@@ -258,14 +252,14 @@ export default function CollectionPage() {
                             <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar coleção por raridade" className="w-full sm:w-[195px]" />
                         </div>
 
-                        <div className="flex w-full items-center gap-1.5 sm:w-auto lg:ml-auto">
-                            <Select<SortField> value={sortField} onChange={setSortField} options={SORT_FIELD_OPTIONS} icon={<ArrowUpDown size={13} />} ariaLabel="Ordenar coleção" className="flex-1 sm:w-[180px]" align="right" />
+                        <div className="flex w-full min-w-0 items-center gap-1.5 sm:w-auto lg:ml-auto">
+                            <Select<SortField> value={sortField} onChange={setSortField} options={SORT_FIELD_OPTIONS} icon={<ArrowUpDown size={13} />} ariaLabel="Ordenar coleção" className="flex-1 min-w-0 sm:w-[180px]" align="right" />
                             <button
                                 type="button"
                                 onClick={() => setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))}
                                 aria-label={sortDirection === "asc" ? "Ordem crescente. Clique para inverter para decrescente." : "Ordem decrescente. Clique para inverter para crescente."}
                                 title={sortDirection === "asc" ? "Crescente (Clique para inverter)" : "Decrescente (Clique para inverter)"}
-                                className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition-all hover:border-poke-blue/50 hover:bg-white/10 hover:text-white active:scale-95"
+                                className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition-all hover:border-poke-blue/50 hover:bg-white/10 hover:text-white active:scale-95"
                             >
                                 <ArrowUpDown size={15} className={`transition-transform duration-200 ${sortDirection === "desc" ? "rotate-180 text-poke-blue" : ""}`} />
                             </button>
