@@ -13,12 +13,12 @@ Na página de configurações (`/configuracoes`), a seleção de temas e cores u
 ## Decisões
 
 1. **Cards Temáticos Oficiais Integrados (`PokemonThemeSelector.tsx`)**:
-   - A seção de Tema e Cores do Treinador passa a conter estritamente os **6 cards selecionáveis oficiais**, dispostos em um grid responsivo harmonioso:
+   - A seção de Tema e Cores do Treinador passa a conter estritamente os **6 cards selecionáveis oficiais**, dispostos em ordem de Pokédex no grid responsivo:
+     - **Venusaur Emerald**: Safari Ball vibrante, sprite do Venusaur (#003), tipo Planta e tonalidade `#10b981`.
      - **Charizard Red**: Poké Ball clássica, sprite do Charizard (#006), tipo Fogo e tonalidade `#ef4444`.
      - **Blastoise Blue**: Great Ball icônica, sprite do Blastoise (#009), tipo Água e tonalidade `#3b82f6`.
      - **Pikachu Amber**: Ultra Ball elegante, sprite do Pikachu (#025), tipo Elétrico e tonalidade `#f59e0b`.
      - **Gengar Purple**: Master Ball suprema, sprite do Gengar (#094), tipo Fantasma e tonalidade `#8b5cf6`.
-     - **Rayquaza Emerald**: Safari Ball lendária, sprite do Rayquaza (#384), tipo Dragão e tonalidade `#10b981`.
      - **Mew Pink**: Love Ball mística, sprite do Mew (#151), tipo Psíquico e tonalidade `#ec4899`.
 
 2. **Pokébolas Vetoriais em SVG e Propagação Universal (`PokemonBallSvg.tsx`, `PokeballLogo.tsx`, `PokeballLoader.tsx`)**:

@@ -15,12 +15,12 @@ interface PokemonThemeSelectorProps {
 
 /** Compensates transparent padding in PokeAPI front sprites so small Pokémon fill the slot. */
 const SPRITE_FIT_SCALE: Record<number, number> = {
+    3: 1.15,
     6: 1.15,
     9: 1.12,
     25: 1.55,
     94: 1.2,
     151: 1.7,
-    384: 1.1,
 };
 
 export function PokemonThemeSelector({ themeColor, onSelectColor }: PokemonThemeSelectorProps) {

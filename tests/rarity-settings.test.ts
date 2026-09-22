@@ -30,8 +30,13 @@ describe("Rarity Tiers and Badge Style Logic", () => {
     });
 
     it("should format rarity labels appropriately", () => {
-        expect(formatRarityLabel("Illustration rare")).toBe("Illustration Rare");
-        expect(formatRarityLabel("Special illustration rare")).toBe("Special Illustration Rare");
+        expect(formatRarityLabel("Illustration rare")).toBe("Ilustração Rara");
+        expect(formatRarityLabel("Special illustration rare")).toBe("Ilustração Rara Especial");
+        expect(formatRarityLabel("Hyper Rare")).toBe("Hiper-rara");
+        expect(formatRarityLabel("Ultra Rare")).toBe("Rara Ultra");
+        expect(formatRarityLabel("Double Rare")).toBe("Rara Dupla");
+        expect(formatRarityLabel("Holo Rare")).toBe("Rara Holográfica");
+        expect(formatRarityLabel("Rare")).toBe("Rara");
         expect(formatRarityLabel("Common")).toBe("Comum");
         expect(formatRarityLabel("Uncommon")).toBe("Incomum");
         expect(formatRarityLabel("")).toBe("Comum");

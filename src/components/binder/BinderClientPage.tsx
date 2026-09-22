@@ -21,7 +21,6 @@ import { useImagePreloader, preloadImages } from "@/lib/hooks/useImagePreloader"
 interface BinderClientPageProps {
     initialUser?: {
         email?: string;
-        name?: string;
         avatarUrl?: string;
     } | null;
     initialCards?: UserCard[];

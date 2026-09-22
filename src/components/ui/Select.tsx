@@ -169,7 +169,7 @@ export function Select<T extends string = string>({ value, onChange, options, pl
         : null;
 
     return (
-        <div ref={containerRef} className={`relative inline-block w-full sm:w-auto ${className}`}>
+        <div ref={containerRef} className={`relative inline-block min-w-0 ${className || "w-full sm:w-auto"}`}>
             <button
                 type="button"
                 onClick={handleToggle}

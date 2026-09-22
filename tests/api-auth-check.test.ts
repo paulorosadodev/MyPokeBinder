@@ -6,6 +6,7 @@ import { PATCH as patchCard, DELETE as deleteCard, GET as getCard } from "../src
 import { GET as getDashboard } from "../src/app/api/dashboard/route";
 import { GET as getSearch } from "../src/app/api/search/route";
 import { GET as getSettings, PATCH as patchSettings } from "../src/app/api/settings/route";
+import { DELETE as deleteAccount } from "../src/app/api/account/route";
 
 describe("Protected API Routes Unauthenticated Checks", () => {
     it("GET /api/binder should return 401 when unauthenticated", async () => {
@@ -82,6 +83,16 @@ describe("Protected API Routes Unauthenticated Checks", () => {
             body: JSON.stringify({ theme_color: "#ef4444" }),
         });
         const response = await patchSettings(request);
+        expect(response.status).toBe(401);
+    });
+
+    it("DELETE /api/account should return 401 when unauthenticated", async () => {
+        const request = new NextRequest("http://localhost:3000/api/account", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ confirm: "EXCLUIR" }),
+        });
+        const response = await deleteAccount(request);
         expect(response.status).toBe(401);
     });
 });

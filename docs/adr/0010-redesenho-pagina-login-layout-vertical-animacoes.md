@@ -32,3 +32,7 @@ A página de autenticação anterior apresentava um card centralizado estático 
     - O formulário de login permanece desobstruído, ergonômico e com alta legibilidade na barra lateral direita.
     - Eliminação de informações redundantes no rodapé do formulário.
     - Desempenho suave a 60fps+ através de transformações CSS aceleradas por hardware.
+
+## Nota posterior
+
+A linguagem visual do painel esquerdo e do fundo (feature cards glass, gradients multicolor, neon elemental) foi refinada no [ADR 0043](./0043-refinamento-visual-anti-slop-pagina-login.md). O layout split e a coluna de autenticação à direita permanecem.

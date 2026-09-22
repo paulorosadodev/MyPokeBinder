@@ -65,4 +65,18 @@ describe("Public Routes and Google Cloud Consent Pages", () => {
         expect(response.status).toBe(307);
         expect(response.headers.get("location")).toBe("http://localhost:3000/login");
     });
+
+    it("should allow shared profile routes /perfil/[username] without redirecting to login", async () => {
+        const request = new NextRequest("http://localhost:3000/perfil/ashketchum");
+        const response = await updateSession(request);
+        expect(response.status).toBe(200);
+        expect(response.headers.get("location")).toBeNull();
+    });
+
+    it("should allow shared profile API /api/profile/[username] without redirecting to login", async () => {
+        const request = new NextRequest("http://localhost:3000/api/profile/ashketchum");
+        const response = await updateSession(request);
+        expect(response.status).toBe(200);
+        expect(response.headers.get("location")).toBeNull();
+    });
 });

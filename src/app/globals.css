@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @theme {
+    --font-sans: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
     --color-binder-dark: #0a0c10;
     --color-binder-card: #181d28;
     --color-binder-panel: #12151d;
@@ -88,38 +89,183 @@ body {
     background-attachment: fixed;
 }
 
-.holo-sheen {
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 200%;
-    height: 100%;
-    background: linear-gradient(115deg, transparent 20%, rgba(255, 255, 255, 0.15) 30%, rgba(251, 191, 36, 0.2) 35%, rgba(168, 85, 247, 0.2) 40%, transparent 50%);
-    transition: transform 0.6s ease;
-    pointer-events: none;
-    z-index: 15;
-    border-radius: inherit;
+@keyframes landing-fade-up {
+    from {
+        opacity: 0;
+        transform: translateY(1.25rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
-.group:hover .holo-sheen {
-    transform: translateX(60%);
+.landing-enter {
+    animation: landing-fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.landing-enter-d1 {
+    animation-delay: 0.06s;
+}
+.landing-enter-d2 {
+    animation-delay: 0.12s;
+}
+.landing-enter-d3 {
+    animation-delay: 0.18s;
+}
+.landing-enter-d4 {
+    animation-delay: 0.24s;
+}
+.landing-enter-d5 {
+    animation-delay: 0.3s;
+}
+.landing-enter-d6 {
+    animation-delay: 0.36s;
+}
+
+.landing-reveal {
+    opacity: 0;
+    transform: translateY(1.5rem);
+    transition:
+        opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+        transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.landing-reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.landing-reveal-stagger > .landing-reveal-item {
+    opacity: 0;
+    transform: translateY(1rem);
+    transition:
+        opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+        transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.landing-reveal.is-visible .landing-reveal-stagger > .landing-reveal-item {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.landing-reveal.is-visible .landing-reveal-stagger > .landing-reveal-item:nth-child(1) {
+    transition-delay: 0.04s;
+}
+.landing-reveal.is-visible .landing-reveal-stagger > .landing-reveal-item:nth-child(2) {
+    transition-delay: 0.1s;
+}
+.landing-reveal.is-visible .landing-reveal-stagger > .landing-reveal-item:nth-child(3) {
+    transition-delay: 0.16s;
+}
+.landing-reveal.is-visible .landing-reveal-stagger > .landing-reveal-item:nth-child(4) {
+    transition-delay: 0.22s;
+}
+.landing-reveal.is-visible .landing-reveal-stagger > .landing-reveal-item:nth-child(5) {
+    transition-delay: 0.28s;
+}
+.landing-reveal.is-visible .landing-reveal-stagger > .landing-reveal-item:nth-child(6) {
+    transition-delay: 0.34s;
+}
+.landing-reveal.is-visible .landing-reveal-stagger > .landing-reveal-item:nth-child(7) {
+    transition-delay: 0.4s;
+}
+.landing-reveal.is-visible .landing-reveal-stagger > .landing-reveal-item:nth-child(8) {
+    transition-delay: 0.46s;
+}
+.landing-reveal.is-visible .landing-reveal-stagger > .landing-reveal-item:nth-child(9) {
+    transition-delay: 0.52s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .landing-enter,
+    .landing-enter-d1,
+    .landing-enter-d2,
+    .landing-enter-d3,
+    .landing-enter-d4,
+    .landing-enter-d5,
+    .landing-enter-d6 {
+        animation: none;
+        opacity: 1;
+        transform: none;
+    }
+
+    .landing-reveal,
+    .landing-reveal-stagger > .landing-reveal-item {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+}
+
+/* Tilt-driven foil: position/opacity come from --card-* vars set by Card3DTilt. */
+.holo-sheen,
+.foil-sheen {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 15;
+    opacity: var(--card-shine-opacity, 0);
+    will-change: opacity, background-position, filter;
+    transition: opacity 60ms linear;
+}
+
+.holo-sheen {
+    background-image: repeating-linear-gradient(-12deg, hsl(0 90% 70% / 0.55) 0%, hsl(48 95% 65% / 0.55) 8%, hsl(120 70% 60% / 0.45) 16%, hsl(190 85% 60% / 0.55) 24%, hsl(260 80% 70% / 0.55) 32%, hsl(320 85% 68% / 0.5) 40%, hsl(0 90% 70% / 0.55) 48%), radial-gradient(farthest-corner circle at calc(var(--card-pointer-x, 50) * 1%) calc(var(--card-pointer-y, 50) * 1%), hsl(0 0% 100% / 0.55) 0%, hsl(48 100% 80% / 0.2) 18%, transparent 48%);
+    background-size:
+        280% 280%,
+        160% 160%;
+    background-position:
+        calc(var(--card-pointer-x, 50) * 1.4%) calc(var(--card-pointer-y, 50) * 1.2%),
+        calc(var(--card-pointer-x, 50) * 1%) calc(var(--card-pointer-y, 50) * 1%);
+    mix-blend-mode: color-dodge;
+    filter: brightness(calc(0.75 + var(--card-tilt, 0) * 0.9)) contrast(1.25) saturate(1.35);
 }
 
 .foil-sheen {
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 200%;
-    height: 100%;
-    background: linear-gradient(115deg, transparent 18%, rgba(255, 255, 255, 0.22) 30%, rgba(186, 230, 253, 0.28) 38%, rgba(125, 211, 252, 0.18) 46%, transparent 58%);
-    transition: transform 0.55s ease;
-    pointer-events: none;
-    z-index: 15;
-    border-radius: inherit;
+    background-image: repeating-linear-gradient(118deg, transparent 0%, hsl(200 90% 85% / 0.15) 6%, hsl(0 0% 100% / 0.45) 12%, hsl(195 80% 70% / 0.25) 18%, transparent 28%), radial-gradient(farthest-corner circle at calc(var(--card-pointer-x, 50) * 1%) calc(var(--card-pointer-y, 50) * 1%), hsl(0 0% 100% / 0.5) 0%, hsl(200 90% 80% / 0.22) 22%, transparent 52%);
+    background-size:
+        220% 220%,
+        150% 150%;
+    background-position:
+        calc(var(--card-pointer-x, 50) * 1.6%) calc(var(--card-pointer-y, 50) * 1.1%),
+        calc(var(--card-pointer-x, 50) * 1%) calc(var(--card-pointer-y, 50) * 1%);
+    mix-blend-mode: soft-light;
+    filter: brightness(calc(0.85 + var(--card-tilt, 0) * 0.55)) contrast(1.15);
 }
 
-.group:hover .foil-sheen {
-    transform: translateX(55%);
+.card-glare {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 20;
+    opacity: var(--card-shine-opacity, 0);
+    mix-blend-mode: overlay;
+    transition: opacity 60ms linear;
+    will-change: opacity, background;
+}
+
+.card-glare--prismatic {
+    background: radial-gradient(farthest-corner circle at var(--card-glare-x, 50%) var(--card-glare-y, 50%), hsl(0 0% 100% / 0.9) 0%, hsl(48 100% 70% / 0.35) 14%, hsl(280 90% 70% / 0.28) 28%, hsl(190 90% 60% / 0.18) 42%, transparent 62%), linear-gradient(var(--card-glare-angle, 135deg), hsl(0 0% 100% / 0.35) 0%, hsl(48 95% 60% / 0.22) 18%, hsl(280 85% 65% / 0.2) 36%, hsl(190 90% 55% / 0.15) 52%, transparent 70%);
+}
+
+.card-glare--foil {
+    background: radial-gradient(farthest-corner circle at var(--card-glare-x, 50%) var(--card-glare-y, 50%), hsl(0 0% 100% / 0.85) 0%, hsl(200 90% 80% / 0.35) 18%, hsl(210 80% 70% / 0.15) 36%, transparent 58%), linear-gradient(var(--card-glare-angle, 135deg), hsl(0 0% 100% / 0.4) 0%, hsl(200 85% 75% / 0.28) 24%, hsl(210 70% 65% / 0.12) 44%, transparent 68%);
+}
+
+.card-glare--soft {
+    background: radial-gradient(farthest-corner circle at var(--card-glare-x, 50%) var(--card-glare-y, 50%), hsl(0 0% 100% / 0.65) 0%, hsl(0 0% 100% / 0.2) 28%, transparent 58%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .holo-sheen,
+    .foil-sheen,
+    .card-glare {
+        transition: none;
+        filter: none;
+    }
 }
 
 .silhouette-img {
@@ -702,6 +848,18 @@ body {
        então as neutralizações do motor precisam morar nesta classe. */
     min-width: 0 !important;
     max-width: 100% !important;
+}
+
+.binder-flipbook-root--static,
+.binder-flipbook-root--static * {
+    user-select: none !important;
+    -webkit-user-drag: none !important;
+}
+
+.binder-flipbook-root--static .stf__parent,
+.binder-flipbook-root--static .stf__block,
+.binder-flipbook-root--static .stf__item {
+    cursor: default !important;
 }
 
 /* Antes do StPageFlip mover cada folha para dentro de .stf__item, elas ficam em fluxo

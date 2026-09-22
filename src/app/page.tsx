@@ -25,7 +25,6 @@ export default async function Page() {
         <BinderClientPage
             initialUser={{
                 email: user.email,
-                name: user.user_metadata?.full_name || user.user_metadata?.name,
                 avatarUrl: user.user_metadata?.avatar_url || user.user_metadata?.picture,
             }}
             initialCards={(binderCards as UserCard[] | null) ?? []}

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useContext } from "react";
-import { UserSettingsContext } from "@/lib/context/UserSettingsContext";
+import { UserSettingsContext, getBallTypeForTheme } from "@/lib/context/UserSettingsContext";
 import { PokemonBallSvg, BallType } from "@/components/theme/PokemonBallSvg";
 
 interface PokeballLoaderProps {
@@ -9,12 +9,13 @@ interface PokeballLoaderProps {
     message?: string;
     className?: string;
     ballType?: BallType;
+    color?: string;
 }
 
-export function PokeballLoader({ size = "md", message, className = "", ballType: propBallType }: PokeballLoaderProps) {
+export function PokeballLoader({ size = "md", message, className = "", ballType: propBallType, color }: PokeballLoaderProps) {
     const context = useContext(UserSettingsContext);
-    const effectiveBallType = propBallType || context?.ballType || "pokeball";
-    const effectiveColor = context?.themeColor || "var(--theme-primary, #38bdf8)";
+    const effectiveColor = color || context?.themeColor || "var(--theme-primary, #ef4444)";
+    const effectiveBallType = propBallType || (color ? getBallTypeForTheme(color) : context?.ballType || "pokeball");
 
     const sizeMap = {
         sm: { box: "w-8 h-8", px: 32 },

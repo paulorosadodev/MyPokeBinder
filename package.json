@@ -12,6 +12,8 @@
         "lint": "eslint ."
     },
     "dependencies": {
+        "@dnd-kit/helpers": "^0.5.0",
+        "@dnd-kit/react": "^0.5.0",
         "@supabase/ssr": "^0.5.2",
         "@supabase/supabase-js": "^2.49.1",
         "@tailwindcss/postcss": "^4.3.3",

@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { SearchCardItem, CardLanguage, CardVariant, UserCard, SearchResponse } from "@/types/binder";
 import { formatTcgdexImageUrl } from "@/lib/pokemon/tcgdex";
 import { getRarityBadgeStyle } from "@/lib/pokemon/rarity";
 import { defaultVariant, formatVariantLabel, resolveCardShine } from "@/lib/pokemon/variant";
+import { COLLECTION_PAGE_SIZE } from "@/lib/collection/listCards";
+import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { PokeballLoader } from "@/components/loading/PokeballLoader";
 import { LanguageSlider } from "@/components/ui/LanguageSlider";
 import { Select, type SelectOption } from "@/components/ui/Select";
@@ -50,7 +52,7 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
     const [error, setError] = useState<string | null>(null);
     const [submittingCardId, setSubmittingCardId] = useState<string | null>(null);
     const [openVariantSelectId, setOpenVariantSelectId] = useState<string | null>(null);
-    const sentinelRef = useRef<HTMLDivElement | null>(null);
+    const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -85,7 +87,7 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                 setSubmittingCardId(null);
                 setPage(1);
 
-                const res = await fetch(`/api/search?name=${encodeURIComponent(queryName)}&page=1&pageSize=36`);
+                const res = await fetch(`/api/search?name=${encodeURIComponent(queryName)}&page=1&pageSize=${COLLECTION_PAGE_SIZE}`);
                 const data: SearchResponse = await res.json();
 
                 if (!res.ok) {
@@ -140,7 +142,7 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                 return;
             }
 
-            const res = await fetch(`/api/search?name=${encodeURIComponent(queryName)}&page=${nextPage}&pageSize=36`);
+            const res = await fetch(`/api/search?name=${encodeURIComponent(queryName)}&page=${nextPage}&pageSize=${COLLECTION_PAGE_SIZE}`);
             const data: SearchResponse = await res.json();
 
             if (!res.ok) {
@@ -162,29 +164,13 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
         }
     }, [page, hasMore, loadingMore, initialLoading, pokemonName]);
 
-    useEffect(() => {
-        if (!hasMore || initialLoading) return;
-
-        const observer = new IntersectionObserver(
-            (entries) => {
-                if (entries[0].isIntersecting) {
-                    loadNextPage();
-                }
-            },
-            { rootMargin: "200px" },
-        );
-
-        const currentSentinel = sentinelRef.current;
-        if (currentSentinel) {
-            observer.observe(currentSentinel);
-        }
-
-        return () => {
-            if (currentSentinel) {
-                observer.unobserve(currentSentinel);
-            }
-        };
-    }, [hasMore, initialLoading, loadNextPage]);
+    const sentinelRef = useInfiniteScroll({
+        hasMore,
+        isLoading: loadingMore || initialLoading,
+        onLoadMore: loadNextPage,
+        root: scrollRoot,
+        enabled: isOpen,
+    });
 
     const handleAddCard = async (card: SearchCardItem) => {
         if (submittingCardId) return;
@@ -265,7 +251,7 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
 
                 {error && <div className="mx-6 mt-3 shrink-0 rounded-lg border border-red-500/30 bg-red-500/15 p-3 text-xs text-red-200">{error}</div>}
 
-                <div className="flex-1 overflow-y-auto p-6">
+                <div ref={setScrollRoot} className="flex-1 overflow-y-auto p-6">
                     {initialLoading ? (
                         <div className="flex h-full min-h-[250px] flex-col items-center justify-center">
                             <PokeballLoader message="Carregando cartas..." size="md" />

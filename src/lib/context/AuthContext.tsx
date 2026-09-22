@@ -3,10 +3,12 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { usernameFromEmail } from "@/lib/profile/username";
 
 export interface UserProfile {
     id: string;
     email?: string;
+    username?: string;
     name?: string;
     avatarUrl?: string | null;
 }
@@ -44,6 +46,21 @@ function setCachedUser(user: UserProfile | null) {
     } catch {}
 }
 
+async function buildUserProfile(authUser: { id: string; email?: string | null; user_metadata?: Record<string, unknown> }): Promise<UserProfile> {
+    const supabase = createClient();
+    const { data: profile } = await supabase.from("profiles").select("username, display_name, avatar_url").eq("id", authUser.id).maybeSingle();
+
+    const fallbackUsername = usernameFromEmail(authUser.email);
+
+    return {
+        id: authUser.id,
+        email: authUser.email || undefined,
+        username: profile?.username || fallbackUsername,
+        name: profile?.display_name || profile?.username || fallbackUsername,
+        avatarUrl: profile?.avatar_url || (authUser.user_metadata?.avatar_url as string | undefined) || (authUser.user_metadata?.picture as string | undefined) || null,
+    };
+}
+
 export function AuthProvider({ children, initialUser = null }: { children: ReactNode; initialUser?: UserProfile | null }) {
     const router = useRouter();
     const [user, setUser] = useState<UserProfile | null>(() => {
@@ -57,12 +74,7 @@ export function AuthProvider({ children, initialUser = null }: { children: React
             const supabase = createClient();
             const { data } = await supabase.auth.getUser();
             if (data.user) {
-                const profile: UserProfile = {
-                    id: data.user.id,
-                    email: data.user.email,
-                    name: data.user.user_metadata?.full_name || data.user.user_metadata?.name || data.user.user_metadata?.user_name || data.user.email?.split("@")[0] || "Treinador Pokémon",
-                    avatarUrl: data.user.user_metadata?.avatar_url || data.user.user_metadata?.picture || null,
-                };
+                const profile = await buildUserProfile(data.user);
                 setUser(profile);
                 setCachedUser(profile);
             } else {
@@ -95,15 +107,11 @@ export function AuthProvider({ children, initialUser = null }: { children: React
             data: { subscription },
         } = supabase.auth.onAuthStateChange((event, session) => {
             if (session?.user) {
-                const profile: UserProfile = {
-                    id: session.user.id,
-                    email: session.user.email,
-                    name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.user_metadata?.user_name || session.user.email?.split("@")[0] || "Treinador Pokémon",
-                    avatarUrl: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || null,
-                };
-                setUser(profile);
-                setCachedUser(profile);
-                setIsLoading(false);
+                void buildUserProfile(session.user).then((profile) => {
+                    setUser(profile);
+                    setCachedUser(profile);
+                    setIsLoading(false);
+                });
             } else if (event === "SIGNED_OUT") {
                 setUser(null);
                 setCachedUser(null);

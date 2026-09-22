@@ -41,4 +41,4 @@ Anteriormente, o middleware de sessão redirecionava qualquer acesso à raiz (`/
 
 - A aplicação atende a 100% das diretrizes do Google Cloud OAuth para submissão e aprovação da tela de consentimento.
 - A experiência de novos visitantes se torna imersiva e convidativa, apresentando o valor do produto antes da barreira de autenticação.
-- A segurança das rotas privadas permanece preservada (`/collection`, `/dashboard`, `/cards/[id]`, `/configuracoes`, `/perfil`).
+- A segurança das rotas privadas permanece preservada (`/collection`, `/dashboard`, `/cards/[id]`, `/configuracoes`, `/perfil`). Rotas de perfil compartilhado (`/perfil/[userId]`) são públicas para visualização.

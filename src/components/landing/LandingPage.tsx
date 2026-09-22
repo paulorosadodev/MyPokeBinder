@@ -4,12 +4,123 @@ import { useState } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { PokeballLogo } from "@/components/ui/PokeballLogo";
 import { PublicHeader } from "@/components/layout/PublicHeader";
 import { PublicFooter } from "@/components/layout/PublicFooter";
 import { PokemonBackground } from "@/components/auth/PokemonBackground";
 import { Card3DTilt } from "@/components/ui/Card3DTilt";
-import { BookOpen, Search, Sparkles, LayoutDashboard, Palette, CheckCircle2, Globe2, ArrowRight, LogIn } from "lucide-react";
+import { LandingReveal } from "@/components/landing/LandingReveal";
+import { CardAppearOnView } from "@/components/landing/CardAppearOnView";
+import type { CardShineMode } from "@/types/binder";
+import { BookOpen, Grid3x3, LogIn, Search, Sparkles } from "lucide-react";
+
+const HERO_CARDS: {
+    dex: number;
+    name: string;
+    image: string;
+    shineMode: CardShineMode;
+}[] = [
+    {
+        dex: 9,
+        name: "Blastoise",
+        image: "https://assets.tcgdex.net/en/sv/sv03.5/200/high.webp",
+        shineMode: "prismatic",
+    },
+    {
+        dex: 6,
+        name: "Charizard",
+        image: "https://assets.tcgdex.net/en/sv/sv03.5/199/high.webp",
+        shineMode: "prismatic",
+    },
+    {
+        dex: 3,
+        name: "Venusaur",
+        image: "https://assets.tcgdex.net/en/sv/sv03.5/198/high.webp",
+        shineMode: "prismatic",
+    },
+];
+
+const BINDER_PAGE_CARDS: {
+    dex: number;
+    name: string;
+    image: string;
+    shineMode: CardShineMode;
+}[] = [
+    {
+        dex: 1,
+        name: "Bulbasaur",
+        image: "https://assets.tcgdex.net/en/sv/sv03.5/001/high.webp",
+        shineMode: "none",
+    },
+    {
+        dex: 4,
+        name: "Charmander",
+        image: "https://assets.tcgdex.net/en/sv/sv03.5/004/high.webp",
+        shineMode: "none",
+    },
+    {
+        dex: 7,
+        name: "Squirtle",
+        image: "https://assets.tcgdex.net/en/sv/sv03.5/007/high.webp",
+        shineMode: "none",
+    },
+    {
+        dex: 25,
+        name: "Pikachu",
+        image: "https://assets.tcgdex.net/en/sv/sv03.5/173/high.webp",
+        shineMode: "prismatic",
+    },
+    {
+        dex: 133,
+        name: "Eevee",
+        image: "https://assets.tcgdex.net/en/sv/sv03.5/133/high.webp",
+        shineMode: "none",
+    },
+    {
+        dex: 143,
+        name: "Snorlax",
+        image: "https://assets.tcgdex.net/en/sv/sv03.5/143/high.webp",
+        shineMode: "none",
+    },
+    {
+        dex: 150,
+        name: "Mewtwo",
+        image: "https://assets.tcgdex.net/en/swsh/swsh10.5/072/high.webp",
+        shineMode: "prismatic",
+    },
+    {
+        dex: 151,
+        name: "Mew",
+        image: "https://assets.tcgdex.net/en/sv/sv03.5/205/high.webp",
+        shineMode: "prismatic",
+    },
+    {
+        dex: 94,
+        name: "Gengar",
+        image: "https://assets.tcgdex.net/en/sv/sv06.5/057/high.webp",
+        shineMode: "prismatic",
+    },
+];
+
+const CAPABILITIES = [
+    {
+        icon: BookOpen,
+        title: "Binder 3×3",
+        desc: "17 páginas com 151 slots fixos, capa em couro e física de folhear como um fichário real.",
+    },
+    {
+        icon: Search,
+        title: "Catálogo TCGdex",
+        desc: "Busque edições físicas do Base Set ao 151 e registre idioma, versão e quantidade.",
+    },
+    {
+        icon: Sparkles,
+        title: "Full Art e brilho",
+        desc: "Raridades expandidas ganham foil holográfico, partículas de impacto e som ao pousar no slot.",
+    },
+];
+
+/** Hero wordmark only (not nav): two red tones. */
+const brandHeroGradientClass = "bg-gradient-to-r from-[#f87171] to-[#b91c1c] bg-clip-text text-transparent";
 
 export function LandingPage() {
     const [loadingAuth, setLoadingAuth] = useState(false);
@@ -32,237 +143,97 @@ export function LandingPage() {
         }
     };
 
-    const showcaseCards = [
-        {
-            dex: 6,
-            name: "Charizard",
-            image: "https://assets.tcgdex.net/en/sv/sv03.5/199/high.webp",
-        },
-        {
-            dex: 9,
-            name: "Blastoise",
-            image: "https://assets.tcgdex.net/en/sv/sv03.5/200/high.webp",
-        },
-        {
-            dex: 3,
-            name: "Venusaur",
-            image: "https://assets.tcgdex.net/en/sv/sv03.5/198/high.webp",
-        },
-        {
-            dex: 25,
-            name: "Pikachu",
-            image: "https://assets.tcgdex.net/en/sv/sv03.5/173/high.webp",
-        },
-        {
-            dex: 150,
-            name: "Mewtwo",
-            image: "https://assets.tcgdex.net/en/swsh/swsh10.5/072/high.webp",
-        },
-        {
-            dex: 151,
-            name: "Mew",
-            image: "https://assets.tcgdex.net/en/sv/sv03.5/205/high.webp",
-        },
-    ];
-
-    const featureList = [
-        {
-            icon: BookOpen,
-            title: "Layout 3×3 Físico Autêntico",
-            desc: "Navegação em páginas duplas com física realista de livro. Capa em couro texturizado, relevo de Pokébola e exatamente 151 slots fixos numerados de #001 a #151.",
-            color: "text-poke-blue",
-            bg: "bg-poke-blue/10 border-poke-blue/20",
-        },
-        {
-            icon: Search,
-            title: "Catálogo Completo de Cartas",
-            desc: "Acesso a todas as edições físicas já lançadas, do clássico Base Set de 1999 até coleções modernas como 151, com ilustrações em alta resolução.",
-            color: "text-amber-400",
-            bg: "bg-amber-400/10 border-amber-400/20",
-        },
-        {
-            icon: Sparkles,
-            title: "Full Art, Partículas & Som",
-            desc: "Reconhecimento automático de raridades expandidas com brilho holográfico arco-íris, explosão de partículas elementais e áudio procedural de impacto.",
-            color: "text-purple-400",
-            bg: "bg-purple-400/10 border-purple-400/20",
-        },
-        {
-            icon: Globe2,
-            title: "Múltiplos Idiomas & Cópias",
-            desc: "Controle físico detalhado de cada cópia em Português (PT-BR), Inglês (EN) ou Japonês (JA) com slider tátil e agrupamento de exemplares.",
-            color: "text-emerald-400",
-            bg: "bg-emerald-400/10 border-emerald-400/20",
-        },
-        {
-            icon: LayoutDashboard,
-            title: "Dashboard & Mini-Grid 151",
-            desc: "Métricas completas de preenchimento, estatísticas de raridade e mini-grid com a arte oficial colorida dos Pokémon obtidos contra silhuetas dos pendentes.",
-            color: "text-cyan-400",
-            bg: "bg-cyan-400/10 border-cyan-400/20",
-        },
-        {
-            icon: Palette,
-            title: "Perfil do Treinador & Temas",
-            desc: "Trainer Card estilizado com suas cartas mais raras em 3D e personalização com temas cromáticos inspirados em Pokémon.",
-            color: "text-rose-400",
-            bg: "bg-rose-400/10 border-rose-400/20",
-        },
-    ];
-
     return (
         <div className="relative min-h-screen overflow-x-hidden bg-[#07090e] text-slate-200">
-            <PokemonBackground />
+            <div className="pointer-events-none absolute inset-0 opacity-[0.18] md:opacity-40" aria-hidden>
+                <PokemonBackground />
+            </div>
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#07090e]/80 via-[#07090e]/55 to-[#07090e]" aria-hidden />
 
             <div className="relative z-10 flex min-h-screen flex-col">
                 <PublicHeader />
 
-                <section className="relative overflow-hidden pt-12 pb-16 md:pt-20 md:pb-24">
-                    <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                        <div className="mx-auto max-w-4xl text-center">
-                            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-semibold text-slate-300 backdrop-blur-md">
-                                <PokeballLogo size="sm" animated color="#ef4444" />
-                                <span>O Fichário Virtual 3×3 dos 151 Pokémon de Kanto</span>
-                            </div>
+                <section className="relative overflow-hidden pt-8 pb-16 md:flex md:min-h-[calc(100dvh-4rem)] md:flex-col md:justify-center md:pt-14 md:pb-24">
+                    <div className="mx-auto grid w-full max-w-7xl items-center gap-12 px-4 sm:gap-14 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-8">
+                        {/* Cards first on mobile for product-led hero */}
+                        <div className="order-1 relative mx-auto flex w-full max-w-lg items-end justify-center gap-1 sm:max-w-xl sm:gap-2 lg:order-2 lg:max-w-none lg:gap-4 xl:gap-5">
+                            {HERO_CARDS.map((card, index) => (
+                                <div key={card.dex} className={`relative aspect-[2.5/3.5] w-[36%] shrink-0 sm:w-[34%] lg:w-[38%] xl:w-[40%] ${index === 1 ? "z-20 -translate-y-4 scale-110 sm:-translate-y-7 sm:scale-[1.12]" : index === 0 ? "z-10 origin-bottom rotate-[-8deg] sm:rotate-[-10deg]" : "z-10 origin-bottom rotate-[8deg] sm:rotate-[10deg]"}`}>
+                                    <div className={`landing-enter landing-enter-d${index + 1} h-full w-full`}>
+                                        <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={18} scale={1.04} glareOpacity={0.4} perspective={700} shineMode={card.shineMode}>
+                                            <Image src={card.image} alt={card.name} fill priority={index === 1} sizes="(max-width: 640px) 36vw, (max-width: 1024px) 30vw, 280px" className="object-contain drop-shadow-[0_16px_32px_rgba(0,0,0,0.75)]" unoptimized />
+                                        </Card3DTilt>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
 
-                            <h1 className="mt-8 text-4xl font-black tracking-tight text-white sm:text-6xl md:text-7xl">
-                                Colecione, organize e complete seu binder com <span className="bg-gradient-to-r from-red-400 via-amber-300 to-yellow-400 bg-clip-text text-transparent">visual físico autêntico</span>.
-                            </h1>
-
-                            <p className="mt-6 text-base leading-relaxed text-slate-300 sm:text-xl">O MyPokeBinder é a ferramenta definitiva para colecionadores de cartas físicas de Pokémon TCG. Folheie seu fichário 3×3 em páginas duplas, descubra artes expandidas em alta definição e acompanhe a Pokédex clássica em tempo real.</p>
-
-                            <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-                                <button onClick={handleLogin} disabled={loadingAuth} className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-red-500 to-red-600 px-8 py-4 text-base font-bold text-white shadow-xl shadow-red-500/25 transition-all hover:brightness-110 active:scale-95 sm:w-auto">
-                                    <LogIn size={20} />
-                                    <span>{loadingAuth ? "Conectando..." : "Começar Agora"}</span>
-                                </button>
-
-                                <a href="#funcionalidades" className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-8 py-4 text-base font-semibold text-white backdrop-blur-md transition-colors hover:bg-white/10 sm:w-auto">
-                                    <span>Conhecer Recursos</span>
-                                    <ArrowRight size={18} />
-                                </a>
-                            </div>
-
-                            <div className="mt-12 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-400 sm:gap-10 sm:text-sm">
-                                <span className="flex items-center gap-2">
-                                    <CheckCircle2 size={16} className="text-emerald-400" />
-                                    151 Slots Fixos de Kanto
-                                </span>
-                                <span className="flex items-center gap-2">
-                                    <CheckCircle2 size={16} className="text-emerald-400" />
-                                    Catálogo em Alta Definição
-                                </span>
-                                <span className="flex items-center gap-2">
-                                    <CheckCircle2 size={16} className="text-emerald-400" />
-                                    100% Gratuito & Sem Anúncios
-                                </span>
-                            </div>
+                        <div className="order-2 w-full lg:order-1 lg:max-w-xl">
+                            <p className={`landing-enter landing-enter-d1 text-5xl font-extrabold tracking-tight sm:text-6xl lg:text-7xl ${brandHeroGradientClass}`}>MyPokeBinder</p>
+                            <h1 className="landing-enter landing-enter-d2 mt-4 text-xl font-semibold tracking-tight text-white sm:mt-5 sm:text-3xl lg:text-4xl">Seu fichário 3×3 dos 151 de Kanto</h1>
+                            <p className="landing-enter landing-enter-d3 mt-4 max-w-[40ch] text-sm leading-relaxed text-slate-400 sm:mt-5 sm:text-base lg:text-lg">Registre cartas físicas, preencha os slots e folheie o binder com física de página real.</p>
+                            <button type="button" onClick={handleLogin} disabled={loadingAuth} className="landing-enter landing-enter-d4 mt-8 flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl bg-[#ef4444] px-7 py-3.5 text-sm font-semibold text-white transition-all hover:bg-[#dc2626] active:scale-[0.98] disabled:opacity-70 sm:mt-10 sm:w-auto">
+                                <LogIn size={18} />
+                                <span>{loadingAuth ? "Conectando..." : "Começar agora"}</span>
+                            </button>
                         </div>
                     </div>
                 </section>
 
-                <section className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 pb-20">
-                    <div className="overflow-hidden rounded-3xl border border-white/10 bg-[#0c101a]/85 p-4 shadow-2xl backdrop-blur-2xl sm:p-8">
-                        <div className="mb-6 flex flex-col items-start justify-between gap-4 border-b border-white/10 pb-6 sm:flex-row sm:items-center">
-                            <div>
-                                <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-400">
-                                    <Sparkles size={14} />
-                                    <span>Vitrine do Fichário</span>
-                                </div>
-                                <h2 className="mt-1 text-xl font-extrabold text-white sm:text-2xl">Suas cartas em exibição sem poluição visual</h2>
-                            </div>
-                            <span className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-300">Formato 3×3 • 9 cartas por folha</span>
+                <section className="relative mx-auto w-full max-w-7xl px-4 pb-20 sm:px-6 sm:pb-24 lg:px-8">
+                    <LandingReveal className="max-w-2xl">
+                        <div className="flex items-center gap-2.5 text-[#ef4444]">
+                            <Grid3x3 size={20} strokeWidth={1.75} />
+                            <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Nove cartas por página</h2>
                         </div>
+                        <p className="mt-4 max-w-[55ch] text-sm leading-relaxed text-slate-400 sm:text-base">Cada página do binder espelha o formato físico: nove slots, silhuetas até você vincular a carta, e ilustração de ponta a ponta sem overlays.</p>
+                    </LandingReveal>
 
-                        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:gap-6 lg:grid-cols-6">
-                            {showcaseCards.map((card) => (
-                                <div key={card.dex} className="group relative flex flex-col items-center">
+                    <div className="mt-10 overflow-hidden rounded-2xl border border-white/10 bg-[#0c101a]/90 p-3 sm:mt-12 sm:p-6">
+                        <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-4 text-xs text-slate-500">
+                            <span className="inline-flex items-center gap-1.5 font-medium text-slate-300">
+                                <BookOpen size={14} className="text-[#ef4444]" />
+                                Página 1
+                            </span>
+                            <span className="font-mono">#001 - #009</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 sm:gap-4 md:gap-5">
+                            {BINDER_PAGE_CARDS.map((card, index) => (
+                                <CardAppearOnView key={card.dex} index={index} className="group relative flex flex-col items-center">
                                     <div className="relative aspect-[2.5/3.5] w-full">
-                                        <Card3DTilt className="relative h-full w-full" maxTilt={14} scale={1.1} glareOpacity={0.28}>
-                                            <Image src={card.image} alt={card.name} fill sizes="(max-width: 768px) 50vw, 16vw" className="object-contain drop-shadow-[0_4px_16px_rgba(0,0,0,0.65)]" unoptimized />
+                                        <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={14} scale={1.06} glareOpacity={0.35} perspective={750} shineMode={card.shineMode}>
+                                            <Image src={card.image} alt={card.name} fill sizes="(max-width: 768px) 30vw, 12vw" className="object-contain drop-shadow-[0_4px_14px_rgba(0,0,0,0.55)]" unoptimized />
                                         </Card3DTilt>
                                     </div>
-                                    <div className="mt-3 flex w-full items-center justify-between px-1 text-xs">
-                                        <span className="font-semibold text-slate-300 transition-colors group-hover:text-white">{card.name}</span>
-                                        <span className="font-mono text-[11px] text-slate-500">#{String(card.dex).padStart(3, "0")}</span>
+                                    <div className="mt-2 flex w-full items-center justify-between px-0.5 text-[10px] sm:text-xs">
+                                        <span className="truncate font-medium text-slate-400 group-hover:text-slate-200">{card.name}</span>
+                                        <span className="shrink-0 font-mono text-slate-600">#{String(card.dex).padStart(3, "0")}</span>
                                     </div>
-                                </div>
+                                </CardAppearOnView>
                             ))}
                         </div>
                     </div>
                 </section>
 
-                <section id="funcionalidades" className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
-                    <div className="text-center">
-                        <h2 className="text-xs font-bold uppercase tracking-wider text-poke-blue">Funcionalidades Práticas</h2>
-                        <p className="mt-2 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">Tudo o que um colecionador precisa em um só lugar</p>
-                        <p className="mt-4 max-w-2xl mx-auto text-sm text-slate-400 sm:text-base">Cada detalhe foi desenhado para simular o prazer de possuir um fichário de colecionador, com toda a agilidade do digital.</p>
-                    </div>
-
-                    <div className="mt-14 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                        {featureList.map((item, index) => {
+                <LandingReveal className="relative mx-auto w-full max-w-7xl px-4 pb-24 sm:px-6 sm:pb-28 lg:px-8">
+                    <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">O que o binder faz</h2>
+                    <ul className="landing-reveal-stagger mt-10 divide-y divide-white/10 border-y border-white/10">
+                        {CAPABILITIES.map((item) => {
                             const Icon = item.icon;
                             return (
-                                <div key={index} className="group relative rounded-3xl border border-white/10 bg-[#0e131d]/75 p-7 backdrop-blur-md transition-all duration-300 hover:border-white/20 hover:bg-[#121927]">
-                                    <div className={`mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border ${item.bg} ${item.color}`}>
-                                        <Icon size={24} />
+                                <li key={item.title} className="landing-reveal-item grid gap-3 py-7 sm:grid-cols-[minmax(0,14rem)_1fr] sm:gap-10 sm:py-9">
+                                    <div className="flex items-center gap-3">
+                                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#ef4444]/25 bg-[#ef4444]/10 text-[#ef4444]">
+                                            <Icon size={18} strokeWidth={1.75} />
+                                        </span>
+                                        <h3 className="text-base font-semibold text-white">{item.title}</h3>
                                     </div>
-                                    <h3 className="text-lg font-bold text-white transition-colors group-hover:text-white">{item.title}</h3>
-                                    <p className="mt-2.5 text-sm leading-relaxed text-slate-400">{item.desc}</p>
-                                </div>
+                                    <p className="max-w-[55ch] text-sm leading-relaxed text-slate-400 sm:text-base">{item.desc}</p>
+                                </li>
                             );
                         })}
-                    </div>
-                </section>
-
-                <section className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
-                    <div className="rounded-3xl border border-white/10 bg-gradient-to-r from-red-950/30 via-[#0d121c] to-blue-950/30 p-8 sm:p-14">
-                        <div className="max-w-3xl">
-                            <h2 className="text-xs font-bold uppercase tracking-wider text-red-400">Como Começar</h2>
-                            <h3 className="mt-2 text-2xl font-extrabold text-white sm:text-4xl">Sua jornada para os 151 em três etapas</h3>
-
-                            <div className="mt-10 space-y-8">
-                                <div className="flex items-start gap-4">
-                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-500/20 font-black text-red-400 border border-red-500/30">1</div>
-                                    <div>
-                                        <h4 className="text-base font-bold text-white">Conecte sua conta em um clique</h4>
-                                        <p className="mt-1 text-sm text-slate-400">Acesso rápido e seguro. Criamos automaticamente seu perfil e seu fichário pessoal isolado na nuvem.</p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-start gap-4">
-                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 font-black text-amber-400 border border-amber-500/30">2</div>
-                                    <div>
-                                        <h4 className="text-base font-bold text-white">Pesquise suas cartas no catálogo oficial</h4>
-                                        <p className="mt-1 text-sm text-slate-400">Toque em qualquer slot da Pokédex para buscar a versão exata da sua carta física (edição, rarity e idioma físico).</p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-start gap-4">
-                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/20 font-black text-emerald-400 border border-emerald-500/30">3</div>
-                                    <div>
-                                        <h4 className="text-base font-bold text-white">Folheie seu Binder e complete sua coleção</h4>
-                                        <p className="mt-1 text-sm text-slate-400">Veja as silhuetas serem substituídas pelas cartas reais, sinta o efeito sonoro de impacto e compartilhe seu Trainer Card.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <section className="relative mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-20 text-center">
-                    <div className="flex justify-center mb-6">
-                        <PokeballLogo size="lg" animated glow="subtle" color="#ef4444" />
-                    </div>
-                    <h2 className="text-3xl font-black text-white sm:text-5xl">Pronto para começar seu fichário?</h2>
-                    <p className="mt-4 text-base text-slate-400 max-w-xl mx-auto">Conecte sua conta em instantes e comece a registrar suas cartas físicas dos 151 Pokémon originais de Kanto.</p>
-                    <div className="mt-8 flex justify-center">
-                        <button onClick={handleLogin} disabled={loadingAuth} className="flex cursor-pointer items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-red-500 to-red-600 px-10 py-4 text-base font-bold text-white shadow-xl shadow-red-500/30 transition-all hover:brightness-110 active:scale-95">
-                            <LogIn size={20} />
-                            <span>{loadingAuth ? "Conectando..." : "Começar Agora"}</span>
-                        </button>
-                    </div>
-                </section>
+                    </ul>
+                </LandingReveal>
 
                 <PublicFooter />
             </div>

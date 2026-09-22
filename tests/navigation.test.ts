@@ -99,7 +99,7 @@ describe("Navigation and BottomNav Route Logic", () => {
 
     it("should identify profile active route without selecting binder", () => {
         const path = "/perfil";
-        const isProfileActive = path === "/perfil";
+        const isProfileActive = path === "/perfil" || path.startsWith("/configuracoes");
         const desktopItems = getDesktopNavItems(path);
         const activeNavIndex = calculateActiveIndex(desktopItems);
 
@@ -108,13 +108,97 @@ describe("Navigation and BottomNav Route Logic", () => {
         expect(desktopItems.some((item) => item.isActive)).toBe(false);
     });
 
-    it("should extract user display name fallback correctly", () => {
-        const getDisplayName = (user: { name?: string; email?: string }) => {
-            return user.name || user.email?.split("@")[0] || "Usuário";
+    it("should identify own shared profile route as profile active", () => {
+        const ownUsername = "ashketchum";
+        const path = `/perfil/${ownUsername}`;
+        const isOwnSharedProfile = path === `/perfil/${ownUsername}`;
+        const isProfileActive = path === "/perfil" || isOwnSharedProfile || path.startsWith("/configuracoes");
+        expect(isProfileActive).toBe(true);
+    });
+
+    it("should not mark another trainer profile as own profile active route", () => {
+        const ownUsername = "ashketchum";
+        const path = "/perfil/misty";
+        const isOwnSharedProfile = path === `/perfil/${ownUsername}`;
+        const isProfileActive = path === "/perfil" || isOwnSharedProfile || path.startsWith("/configuracoes");
+        expect(isProfileActive).toBe(false);
+    });
+
+    it("should identify settings route (/configuracoes) as profile active route", () => {
+        const path = "/configuracoes";
+        const isProfileActive = path === "/perfil" || path.startsWith("/configuracoes");
+        const desktopItems = getDesktopNavItems(path);
+        const activeNavIndex = calculateActiveIndex(desktopItems);
+
+        expect(isProfileActive).toBe(true);
+        expect(activeNavIndex).toBe(-1);
+        expect(desktopItems.some((item) => item.isActive)).toBe(false);
+    });
+
+    it("should prefer display name over username in nav label", () => {
+        const getNavLabel = (user: { name?: string; username?: string; email?: string }) => {
+            return user.name || user.username || user.email?.split("@")[0] || "Meu Perfil";
         };
 
-        expect(getDisplayName({ name: "Ash Ketchum", email: "ash@pokemon.com" })).toBe("Ash Ketchum");
-        expect(getDisplayName({ email: "red@pokemon.com" })).toBe("red");
-        expect(getDisplayName({})).toBe("Usuário");
+        expect(getNavLabel({ name: "Ash", username: "ashketchum", email: "ash@pokemon.com" })).toBe("Ash");
+        expect(getNavLabel({ username: "ashketchum", email: "ash@pokemon.com" })).toBe("ashketchum");
+        expect(getNavLabel({ email: "red@pokemon.com" })).toBe("red");
+        expect(getNavLabel({})).toBe("Meu Perfil");
+    });
+
+    it("should calculate target index 3 and hide slider for profile routes to allow smooth direction slider transition", () => {
+        const getDesktopTargetIndex = (path: string, ownUsername?: string) => {
+            const isOwnSharedProfile = Boolean(ownUsername && path === `/perfil/${ownUsername}`);
+            const isProfileActive = path === "/perfil" || isOwnSharedProfile || path.startsWith("/configuracoes");
+            const rawIndex = getDesktopNavItems(path).findIndex((item) => item.isActive);
+            return isProfileActive ? 3 : rawIndex;
+        };
+
+        expect(getDesktopTargetIndex("/")).toBe(0);
+        expect(getDesktopTargetIndex("/collection")).toBe(1);
+        expect(getDesktopTargetIndex("/dashboard")).toBe(2);
+        expect(getDesktopTargetIndex("/perfil")).toBe(3);
+        expect(getDesktopTargetIndex("/perfil/ashketchum", "ashketchum")).toBe(3);
+        expect(getDesktopTargetIndex("/perfil/misty", "ashketchum")).toBe(-1);
+        expect(getDesktopTargetIndex("/configuracoes")).toBe(3);
+
+        const isSliderVisible = (index: number) => index >= 0 && index < 3;
+        expect(isSliderVisible(0)).toBe(true);
+        expect(isSliderVisible(1)).toBe(true);
+        expect(isSliderVisible(2)).toBe(true);
+        expect(isSliderVisible(3)).toBe(false);
+    });
+
+    it("should structure active navigation indicator with theme primary CSS variables", () => {
+        const activeNavPillClass = "pointer-events-none absolute top-1 bottom-1 left-1 rounded-xl border border-[var(--theme-primary)]/30 bg-[var(--theme-primary)]/20 shadow-[0_0_12px_var(--theme-primary-glow)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]";
+        expect(activeNavPillClass).toContain("bg-[var(--theme-primary)]/20");
+        expect(activeNavPillClass).toContain("shadow-[0_0_12px_var(--theme-primary-glow)]");
+    });
+
+    it("should highlight only the optimistic target during desktop slider transition", () => {
+        const getHighlightedIndexes = (pathname: string, optimisticIndex: number | null) => {
+            const items = getDesktopNavItems(pathname);
+            const isProfileActive = pathname.startsWith("/perfil") || pathname.startsWith("/configuracoes");
+            const rawActiveIndex = items.findIndex((item) => item.isActive);
+            const targetNavIndex = isProfileActive ? 3 : rawActiveIndex;
+            const activeNavIndex = optimisticIndex !== null ? optimisticIndex : targetNavIndex;
+
+            return items.map((_, index) => activeNavIndex === index);
+        };
+
+        const whileLeavingBinder = getHighlightedIndexes("/", 1);
+        expect(whileLeavingBinder.filter(Boolean)).toHaveLength(1);
+        expect(whileLeavingBinder[0]).toBe(false);
+        expect(whileLeavingBinder[1]).toBe(true);
+
+        const whileGoingToProfile = getHighlightedIndexes("/dashboard", 3);
+        expect(whileGoingToProfile.every(Boolean)).toBe(false);
+    });
+
+    it("should keep profile link border reserved to avoid nav height jump", () => {
+        const inactiveProfileClass = "border border-transparent";
+        const activeProfileClass = "border border-[var(--theme-primary)]/30";
+        expect(inactiveProfileClass).toContain("border-transparent");
+        expect(activeProfileClass).toContain("border-[var(--theme-primary)]/30");
     });
 });

@@ -24,9 +24,8 @@ export default function DashboardPage() {
             <Header />
 
             <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 pb-28 md:pb-16">
-                <div className="flex flex-col gap-1">
+                <div>
                     <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Dashboard</h1>
-                    <p className="text-sm text-slate-400">Acompanhe seu progresso de coleção dos 151 Pokémon de Kanto.</p>
                 </div>
 
                 {loading ? (

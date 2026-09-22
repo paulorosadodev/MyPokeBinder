@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useContext, useEffect, useRef } from "react";
 import Image from "next/image";
 import { UserCard } from "@/types/binder";
 import { getPokemonSilhouetteUrl, getPokemonGlowColors, getPokemonByDexId, markSilhouetteLoaded } from "@/lib/pokemon/constants";
@@ -9,6 +9,9 @@ import { Card3DTilt } from "@/components/ui/Card3DTilt";
 import { CardImpactBurst } from "@/components/binder/CardImpactBurst";
 import { Plus } from "lucide-react";
 import { resolveCardShine } from "@/lib/pokemon/variant";
+import { UserSettingsContext } from "@/lib/context/UserSettingsContext";
+import { playCardDropSound } from "@/lib/audio/cardSounds";
+import { getRarityImpactTier } from "@/lib/pokemon/rarity";
 
 interface BinderSlotProps {
     dexId: number;
@@ -49,8 +52,16 @@ function useStopPageFlip<T extends HTMLElement>() {
 }
 
 export function BinderSlot({ dexId, pokemonName, card, isTrailing = false, isHighlighted = false, isDropping = false, pauseTilt = false, onClick }: BinderSlotProps) {
+    const settings = useContext(UserSettingsContext);
+    const animationsEnabled = settings ? settings.animationsEnabled : true;
+    const showDropEffects = isDropping && animationsEnabled;
     const divRef = useStopPageFlip<HTMLDivElement>();
     const buttonRef = useStopPageFlip<HTMLButtonElement>();
+
+    useEffect(() => {
+        if (!isDropping || animationsEnabled || !card) return;
+        playCardDropSound(getRarityImpactTier(card.card_rarity));
+    }, [isDropping, animationsEnabled, card]);
 
     if (isTrailing) {
         return (
@@ -84,15 +95,15 @@ export function BinderSlot({ dexId, pokemonName, card, isTrailing = false, isHig
         const pokemonType = pokemon?.type ?? "normal";
 
         return (
-            <div ref={divRef} className={`relative h-full min-h-0 w-full ${isDropping ? "z-40" : ""} ${isHighlighted ? "slot-glow ring-2 rounded-lg" : ""}`} style={glowStyle}>
-                <div className={`relative h-full w-full ${isDropping ? "card-drop" : ""}`}>
+            <div ref={divRef} className={`relative h-full min-h-0 w-full ${showDropEffects ? "z-40" : ""} ${isHighlighted ? "slot-glow ring-2 rounded-lg" : ""}`} style={glowStyle}>
+                <div className={`relative h-full w-full ${showDropEffects ? "card-drop" : ""}`}>
                     <Card3DTilt key={card.id} className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={12} scale={1.15} glareOpacity={0.25} shineMode={resolveCardShine(card.card_variant, card.card_rarity)} paused={pauseTilt}>
                         <button type="button" id={`binder-slot-${dexId}`} onClick={onClick} onMouseDownCapture={stopPageFlip} onPointerDownCapture={stopPageFlip} onTouchStartCapture={stopPageFlip} onKeyDown={handleKeyDown} aria-label={`${card.card_name}, ${formattedDex}`} className="relative flex h-full min-h-0 w-full cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent p-0 text-left outline-none hover:z-30 focus-visible:ring-2 focus-visible:ring-poke-blue">
                             <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill sizes="(max-width: 768px) 30vw, 15vw" className="pointer-events-none object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" unoptimized />
                         </button>
                     </Card3DTilt>
                 </div>
-                {isDropping && <CardImpactBurst pokemonType={pokemonType} rarity={card.card_rarity} />}
+                {showDropEffects && <CardImpactBurst pokemonType={pokemonType} rarity={card.card_rarity} />}
             </div>
         );
     }

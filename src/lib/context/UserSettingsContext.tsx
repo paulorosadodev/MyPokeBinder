@@ -8,6 +8,18 @@ import { BallType } from "@/components/theme/PokemonBallSvg";
 
 export const THEME_PRESETS = [
     {
+        id: "emerald",
+        label: "Venusaur Emerald",
+        color: "#10b981",
+        dexId: 3,
+        pokemonName: "Venusaur",
+        ballType: "safariball",
+        ballName: "Safari Ball",
+        type: "Planta",
+        soundTier: 3,
+        description: "Energia natural exuberante e a vivacidade da Safari Ball",
+    },
+    {
         id: "red",
         label: "Charizard Red",
         color: "#ef4444",
@@ -56,18 +68,6 @@ export const THEME_PRESETS = [
         description: "Sombras enigmáticas e o poder definitivo da Master Ball",
     },
     {
-        id: "emerald",
-        label: "Rayquaza Emerald",
-        color: "#10b981",
-        dexId: 384,
-        pokemonName: "Rayquaza",
-        ballType: "safariball",
-        ballName: "Safari Ball",
-        type: "Dragão",
-        soundTier: 3,
-        description: "Guardião da atmosfera e tons vivos da Safari Ball",
-    },
-    {
         id: "pink",
         label: "Mew Pink",
         color: "#ec4899",
@@ -92,9 +92,11 @@ export interface UserSettingsContextType {
     themeColor: string;
     ballType: BallType;
     soundEnabled: boolean;
+    animationsEnabled: boolean;
     isLoading: boolean;
     setThemeColor: (color: string) => Promise<void>;
     setSoundEnabled: (enabled: boolean) => Promise<void>;
+    setAnimationsEnabled: (enabled: boolean) => Promise<void>;
 }
 
 export const UserSettingsContext = createContext<UserSettingsContextType | null>(null);
@@ -143,6 +145,11 @@ function applyThemeToDom(color: string) {
     updateFavicon(color);
 }
 
+function applyAnimationsToDom(enabled: boolean) {
+    if (typeof document === "undefined") return;
+    document.documentElement.dataset.animationsEnabled = String(enabled);
+}
+
 function persistThemeCookie(color: string) {
     if (typeof document === "undefined") return;
     document.cookie = `mypokebinder_theme_color=${encodeURIComponent(color)}; path=/; max-age=31536000; SameSite=Lax`;
@@ -157,7 +164,20 @@ export function UserSettingsProvider({ children, initialTheme }: { children: Rea
         }
         return initialTheme || "#ef4444";
     });
-    const [soundEnabled, setSoundEnabledState] = useState(true);
+    const [soundEnabled, setSoundEnabledState] = useState(() => {
+        if (typeof window !== "undefined") {
+            const cached = localStorage.getItem("mypokebinder_sound_enabled");
+            if (cached !== null) return cached === "true";
+        }
+        return true;
+    });
+    const [animationsEnabled, setAnimationsEnabledState] = useState(() => {
+        if (typeof window !== "undefined") {
+            const cached = localStorage.getItem("mypokebinder_animations_enabled");
+            if (cached !== null) return cached === "true";
+        }
+        return true;
+    });
     const [isLoading, setIsLoading] = useState(true);
 
     const applyAndPersistTheme = useCallback((color: string) => {
@@ -174,17 +194,8 @@ export function UserSettingsProvider({ children, initialTheme }: { children: Rea
             const res = await fetch("/api/settings");
             if (res.ok) {
                 const data = await res.json();
-                if (data.settings) {
-                    const fetchedTheme = data.settings.theme_color || "#ef4444";
-                    const fetchedSound = data.settings.sound_enabled ?? true;
-
-                    applyAndPersistTheme(fetchedTheme);
-                    setSoundEnabledState(fetchedSound);
-                    setSoundMuted(!fetchedSound);
-
-                    if (typeof window !== "undefined") {
-                        localStorage.setItem("mypokebinder_sound_enabled", String(fetchedSound));
-                    }
+                if (data.settings?.theme_color) {
+                    applyAndPersistTheme(data.settings.theme_color);
                 }
             }
         } catch {
@@ -222,6 +233,7 @@ export function UserSettingsProvider({ children, initialTheme }: { children: Rea
     useEffect(() => {
         const cachedTheme = localStorage.getItem("mypokebinder_theme_color");
         const cachedSound = localStorage.getItem("mypokebinder_sound_enabled");
+        const cachedAnimations = localStorage.getItem("mypokebinder_animations_enabled");
 
         if (cachedTheme) {
             applyAndPersistTheme(cachedTheme);
@@ -235,6 +247,14 @@ export function UserSettingsProvider({ children, initialTheme }: { children: Rea
             const isEnabled = cachedSound === "true";
             setSoundEnabledState(isEnabled);
             setSoundMuted(!isEnabled);
+        }
+
+        if (cachedAnimations !== null) {
+            const isAnimEnabled = cachedAnimations === "true";
+            setAnimationsEnabledState(isAnimEnabled);
+            applyAnimationsToDom(isAnimEnabled);
+        } else {
+            applyAnimationsToDom(true);
         }
 
         fetchSettings();
@@ -266,14 +286,9 @@ export function UserSettingsProvider({ children, initialTheme }: { children: Rea
                         filter: `user_id=eq.${data.user.id}`,
                     },
                     (payload) => {
-                        const newRecord = payload.new as { theme_color?: string; sound_enabled?: boolean } | null;
+                        const newRecord = payload.new as { theme_color?: string } | null;
                         if (newRecord?.theme_color) {
                             applyAndPersistTheme(newRecord.theme_color);
-                        }
-                        if (typeof newRecord?.sound_enabled === "boolean") {
-                            setSoundEnabledState(newRecord.sound_enabled);
-                            setSoundMuted(!newRecord.sound_enabled);
-                            localStorage.setItem("mypokebinder_sound_enabled", String(newRecord.sound_enabled));
                         }
                     },
                 )
@@ -290,6 +305,23 @@ export function UserSettingsProvider({ children, initialTheme }: { children: Rea
             }
         };
     }, [initialTheme, applyAndPersistTheme, fetchSettings]);
+
+    useEffect(() => {
+        const handleStorage = (e: StorageEvent) => {
+            if (e.key === "mypokebinder_animations_enabled" && e.newValue !== null) {
+                const isAnim = e.newValue === "true";
+                setAnimationsEnabledState(isAnim);
+                applyAnimationsToDom(isAnim);
+            }
+            if (e.key === "mypokebinder_sound_enabled" && e.newValue !== null) {
+                const isSound = e.newValue === "true";
+                setSoundEnabledState(isSound);
+                setSoundMuted(!isSound);
+            }
+        };
+        window.addEventListener("storage", handleStorage);
+        return () => window.removeEventListener("storage", handleStorage);
+    }, []);
 
     const setThemeColor = useCallback(
         async (newColor: string) => {
@@ -312,14 +344,14 @@ export function UserSettingsProvider({ children, initialTheme }: { children: Rea
         if (typeof window !== "undefined") {
             localStorage.setItem("mypokebinder_sound_enabled", String(enabled));
         }
+    }, []);
 
-        try {
-            await fetch("/api/settings", {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ sound_enabled: enabled }),
-            });
-        } catch {}
+    const setAnimationsEnabled = useCallback(async (enabled: boolean) => {
+        setAnimationsEnabledState(enabled);
+        applyAnimationsToDom(enabled);
+        if (typeof window !== "undefined") {
+            localStorage.setItem("mypokebinder_animations_enabled", String(enabled));
+        }
     }, []);
 
     const ballType = getBallTypeForTheme(themeColor);
@@ -330,9 +362,11 @@ export function UserSettingsProvider({ children, initialTheme }: { children: Rea
                 themeColor,
                 ballType,
                 soundEnabled,
+                animationsEnabled,
                 isLoading,
                 setThemeColor,
                 setSoundEnabled,
+                setAnimationsEnabled,
             }}
         >
             {children}

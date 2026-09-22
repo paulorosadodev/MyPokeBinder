@@ -13,14 +13,17 @@ import { CardSearchModal } from "@/components/modal/CardSearchModal";
 import { formatTcgdexImageUrl } from "@/lib/pokemon/tcgdex";
 import { getPokemonSilhouetteUrl, POKEMON_151, markSilhouetteLoaded } from "@/lib/pokemon/constants";
 import { getRarityBadgeStyle, RARITY_FILTER_OPTIONS } from "@/lib/pokemon/rarity";
-import { cardCopyGroupKey, formatVariantLabel, resolveCardShine } from "@/lib/pokemon/variant";
+import { formatVariantLabel, resolveCardShine } from "@/lib/pokemon/variant";
+import { buildCollectionFilterResetKey, filterAndSortCollectionGroups, groupCollectionCards, type CollectionSortDirection, type CollectionSortField } from "@/lib/collection/listCards";
+import { useClientPagedWindow } from "@/lib/hooks/useClientPagedWindow";
+import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { getCardAppearProps } from "@/lib/ui/cardAppear";
 import { useAllCollectionCards } from "@/lib/swr";
-import { UserCard, CardLanguage, CollectionCardGroup, BinderStatusFilter } from "@/types/binder";
-import { Search, Plus, Sparkles, BookOpen, Layers, Filter, X, ArrowUpDown, Globe } from "lucide-react";
+import { UserCard, CardLanguage, BinderStatusFilter } from "@/types/binder";
+import { Search, Plus, Sparkles, BookOpen, Layers, X, ArrowUpDown, Globe } from "lucide-react";
 
-type SortField = "dex" | "name" | "recent";
-type SortDirection = "asc" | "desc";
+type SortField = CollectionSortField;
+type SortDirection = CollectionSortDirection;
 
 const STATUS_FILTER_OPTIONS: SelectOption<BinderStatusFilter>[] = [
     { value: "all", label: "Todas as Cartas" },
@@ -106,74 +109,53 @@ export default function CollectionPage() {
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
     const [selectedDexId, setSelectedDexId] = useState(1);
     const [selectedPokemonName, setSelectedPokemonName] = useState("Bulbasaur");
+    const [isMobile, setIsMobile] = useState(false);
 
-    const groupedCards = useMemo(() => {
-        const groupsMap = new Map<string, CollectionCardGroup>();
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth < 640);
+        };
+        handleResize();
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
 
-        cards.forEach((c) => {
-            const groupKey = cardCopyGroupKey(c);
-            const existing = groupsMap.get(groupKey);
+    const groupedCards = useMemo(() => groupCollectionCards(cards), [cards]);
 
-            if (existing) {
-                existing.copies.push(c);
-                existing.totalCount += 1;
-                if (c.is_in_binder) existing.hasInBinder = true;
-            } else {
-                groupsMap.set(groupKey, {
-                    key: groupKey,
-                    card: c,
-                    copies: [c],
-                    totalCount: 1,
-                    hasInBinder: Boolean(c.is_in_binder),
-                });
-            }
-        });
+    const filteredAndSortedGroups = useMemo(
+        () =>
+            filterAndSortCollectionGroups(groupedCards, {
+                searchTerm,
+                statusFilter,
+                languageFilter,
+                rarityFilter,
+                sortField,
+                sortDirection,
+            }),
+        [groupedCards, searchTerm, statusFilter, languageFilter, rarityFilter, sortField, sortDirection],
+    );
 
-        return Array.from(groupsMap.values());
-    }, [cards]);
+    const filterResetKey = useMemo(
+        () =>
+            buildCollectionFilterResetKey({
+                searchTerm,
+                statusFilter,
+                languageFilter,
+                rarityFilter,
+                sortField,
+                sortDirection,
+            }),
+        [searchTerm, statusFilter, languageFilter, rarityFilter, sortField, sortDirection],
+    );
 
-    const filteredAndSortedGroups = useMemo(() => {
-        let list = groupedCards.filter((group) => {
-            const card = group.card;
-
-            if (searchTerm.trim()) {
-                const term = searchTerm.toLowerCase().trim();
-                const matchesName = card.card_name.toLowerCase().includes(term);
-                const matchesSet = card.card_set_name.toLowerCase().includes(term);
-                const matchesDex = `#${card.pokemon_dex_id}`.includes(term) || String(card.pokemon_dex_id) === term;
-                if (!matchesName && !matchesSet && !matchesDex) return false;
-            }
-
-            if (statusFilter === "in_binder" && !group.hasInBinder) return false;
-            if (statusFilter === "stored" && group.hasInBinder && group.totalCount === 1) return false;
-
-            if (languageFilter !== "all" && card.card_language !== languageFilter) return false;
-
-            if (rarityFilter !== "all") {
-                const lower = (card.card_rarity || "").trim().toLowerCase();
-                if (!lower.includes(rarityFilter)) return false;
-            }
-
-            return true;
-        });
-
-        list.sort((a, b) => {
-            if (sortField === "dex") {
-                return sortDirection === "asc" ? a.card.pokemon_dex_id - b.card.pokemon_dex_id : b.card.pokemon_dex_id - a.card.pokemon_dex_id;
-            }
-            if (sortField === "name") {
-                return sortDirection === "asc" ? a.card.card_name.localeCompare(b.card.card_name) : b.card.card_name.localeCompare(a.card.card_name);
-            }
-            if (sortField === "recent") {
-                const timeA = new Date(a.card.created_at).getTime();
-                const timeB = new Date(b.card.created_at).getTime();
-                return sortDirection === "asc" ? timeA - timeB : timeB - timeA;
-            }
-            return 0;
-        });
-
-        return list;
-    }, [groupedCards, searchTerm, statusFilter, languageFilter, rarityFilter, sortField, sortDirection]);
+    const { visibleItems, hasMore, loadMore } = useClientPagedWindow(filteredAndSortedGroups, {
+        resetKey: filterResetKey,
+    });
+    const sentinelRef = useInfiniteScroll({
+        hasMore,
+        onLoadMore: loadMore,
+        enabled: !isLoading && filteredAndSortedGroups.length > 0,
+    });
 
     useEffect(() => {
         if (typeof window === "undefined") return;
@@ -235,7 +217,7 @@ export default function CollectionPage() {
                 <div className="relative z-30 flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#121520]/80 p-3.5 sm:p-4 shadow-xl backdrop-blur-md">
                     <div className="relative w-full">
                         <Search size={16} className="absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-500" />
-                        <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Buscar por nome do Pokémon, número ou coleção..." className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pr-9 pl-10 text-xs sm:text-sm text-white placeholder-slate-500 transition-colors focus:border-poke-blue/60 focus:bg-white/[0.08] focus:outline-none" />
+                        <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder={isMobile ? "Buscar Pokémon, nº ou coleção..." : "Buscar por nome do Pokémon, número ou coleção..."} className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pr-9 pl-10 text-xs sm:text-sm text-white placeholder-slate-500 placeholder:truncate transition-colors focus:border-poke-blue/60 focus:bg-white/[0.08] focus:outline-none" />
                         {searchTerm && (
                             <button type="button" onClick={() => setSearchTerm("")} aria-label="Limpar busca" className="absolute top-1/2 right-3 -translate-y-1/2 text-slate-500 hover:text-white">
                                 <X size={15} />
@@ -323,55 +305,59 @@ export default function CollectionPage() {
                         </button>
                     </div>
                 ) : (
-                    <div className="relative z-0 isolate grid grid-cols-3 gap-2 auto-rows-fr sm:grid-cols-3 sm:gap-3.5 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                        {filteredAndSortedGroups.map((group, index) => {
-                            const card = group.card;
-                            const appear = getCardAppearProps(index);
+                    <div className="flex flex-col gap-4">
+                        <div className="relative z-0 isolate grid grid-cols-3 gap-2 auto-rows-fr sm:grid-cols-3 sm:gap-3.5 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                            {visibleItems.map((group, index) => {
+                                const card = group.card;
+                                const appear = getCardAppearProps(index);
 
-                            return (
-                                <div key={group.key} onClick={() => router.push(`/cards/${card.id}?from=collection`)} className={`group relative flex cursor-pointer flex-col justify-between rounded-xl border border-white/10 bg-white/[0.03] p-1.5 transition-all duration-200 hover:border-poke-blue/50 hover:bg-white/[0.06] sm:p-2.5 ${appear.className}`} style={appear.style}>
-                                    <div className="z-10 flex min-h-[20px] items-center justify-between sm:min-h-[26px]">
-                                        <span className="rounded bg-black/60 px-1 py-0.5 text-[9px] font-bold text-slate-300 backdrop-blur-sm sm:px-1.5 sm:text-[10px]">#{String(card.pokemon_dex_id).padStart(3, "0")}</span>
+                                return (
+                                    <div key={group.key} onClick={() => router.push(`/cards/${card.id}?from=collection`)} className={`group relative flex cursor-pointer flex-col justify-between rounded-xl border border-white/10 bg-white/[0.03] p-1.5 transition-all duration-200 hover:border-poke-blue/50 hover:bg-white/[0.06] sm:p-2.5 ${appear.className}`} style={appear.style}>
+                                        <div className="z-10 flex min-h-[20px] items-center justify-between sm:min-h-[26px]">
+                                            <span className="rounded bg-black/60 px-1 py-0.5 text-[9px] font-bold text-slate-300 backdrop-blur-sm sm:px-1.5 sm:text-[10px]">#{String(card.pokemon_dex_id).padStart(3, "0")}</span>
 
-                                        <div className="flex items-center gap-0.5 sm:gap-1">
-                                            {group.hasInBinder && (
-                                                <span title="No Binder" aria-label="No Binder" className="flex items-center justify-center rounded border border-poke-blue/40 bg-poke-blue/20 p-0.5 text-poke-blue sm:p-1">
-                                                    <BookOpen size={11} className="sm:h-3 sm:w-3" />
-                                                </span>
-                                            )}
-
-                                            {group.totalCount > 1 && (
-                                                <span title={`${group.totalCount} cópias idênticas`} className="rounded bg-poke-blue px-1 py-0.5 text-[8px] font-extrabold text-white shadow-md sm:px-1.5 sm:text-[10px]">
-                                                    x{group.totalCount}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="relative my-1 aspect-[2.5/3.5] w-full sm:my-2">
-                                        <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={resolveCardShine(card.card_variant, card.card_rarity)}>
-                                            <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill unoptimized sizes="(max-width: 640px) 30vw, (max-width: 768px) 33vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" />
-                                        </Card3DTilt>
-                                    </div>
-
-                                    <div className="flex min-h-[30px] flex-col justify-center gap-0.5 sm:min-h-[38px] sm:gap-1">
-                                        <div className="flex items-center justify-between gap-1">
-                                            <span className="truncate text-[10px] font-semibold text-white transition-colors group-hover:text-poke-blue sm:text-xs">{card.card_name}</span>
-                                            {card.card_rarity && <span className={`shrink-0 rounded px-1 text-[7px] font-semibold border sm:text-[8px] ${getRarityBadgeStyle(card.card_rarity).badgeClasses}`}>{getRarityBadgeStyle(card.card_rarity).label}</span>}
-                                        </div>
-
-                                        <div className="flex items-center justify-between text-[8px] text-slate-400 sm:text-[10px]">
-                                            <span className="max-w-[50%] truncate sm:max-w-[55%]">{card.card_set_name || "Coleção"}</span>
                                             <div className="flex items-center gap-0.5 sm:gap-1">
-                                                <span className="rounded border border-white/10 bg-white/5 px-1 py-0.5 text-[7px] font-bold text-slate-300 sm:text-[8px]">{formatVariantLabel(card.card_variant)}</span>
-                                                <FlagIcon country={card.card_language as CardLanguage} />
-                                                <span className="text-[7px] font-bold uppercase sm:text-[9px]">{card.card_language}</span>
+                                                {group.hasInBinder && (
+                                                    <span title="No Binder" aria-label="No Binder" className="flex items-center justify-center rounded border border-poke-blue/40 bg-poke-blue/20 p-0.5 text-poke-blue sm:p-1">
+                                                        <BookOpen size={11} className="sm:h-3 sm:w-3" />
+                                                    </span>
+                                                )}
+
+                                                {group.totalCount > 1 && (
+                                                    <span title={`${group.totalCount} cópias idênticas`} className="rounded bg-poke-blue px-1 py-0.5 text-[8px] font-extrabold text-white shadow-md sm:px-1.5 sm:text-[10px]">
+                                                        x{group.totalCount}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="relative my-1 aspect-[2.5/3.5] w-full sm:my-2">
+                                            <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={resolveCardShine(card.card_variant, card.card_rarity)}>
+                                                <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill unoptimized sizes="(max-width: 640px) 30vw, (max-width: 768px) 33vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" />
+                                            </Card3DTilt>
+                                        </div>
+
+                                        <div className="flex min-h-[30px] flex-col justify-center gap-0.5 sm:min-h-[38px] sm:gap-1">
+                                            <div className="flex items-center justify-between gap-1">
+                                                <span className="truncate text-[10px] font-semibold text-white transition-colors group-hover:text-poke-blue sm:text-xs">{card.card_name}</span>
+                                                {card.card_rarity && <span className={`shrink-0 rounded px-1 text-[7px] font-semibold border sm:text-[8px] ${getRarityBadgeStyle(card.card_rarity).badgeClasses}`}>{getRarityBadgeStyle(card.card_rarity).label}</span>}
+                                            </div>
+
+                                            <div className="flex items-center justify-between text-[8px] text-slate-400 sm:text-[10px]">
+                                                <span className="max-w-[50%] truncate sm:max-w-[55%]">{card.card_set_name || "Coleção"}</span>
+                                                <div className="flex items-center gap-0.5 sm:gap-1">
+                                                    <span className="rounded border border-white/10 bg-white/5 px-1 py-0.5 text-[7px] font-bold text-slate-300 sm:text-[8px]">{formatVariantLabel(card.card_variant)}</span>
+                                                    <FlagIcon country={card.card_language as CardLanguage} />
+                                                    <span className="text-[7px] font-bold uppercase sm:text-[9px]">{card.card_language}</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            );
-                        })}
+                                );
+                            })}
+                        </div>
+
+                        <div ref={sentinelRef} className="flex min-h-8 items-center justify-center" aria-hidden={!hasMore} />
                     </div>
                 )}
             </main>

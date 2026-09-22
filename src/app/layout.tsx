@@ -1,10 +1,17 @@
 import type { Metadata } from "next";
+import { Outfit } from "next/font/google";
 import { cookies } from "next/headers";
 import { AppToaster } from "@/components/ui/AppToaster";
 import { UserSettingsProvider } from "@/lib/context/UserSettingsContext";
 import { AuthProvider } from "@/lib/context/AuthContext";
 import { createClient } from "@/lib/supabase/server";
 import "./globals.css";
+
+const outfit = Outfit({
+    subsets: ["latin"],
+    display: "swap",
+    variable: "--font-outfit",
+});
 
 export const metadata: Metadata = {
     title: "MyPokeBinder | Pokémon TCG",
@@ -36,10 +43,20 @@ export default async function RootLayout({
         ? {
               id: user.id,
               email: user.email,
-              name: user.user_metadata?.full_name || user.user_metadata?.name || user.user_metadata?.user_name || user.email?.split("@")[0] || "Treinador Pokémon",
+              username: undefined as string | undefined,
+              name: undefined as string | undefined,
               avatarUrl: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
           }
         : null;
+
+    if (user && initialUser) {
+        const { data: profile } = await supabase.from("profiles").select("username, display_name, avatar_url").eq("id", user.id).maybeSingle();
+        if (profile) {
+            initialUser.username = profile.username || undefined;
+            initialUser.name = profile.display_name || profile.username || undefined;
+            if (profile.avatar_url) initialUser.avatarUrl = profile.avatar_url;
+        }
+    }
 
     return (
         <html
@@ -66,7 +83,7 @@ export default async function RootLayout({
                     }}
                 />
             </head>
-            <body className="antialiased selection:bg-red-500/30 selection:text-white" suppressHydrationWarning>
+            <body className={`${outfit.variable} font-sans antialiased selection:bg-red-500/30 selection:text-white`} suppressHydrationWarning>
                 <AuthProvider initialUser={initialUser}>
                     <UserSettingsProvider initialTheme={initialTheme}>
                         {children}

@@ -32,7 +32,11 @@ export async function updateSession(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     const pathname = request.nextUrl.pathname;
-    const isPublicRoute = pathname.startsWith("/login") || pathname.startsWith("/auth") || pathname === "/" || pathname.startsWith("/inicio") || pathname.startsWith("/privacidade") || pathname.startsWith("/privacy") || pathname.startsWith("/termos") || pathname.startsWith("/terms") || pathname.startsWith("/_next") || pathname === "/favicon.ico";
+    const isSharedProfilePage = /^\/perfil\/[^/]+\/?$/.test(pathname);
+    const isSharedProfileApi = /^\/api\/profile\/[^/]+\/?$/.test(pathname);
+    const isSharedCollectionPage = /^\/colecao\/[^/]+\/?$/.test(pathname);
+    const isSharedCollectionApi = /^\/api\/profile\/[^/]+\/collection\/?$/.test(pathname);
+    const isPublicRoute = pathname.startsWith("/login") || pathname.startsWith("/auth") || pathname === "/" || pathname.startsWith("/inicio") || pathname.startsWith("/privacidade") || pathname.startsWith("/privacy") || pathname.startsWith("/termos") || pathname.startsWith("/terms") || pathname.startsWith("/_next") || pathname === "/favicon.ico" || isSharedProfilePage || isSharedProfileApi || isSharedCollectionPage || isSharedCollectionApi;
 
     if (!user && !isPublicRoute) {
         if (pathname.startsWith("/api")) {

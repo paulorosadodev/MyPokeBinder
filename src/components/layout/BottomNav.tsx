@@ -46,15 +46,16 @@ export function BottomNav() {
                             width: "calc((100% - 8px) / 3)",
                             opacity: activeIndex >= 0 ? 1 : 0,
                         }}
-                        className="pointer-events-none absolute top-1 bottom-1 left-1 rounded-xl border border-white/15 bg-white/10 shadow-sm shadow-black/40 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                        className="pointer-events-none absolute top-1 bottom-1 left-1 rounded-xl border border-[var(--theme-primary)]/30 bg-[var(--theme-primary)]/20 shadow-[0_0_12px_var(--theme-primary-glow)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
                     />
 
                     {items.map((item, index) => {
                         const Icon = item.icon;
+                        const isHighlighted = activeIndex === index;
                         return (
-                            <NextLink key={item.href} href={item.href} onClick={() => setOptimisticIndex(index)} aria-current={item.isActive ? "page" : undefined} className={`relative z-10 flex min-h-[46px] flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1 px-2 transition-all duration-200 select-none active:scale-95 ${item.isActive ? "text-white font-bold" : "text-slate-400 hover:text-slate-200"}`}>
-                                <Icon size={18} className={`transition-transform duration-200 ${item.isActive ? "scale-105 text-white drop-shadow-sm" : "text-slate-400"}`} />
-                                <span className={`text-[11px] tracking-tight transition-colors duration-200 ${item.isActive ? "font-bold text-white" : "font-medium text-slate-400"}`}>{item.label}</span>
+                            <NextLink key={item.href} href={item.href} onClick={() => setOptimisticIndex(index)} aria-current={isHighlighted ? "page" : undefined} className={`relative z-10 flex min-h-[46px] flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1 px-2 transition-all duration-200 select-none active:scale-95 ${isHighlighted ? "text-white font-bold" : "text-slate-400 hover:text-slate-200"}`}>
+                                <Icon size={18} className={`transition-transform duration-200 ${isHighlighted ? "scale-105 text-[var(--theme-primary)] drop-shadow-sm" : "text-slate-400"}`} />
+                                <span className={`text-[11px] tracking-tight transition-colors duration-200 ${isHighlighted ? "font-bold text-white" : "font-medium text-slate-400"}`}>{item.label}</span>
                             </NextLink>
                         );
                     })}

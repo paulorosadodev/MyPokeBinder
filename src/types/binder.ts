@@ -72,7 +72,6 @@ export interface CardDetailsResponse {
 export interface UserSettings {
     user_id: string;
     theme_color: string;
-    sound_enabled: boolean;
     created_at?: string;
     updated_at?: string;
 }

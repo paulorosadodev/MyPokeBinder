@@ -43,17 +43,22 @@ describe("Pokemon Theme Selector Logic", () => {
         expect(gengar?.dexId).toBe(94);
         expect(gengar?.ballType).toBe("masterball");
 
-        const rayquaza = THEME_PRESETS.find((p) => p.id === "emerald");
-        expect(rayquaza).toBeDefined();
-        expect(rayquaza?.pokemonName).toBe("Rayquaza");
-        expect(rayquaza?.dexId).toBe(384);
-        expect(rayquaza?.ballType).toBe("safariball");
+        const venusaur = THEME_PRESETS.find((p) => p.id === "emerald");
+        expect(venusaur).toBeDefined();
+        expect(venusaur?.pokemonName).toBe("Venusaur");
+        expect(venusaur?.dexId).toBe(3);
+        expect(venusaur?.ballType).toBe("safariball");
 
         const mew = THEME_PRESETS.find((p) => p.id === "pink");
         expect(mew).toBeDefined();
         expect(mew?.pokemonName).toBe("Mew");
         expect(mew?.dexId).toBe(151);
         expect(mew?.ballType).toBe("loveball");
+    });
+
+    it("should order theme presets strictly by Pokédex number with Gen 1 starters together first", () => {
+        const dexIds = THEME_PRESETS.map((p) => p.dexId);
+        expect(dexIds).toEqual([3, 6, 9, 25, 94, 151]);
     });
 
     it("should resolve correct ball types for known theme colors and fallback to pokeball", async () => {

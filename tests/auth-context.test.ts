@@ -14,13 +14,15 @@ describe("AuthContext and User Profile Logic", () => {
         const profile: UserProfile = {
             id: "user-123",
             email: "ash@kanto.com",
-            name: "Ash Ketchum",
+            username: "ashketchum",
+            name: "Ash",
             avatarUrl: "https://example.com/ash.png",
         };
 
         expect(profile.id).toBe("user-123");
         expect(profile.email).toBe("ash@kanto.com");
-        expect(profile.name).toBe("Ash Ketchum");
+        expect(profile.username).toBe("ashketchum");
+        expect(profile.name).toBe("Ash");
         expect(profile.avatarUrl).toBe("https://example.com/ash.png");
     });
 
@@ -39,7 +41,7 @@ describe("AuthContext and User Profile Logic", () => {
         const profile: UserProfile = {
             id: "user-456",
             email: "misty@cerulean.com",
-            name: "Misty",
+            username: "misty",
             avatarUrl: null,
         };
 
@@ -47,7 +49,7 @@ describe("AuthContext and User Profile Logic", () => {
         const parsed: UserProfile = JSON.parse(serialized);
 
         expect(parsed.id).toBe(profile.id);
-        expect(parsed.name).toBe(profile.name);
+        expect(parsed.username).toBe(profile.username);
         expect(parsed.email).toBe(profile.email);
         expect(parsed.avatarUrl).toBeNull();
     });
@@ -64,6 +66,6 @@ describe("AuthContext and User Profile Logic", () => {
 
         expect(safeParseUser(null)).toBeNull();
         expect(safeParseUser("invalid json {]")).toBeNull();
-        expect(safeParseUser(JSON.stringify({ id: "1", name: "Brock" }))).toEqual({ id: "1", name: "Brock" });
+        expect(safeParseUser(JSON.stringify({ id: "1", username: "brock" }))).toEqual({ id: "1", username: "brock" });
     });
 });

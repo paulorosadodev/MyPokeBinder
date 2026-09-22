@@ -35,9 +35,9 @@ export interface BinderOpenPlan {
     animateFromCover: boolean;
 }
 
-export function planBinderOpenAnimation(catalogPage: number, isPortrait: boolean): BinderOpenPlan {
+export function planBinderOpenAnimation(catalogPage: number, isPortrait: boolean, skipCoverAnimation = false): BinderOpenPlan {
     const targetPhysical = catalogPageToPhysicalIndex(catalogPage, isPortrait);
-    const animateFromCover = catalogPage === 1;
+    const animateFromCover = !skipCoverAnimation && catalogPage === 1;
     return {
         startPhysical: animateFromCover ? BINDER_FRONT_COVER_PHYSICAL : targetPhysical,
         targetPhysical,

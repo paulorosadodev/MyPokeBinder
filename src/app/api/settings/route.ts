@@ -3,7 +3,6 @@ import { getAuthenticatedUser } from "@/lib/supabase/auth";
 
 const DEFAULT_SETTINGS = {
     theme_color: "#ef4444",
-    sound_enabled: true,
 };
 
 const HEX_COLOR_REGEX = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
@@ -45,7 +44,6 @@ export async function PATCH(request: NextRequest) {
         const updates: {
             user_id: string;
             theme_color?: string;
-            sound_enabled?: boolean;
             updated_at: string;
         } = {
             user_id: user.id,
@@ -61,14 +59,20 @@ export async function PATCH(request: NextRequest) {
             }
         }
 
-        if (typeof body.sound_enabled === "boolean") {
-            updates.sound_enabled = body.sound_enabled;
-        }
-
         const { data, error } = await supabase.from("user_settings").upsert(updates, { onConflict: "user_id" }).select().single();
 
         if (error) {
             return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        if (updates.theme_color) {
+            await supabase
+                .from("profiles")
+                .update({
+                    theme_color: updates.theme_color,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq("id", user.id);
         }
 
         return NextResponse.json({ settings: data });
