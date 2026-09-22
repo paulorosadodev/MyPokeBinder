@@ -84,7 +84,20 @@ export function PokeballLogo({ size = "sm", className = "", animated = false, gl
 
     return (
         <div className={`relative inline-flex items-center justify-center shrink-0 ${boxSize} ${className}`}>
-            <svg viewBox="0 0 100 100" width="100%" height="100%" style={glowStyle} className="overflow-visible">
+            <svg
+                viewBox="0 0 100 100"
+                width="100%"
+                height="100%"
+                style={
+                    {
+                        colorScheme: "only light",
+                        forcedColorAdjust: "none",
+                        WebkitForcedColorAdjust: "none",
+                        ...glowStyle,
+                    } as React.CSSProperties
+                }
+                className="overflow-visible"
+            >
                 {renderTopPattern()}
                 <path d="M 4 50 A 46 46 0 0 0 96 50 Z" fill="#f8fafc" />
                 <line x1="4" y1="50" x2="96" y2="50" stroke="#0f172a" strokeWidth="8" />

@@ -108,10 +108,15 @@ export function PokemonBallSvg({ ballType = "pokeball", customColor = "#ef4444",
             width={size}
             height={size}
             className={`shrink-0 select-none overflow-visible ${className}`}
-            style={{
-                filter: baseFilter,
-                ...style,
-            }}
+            style={
+                {
+                    colorScheme: "only light",
+                    forcedColorAdjust: "none",
+                    WebkitForcedColorAdjust: "none",
+                    filter: baseFilter,
+                    ...style,
+                } as React.CSSProperties
+            }
         >
             <defs>
                 <linearGradient id={`grad-bottom-${ballType}`} x1="0%" y1="0%" x2="0%" y2="100%">

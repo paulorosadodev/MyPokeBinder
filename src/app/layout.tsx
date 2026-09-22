@@ -9,7 +9,7 @@ import "./globals.css";
 export const metadata: Metadata = {
     title: "MyPokeBinder | Pokémon TCG",
     description: "Binder digital interativo 3x3 para colecionadores das 151 cartas originais de Pokémon TCG.",
-    colorScheme: "light",
+    colorScheme: "only light" as Metadata["colorScheme"],
 };
 
 function getFaviconSvg(color: string) {
@@ -57,7 +57,8 @@ export default async function RootLayout({
             }
         >
             <head>
-                <meta name="color-scheme" content="light" />
+                <meta name="color-scheme" content="only light" />
+                <meta name="supported-color-schemes" content="only light" />
                 <link id="app-dynamic-favicon" rel="icon" type="image/svg+xml" href={initialFaviconUri} />
                 <script
                     dangerouslySetInnerHTML={{

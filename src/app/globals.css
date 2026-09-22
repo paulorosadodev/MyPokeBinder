@@ -18,20 +18,41 @@
     --text-dim: #64748b;
 }
 
-* {
-    box-sizing: border-box;
-}
-
 :root {
-    color-scheme: light;
+    color-scheme: only light;
+    supported-color-schemes: light;
+    forced-color-adjust: none;
+    -webkit-forced-color-adjust: none;
 }
 
-html {
-    color-scheme: light;
+html,
+body {
+    color-scheme: only light;
+    supported-color-schemes: light;
+    forced-color-adjust: none;
+    -webkit-forced-color-adjust: none;
     scrollbar-gutter: stable;
     overflow-y: scroll;
     overflow-x: hidden;
     overflow-anchor: none;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    forced-color-adjust: none;
+    -webkit-forced-color-adjust: none;
+}
+
+svg,
+svg *,
+img,
+picture,
+canvas {
+    color-scheme: only light !important;
+    forced-color-adjust: none !important;
+    -webkit-forced-color-adjust: none !important;
 }
 
 body {
