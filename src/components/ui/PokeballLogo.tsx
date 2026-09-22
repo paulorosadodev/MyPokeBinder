@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useContext } from "react";
 import { UserSettingsContext, getBallTypeForTheme } from "@/lib/context/UserSettingsContext";
 import { BallType } from "@/components/theme/PokemonBallSvg";

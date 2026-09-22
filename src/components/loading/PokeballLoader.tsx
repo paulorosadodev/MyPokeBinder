@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useContext } from "react";
 import { UserSettingsContext } from "@/lib/context/UserSettingsContext";
 import { PokemonBallSvg, BallType } from "@/components/theme/PokemonBallSvg";
