@@ -401,7 +401,7 @@ export default function CollectionPage() {
                                         return (
                                             <button key={p.dexId} type="button" onClick={() => handleSelectPokemonForSearch(p.dexId, p.name)} className={`group flex flex-col items-center gap-2 rounded-xl border border-white/5 bg-white/[0.02] p-3 text-center transition-all hover:border-poke-blue/40 hover:bg-white/[0.06] sm:gap-2.5 sm:p-3.5 ${appear.className}`} style={appear.style}>
                                                 <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[#0d1017] sm:h-14 sm:w-14">
-                                                    <Image src={getPokemonSilhouetteUrl(p.dexId)} alt={p.name} fill sizes="56px" className="object-contain opacity-50 transition-opacity group-hover:opacity-80" onLoad={() => markSilhouetteLoaded(p.dexId)} />
+                                                    <Image src={getPokemonSilhouetteUrl(p.dexId)} alt={p.name} fill sizes="56px" className="object-contain opacity-50 transition-opacity group-hover:opacity-80" unoptimized onLoad={() => markSilhouetteLoaded(p.dexId)} />
                                                 </div>
                                                 <div className="flex w-full min-w-0 flex-col items-center gap-1">
                                                     <span className="w-full text-xs font-semibold leading-snug text-balance text-white transition-colors group-hover:text-poke-blue sm:text-[13px]">{p.name}</span>

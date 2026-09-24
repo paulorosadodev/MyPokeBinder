@@ -137,7 +137,7 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
                         <>
                             <div className="relative aspect-[2.5/3.5] w-full select-none">
                                 <Card3DTilt key={previewCard.id} className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={10} maxMove={4} scale={1} glareOpacity={0.25} perspective={1000} shineMode={resolveCardShine(previewCard.card_variant, previewCard.card_rarity)}>
-                                    <Image key={previewCard.id} src={formatTcgdexImageUrl(previewCard.card_image_url)} alt={previewCard.card_name} fill sizes="(max-width: 1280px) 240px, 340px" className="object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.9)]" priority />
+                                    <Image key={previewCard.id} src={formatTcgdexImageUrl(previewCard.card_image_url)} alt={previewCard.card_name} fill sizes="(max-width: 1280px) 240px, 340px" className="object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.9)]" priority unoptimized />
                                 </Card3DTilt>
                             </div>
                             <div className="mt-3 flex flex-col items-center gap-0.5 text-center">
@@ -154,7 +154,7 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
                                 </div>
 
                                 <div className="relative flex h-36 w-36 items-center justify-center">
-                                    <Image src={getPokemonSilhouetteUrl(dexId)} alt={pokemonName} fill sizes="(max-width: 1280px) 150px, 180px" className="object-contain opacity-25" priority onLoad={() => markSilhouetteLoaded(dexId)} />
+                                    <Image src={getPokemonSilhouetteUrl(dexId)} alt={pokemonName} fill sizes="(max-width: 1280px) 150px, 180px" className="object-contain opacity-25" priority unoptimized onLoad={() => markSilhouetteLoaded(dexId)} />
                                 </div>
 
                                 <div className="flex flex-col items-center text-center">
@@ -239,7 +239,7 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
 
                                             <div role="button" tabIndex={0} onClick={() => (isCurrent ? handleRemoveCard(group.activeCard) : handleSelectCard(group.activeCard))} className="relative aspect-[2.5/3.5] w-full cursor-pointer">
                                                 <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={resolveCardShine(card.card_variant, card.card_rarity)}>
-                                                    <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill sizes="(max-width: 768px) 50vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" />
+                                                    <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill sizes="(max-width: 768px) 50vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" unoptimized />
                                                 </Card3DTilt>
                                             </div>
 
