@@ -142,11 +142,13 @@ export function TrainerProfileView({ username }: { username: string }) {
     const [lightbox, setLightbox] = useState<{ src: string; alt: string; shineMode: CardShineMode } | null>(null);
     const [pickerScrollRoot, setPickerScrollRoot] = useState<HTMLDivElement | null>(null);
 
+    const favoriteCardIdsKey = profile?.favoriteCardIds?.join(",") ?? "";
     useEffect(() => {
         if (profile?.favoriteCardIds) {
             setDraftFavoriteIds(profile.favoriteCardIds);
         }
-    }, [profile?.favoriteCardIds]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [favoriteCardIdsKey]);
 
     const cardsById = useMemo(() => {
         const map = new Map<string, UserCard>();
@@ -166,10 +168,10 @@ export function TrainerProfileView({ username }: { username: string }) {
         if (!profile) return [];
         const urls: string[] = [];
         if (profile.user.avatarUrl) urls.push(profile.user.avatarUrl);
-        for (const card of profile.featuredCards) {
+        for (const card of profile.featuredCards ?? []) {
             urls.push(formatTcgdexImageUrl(card.card_image_url));
         }
-        for (const slot of profile.slots) {
+        for (const slot of profile.slots ?? []) {
             urls.push(getPokemonSilhouetteUrl(slot.pokemon_dex_id));
         }
         return urls;
