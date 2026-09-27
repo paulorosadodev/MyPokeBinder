@@ -2,6 +2,7 @@ import { revalidateTag, unstable_cache } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
 import { buildProfileFromCards, type ProfilePayload, type ProfileUser } from "@/lib/profile/buildProfile";
 import type { UserCard } from "@/types/binder";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const PUBLIC_PROFILE_REVALIDATE_SECONDS = 60;
 
@@ -162,7 +163,7 @@ export function revalidatePublicProfileTags(...usernames: Array<string | null | 
     }
 }
 
-export async function revalidatePublicProfileForUserId(supabase: { from: (table: string) => { select: (columns: string) => { eq: (column: string, value: string) => { maybeSingle: () => Promise<{ data: { username?: string | null } | null }> } } } }, userId: string, extraUsernames: Array<string | null | undefined> = []) {
+export async function revalidatePublicProfileForUserId(supabase: SupabaseClient<any, "public", any>, userId: string, extraUsernames: Array<string | null | undefined> = []) {
     const { data } = await supabase.from("profiles").select("username").eq("id", userId).maybeSingle();
     revalidatePublicProfileTags(data?.username, ...extraUsernames);
 }
