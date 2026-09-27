@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, useRef, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useSWRConfig } from "swr";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -18,7 +18,7 @@ import { BinderPageNav } from "@/components/binder/BinderPageNav";
 import { useBinderCards } from "@/lib/swr";
 import { useImagePreloader, preloadImages } from "@/lib/hooks/useImagePreloader";
 import { useBinderEntrance } from "@/lib/hooks/useBinderEntrance";
-import { canHandleBinderEntry, resolveBinderEntryTargetPage, resolveBinderInitialPage, shouldRenderBinder } from "@/lib/pokemon/binderOpen";
+import { canHandleBinderEntry, isBinderDataReady, planBinderOpenAnimation, resolveBinderEntryTargetPage, resolveBinderInitialPage, shouldRenderBinder } from "@/lib/pokemon/binderOpen";
 
 interface BinderClientPageProps {
     initialUser?: {
@@ -41,7 +41,6 @@ function BinderOpeningLoader() {
 }
 
 function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPageProps) {
-    const router = useRouter();
     const searchParams = useSearchParams();
     const initialPageParam = searchParams.get("page");
     const initialSpreadParam = searchParams.get("spread");
@@ -254,11 +253,18 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
     const imagePages = useMemo(() => retainBinderImagePages(retainedImagePages, requestedImagePages), [retainedImagePages, requestedImagePages]);
     const currentSpreadImages = useMemo(() => collectBinderPageImageUrls(activePages, cardsMap), [activePages, cardsMap]);
 
+    const openPlan = useMemo(() => planBinderOpenAnimation(initialPage, isMobile, skipEntranceAnimation), [initialPage, isMobile, skipEntranceAnimation]);
+
     const { allLoaded: currentImagesReady } = useImagePreloader(currentSpreadImages, {
-        enabled: viewportReady && !cardsLoading && !hasMountedBinder && !skipEntranceAnimation,
+        enabled: viewportReady && !cardsLoading && !hasMountedBinder && !skipEntranceAnimation && !openPlan.animateFromCover,
         timeoutMs: 5000,
     });
-    const isDataReady = !cardsLoading && (currentImagesReady || skipEntranceAnimation);
+    const isDataReady = isBinderDataReady({
+        cardsLoading,
+        currentImagesReady,
+        animateFromCover: openPlan.animateFromCover,
+        skipEntranceAnimation,
+    });
     const renderBinder = shouldRenderBinder({ viewportReady, isDataReady, hasMountedBinder });
     const canHandleEntry = canHandleBinderEntry({ viewportReady, isDataReady, hasMountedBinder, isBookReady });
 
@@ -275,9 +281,10 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
     useEffect(() => {
         if (cardsLoading) return;
 
+        preloadImages(currentSpreadImages);
         const adjacentPages = getAdjacentCatalogPages(currentPage, isMobile).filter((page) => !activePages.includes(page));
         preloadImages(collectBinderPageImageUrls(adjacentPages, cardsMap));
-    }, [cardsLoading, isMobile, currentPage, activePages, cardsMap]);
+    }, [cardsLoading, isMobile, currentPage, activePages, currentSpreadImages, cardsMap]);
 
     useEffect(() => {
         if (jumpTargetPage == null) return;
@@ -398,8 +405,10 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
             triggerHighlight(targetDexId);
         });
         handledPageEntryRef.current = getPageForDexId(targetDexId);
-        router.replace(`/?page=${getPageForDexId(targetDexId)}`, { scroll: false });
-    }, [hasExplicitPageTarget, initialDexIdParam, openSelectParam, canHandleEntry, handleNavigateToPokemon, triggerHighlight, waitForHighlightReady, router]);
+        if (typeof window !== "undefined") {
+            window.history.replaceState(window.history.state, "", `/?page=${getPageForDexId(targetDexId)}`);
+        }
+    }, [hasExplicitPageTarget, initialDexIdParam, openSelectParam, canHandleEntry, handleNavigateToPokemon, triggerHighlight, waitForHighlightReady]);
 
     useEffect(() => {
         if (hasExplicitPageTarget || !initialTargetDexId || !canHandleEntry || openSelectParam === "true") return;
@@ -429,8 +438,10 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
         handledPageEntryRef.current = getPageForDexId(targetDexId);
         globalMutate(`/api/cards?pokemon_dex_id=${targetDexId}`);
         mutate();
-        router.replace(`/?page=${getPageForDexId(targetDexId)}`, { scroll: false });
-    }, [hasExplicitPageTarget, initialDexIdParam, openSelectParam, cardsMap, router, globalMutate, mutate]);
+        if (typeof window !== "undefined") {
+            window.history.replaceState(window.history.state, "", `/?page=${getPageForDexId(targetDexId)}`);
+        }
+    }, [hasExplicitPageTarget, initialDexIdParam, openSelectParam, cardsMap, globalMutate, mutate]);
 
     useEffect(() => {
         if (!selectModalOpen) return;

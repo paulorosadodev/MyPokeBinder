@@ -30,6 +30,7 @@ import {
     binderPageFlipAutoSize,
     planBinderPageNavigation,
     shouldRenderBinder,
+    isBinderDataReady,
     resolveBinderInitialPage,
     shouldSignalBinderReady,
     canHandleBinderEntry,
@@ -240,5 +241,48 @@ describe("Binder cover open animation plan", () => {
                 isBookReady: false,
             }),
         ).toBe(false);
+    });
+
+    it("allows mounting immediately when animating from cover without waiting for card images", () => {
+        expect(
+            isBinderDataReady({
+                cardsLoading: true,
+                currentImagesReady: false,
+                animateFromCover: true,
+                skipEntranceAnimation: false,
+            }),
+        ).toBe(false);
+        expect(
+            isBinderDataReady({
+                cardsLoading: false,
+                currentImagesReady: false,
+                animateFromCover: true,
+                skipEntranceAnimation: false,
+            }),
+        ).toBe(true);
+        expect(
+            isBinderDataReady({
+                cardsLoading: false,
+                currentImagesReady: false,
+                animateFromCover: false,
+                skipEntranceAnimation: false,
+            }),
+        ).toBe(false);
+        expect(
+            isBinderDataReady({
+                cardsLoading: false,
+                currentImagesReady: true,
+                animateFromCover: false,
+                skipEntranceAnimation: false,
+            }),
+        ).toBe(true);
+        expect(
+            isBinderDataReady({
+                cardsLoading: false,
+                currentImagesReady: false,
+                animateFromCover: false,
+                skipEntranceAnimation: true,
+            }),
+        ).toBe(true);
     });
 });

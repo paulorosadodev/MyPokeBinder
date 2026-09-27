@@ -736,6 +736,7 @@ export const BinderBookFlip = memo(
                                 autoSize={binderPageFlipAutoSize(isPortraitBook)}
                                 useMouseEvents={BINDER_USE_MOUSE_EVENTS}
                                 showPageCorners={false}
+                                renderOnlyPageLengthChange={true}
                                 className={`binder-flipbook-root ${isPortraitBook ? "binder-flipbook-root--portrait" : ""} ${!animationsEnabled ? "binder-flipbook-root--static" : ""} ${isBookEngineReady ? "opacity-100" : "opacity-0"}`}
                                 style={{}}
                             >
