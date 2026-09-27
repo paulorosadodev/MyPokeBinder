@@ -19,13 +19,14 @@ import { DashboardMiniSlot } from "@/components/dashboard/DashboardMiniSlot";
 import { formatTcgdexImageUrl } from "@/lib/pokemon/tcgdex";
 import { getRarityBadgeStyle, RARITY_FILTER_OPTIONS } from "@/lib/pokemon/rarity";
 import { resolveCardShine } from "@/lib/pokemon/variant";
+import { resolveCardElementTypes } from "@/lib/pokemon/cardTypes";
 import { buildCollectionFilterResetKey, matchesCardSearch } from "@/lib/collection/listCards";
 import { useClientPagedWindow } from "@/lib/hooks/useClientPagedWindow";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { buildThemeCssVars } from "@/lib/profile/username";
 import { getCardAppearProps } from "@/lib/ui/cardAppear";
 import { fetcher as jsonFetcher } from "@/lib/swr";
-import { BinderStatusFilter, UserCard, type CardShineMode } from "@/types/binder";
+import { BinderStatusFilter, UserCard, type CardElementType, type CardShineMode } from "@/types/binder";
 import type { ProfilePayload } from "@/lib/profile/buildProfile";
 import { toast } from "sonner";
 import { Settings, Share2, BookOpen, Layers, Check, Layers2, Pencil, Plus, X, Search, Globe, Sparkles, GripVertical } from "lucide-react";
@@ -63,14 +64,15 @@ function FeaturedSlotFrame({ children, className = "" }: { children: ReactNode; 
     );
 }
 
-function FeaturedCardTile({ card, onMaximize, priority = false }: { card: UserCard; onMaximize?: (src: string, alt: string, shineMode: CardShineMode) => void; priority?: boolean }) {
+function FeaturedCardTile({ card, onMaximize, priority = false }: { card: UserCard; onMaximize?: (src: string, alt: string, shineMode: CardShineMode, elementTypes: CardElementType[]) => void; priority?: boolean }) {
     const imageSrc = formatTcgdexImageUrl(card.card_image_url);
     const shineMode = resolveCardShine(card.card_variant, card.card_rarity);
+    const elementTypes = resolveCardElementTypes(card.card_types, card.pokemon_dex_id);
 
     return (
         <FeaturedSlotFrame className="z-0">
-            <button type="button" onClick={() => onMaximize?.(imageSrc, card.card_name, shineMode)} aria-label={`Ampliar ${card.card_name}`} className="relative z-0 h-full w-full cursor-zoom-in">
-                <Card3DTilt className="relative h-full w-full" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.25} perspective={900} shineMode={shineMode}>
+            <button type="button" onClick={() => onMaximize?.(imageSrc, card.card_name, shineMode, elementTypes)} aria-label={`Ampliar ${card.card_name}`} className="relative z-0 h-full w-full cursor-zoom-in">
+                <Card3DTilt className="relative h-full w-full" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.25} perspective={900} shineMode={shineMode} elementTypes={elementTypes}>
                     <Image src={imageSrc} alt={card.card_name} fill sizes="(max-width: 640px) 45vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" unoptimized priority={priority} />
                 </Card3DTilt>
             </button>
@@ -82,11 +84,12 @@ function SortableFeaturedCard({ id, index, card, onRemove, priority = false }: {
     const { ref, isDragging } = useSortable({ id, index });
     const imageSrc = formatTcgdexImageUrl(card.card_image_url);
     const shineMode = resolveCardShine(card.card_variant, card.card_rarity);
+    const elementTypes = resolveCardElementTypes(card.card_types, card.pokemon_dex_id);
 
     return (
         <div ref={ref} className={`relative w-full touch-none select-none !cursor-grab active:!cursor-grabbing ${isDragging ? "z-30" : "z-0"}`} style={{ aspectRatio: "8 / 11" }} aria-label={`${card.card_name}, arraste para reordenar`}>
             <div className={`absolute inset-0 ${isDragging ? "opacity-90 ring-2 ring-poke-blue/60 rounded-lg" : ""}`}>
-                <Card3DTilt className="relative h-full w-full" maxTilt={0} maxMove={0} scale={1} glareOpacity={0} perspective={900} shineMode={shineMode} paused>
+                <Card3DTilt className="relative h-full w-full" maxTilt={0} maxMove={0} scale={1} glareOpacity={0} perspective={900} shineMode={shineMode} elementTypes={elementTypes} paused>
                     <Image src={imageSrc} alt={card.card_name} fill sizes="(max-width: 640px) 45vw, 200px" className="pointer-events-none object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" unoptimized priority={priority} draggable={false} />
                 </Card3DTilt>
                 <span className="pointer-events-none absolute bottom-1.5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-0.5 rounded-md bg-black/55 px-1.5 py-0.5 text-white/80 backdrop-blur-sm">
@@ -150,7 +153,7 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
     const [pickerStatus, setPickerStatus] = useState<BinderStatusFilter>("all");
     const [pickerLanguage, setPickerLanguage] = useState("all");
     const [pickerRarity, setPickerRarity] = useState("all");
-    const [lightbox, setLightbox] = useState<{ src: string; alt: string; shineMode: CardShineMode } | null>(null);
+    const [lightbox, setLightbox] = useState<{ src: string; alt: string; shineMode: CardShineMode; elementTypes: CardElementType[] } | null>(null);
     const [pickerScrollRoot, setPickerScrollRoot] = useState<HTMLDivElement | null>(null);
 
     const favoriteCardIdsKey = profile?.favoriteCardIds?.join(",") ?? "";
@@ -209,8 +212,8 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
         enabled: isPickerOpen && filteredPickerCards.length > 0,
     });
 
-    const openLightbox = useCallback((src: string, alt: string, shineMode: CardShineMode = "none") => {
-        setLightbox({ src, alt, shineMode });
+    const openLightbox = useCallback((src: string, alt: string, shineMode: CardShineMode = "none", elementTypes: CardElementType[] = ["Colorless"]) => {
+        setLightbox({ src, alt, shineMode, elementTypes });
     }, []);
 
     const closeLightbox = useCallback(() => {
@@ -565,12 +568,12 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
 
             {isPickerOpen ? (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-0 sm:p-4 backdrop-blur-sm"
                     onClick={(e) => {
-                        if (e.target === e.currentTarget) setIsPickerOpen(false);
+                        if (e.target === e.currentTarget && window.matchMedia("(min-width: 640px)").matches) setIsPickerOpen(false);
                     }}
                 >
-                    <div className="flex h-[90vh] sm:h-[85vh] max-h-[820px] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#12151d] shadow-2xl">
+                    <div className="flex h-dvh max-h-none w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-[#12151d] shadow-2xl sm:h-[85vh] sm:max-h-[820px] sm:max-w-3xl sm:rounded-2xl sm:border sm:border-white/10">
                         <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-5 py-4">
                             <div>
                                 <h3 className="text-base font-bold text-white">Escolher cartas em destaque</h3>
@@ -649,7 +652,7 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
                 </div>
             ) : null}
 
-            <CardLightbox src={lightbox?.src ?? null} alt={lightbox?.alt} shineMode={lightbox?.shineMode} onClose={closeLightbox} />
+            <CardLightbox src={lightbox?.src ?? null} alt={lightbox?.alt} shineMode={lightbox?.shineMode} elementTypes={lightbox?.elementTypes} onClose={closeLightbox} />
         </ProfileShell>
     );
 }

@@ -9,6 +9,7 @@ import { Card3DTilt } from "@/components/ui/Card3DTilt";
 import { CardImpactBurst } from "@/components/binder/CardImpactBurst";
 import { Plus } from "lucide-react";
 import { resolveCardShine } from "@/lib/pokemon/variant";
+import { resolveCardElementTypes } from "@/lib/pokemon/cardTypes";
 import { UserSettingsContext } from "@/lib/context/UserSettingsContext";
 import { playCardDropSound } from "@/lib/audio/cardSounds";
 import { getRarityImpactTier } from "@/lib/pokemon/rarity";
@@ -111,7 +112,7 @@ export function BinderSlot({ dexId, pokemonName, card, availableCount = 0, isTra
             <div ref={divRef} className={`${FILLED_BINDER_SLOT_CELL_CLASS} ${showDropEffects ? "z-40" : ""} ${showGlow ? "z-30" : ""}`}>
                 <div className={`${FILLED_BINDER_SLOT_FRAME_CLASS} ${showGlow ? "z-20" : ""} ${highlightClass}`} style={glowStyle}>
                     <div className={`relative h-full w-full ${showDropEffects ? "card-drop" : ""}`}>
-                        <Card3DTilt key={card.id} className="relative h-full w-full overflow-hidden rounded-lg bg-transparent" maxTilt={12} scale={1.15} glareOpacity={0.25} shineMode={resolveCardShine(card.card_variant, card.card_rarity)} paused={pauseTilt}>
+                        <Card3DTilt key={card.id} className="relative h-full w-full overflow-hidden rounded-lg bg-transparent" maxTilt={12} scale={1.15} glareOpacity={0.25} shineMode={resolveCardShine(card.card_variant, card.card_rarity)} elementTypes={resolveCardElementTypes(card.card_types, card.pokemon_dex_id)} paused={pauseTilt}>
                             <button type="button" id={`binder-slot-${dexId}`} onClick={onClick} onMouseDownCapture={stopPageFlip} onPointerDownCapture={stopPageFlip} onTouchStartCapture={stopPageFlip} onKeyDown={handleKeyDown} aria-label={`${card.card_name}, ${formattedDex}`} className="relative flex h-full min-h-0 w-full cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent p-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-poke-blue">
                                 {mountImage ? <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill sizes="(max-width: 768px) 30vw, 15vw" className="pointer-events-none object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" unoptimized priority={priority} /> : null}
                             </button>

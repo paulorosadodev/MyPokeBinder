@@ -13,6 +13,7 @@ import { useSWRConfig } from "swr";
 import { CardLanguage, CardVariant, UserCard } from "@/types/binder";
 import { getRarityBadgeStyle } from "@/lib/pokemon/rarity";
 import { VARIANT_SLIDER_OPTIONS, formatVariantLabel, isCardVariant, resolveCardShine } from "@/lib/pokemon/variant";
+import { resolveCardElementTypes } from "@/lib/pokemon/cardTypes";
 import { toast } from "sonner";
 import { ArrowLeft, Sparkles, BookOpen, Trash2, Plus, Minus, Check, AlertCircle, Calendar, Layers, Loader2, X, Search, RefreshCw, Circle } from "lucide-react";
 
@@ -369,6 +370,7 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
                     card_image_url: card.card_image_url,
                     card_set_name: card.card_set_name,
                     card_rarity: card.card_rarity,
+                    card_types: card.card_types,
                     card_language: card.card_language,
                     card_variant: card.card_variant || "normal",
                     is_in_binder: false,
@@ -586,6 +588,7 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
     const storedCopiesCount = copies.filter((c) => !c.is_in_binder).length;
     const currentVariant = optimisticVariant ?? (card && isCardVariant(card.card_variant) ? card.card_variant : "normal");
     const shineMode = card ? resolveCardShine(currentVariant, card.card_rarity) : "none";
+    const cardElementTypes = card ? resolveCardElementTypes(card.card_types, card.pokemon_dex_id) : undefined;
 
     return (
         <div className="flex min-h-screen flex-col">
@@ -630,7 +633,7 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
                                 }}
                                 className="group/card relative z-0 aspect-[8/11] w-full max-w-[290px] cursor-pointer select-none isolate"
                             >
-                                <Card3DTilt className="relative h-full w-full overflow-hidden rounded-2xl bg-[#0d1017]" maxTilt={10} scale={1.03} glareOpacity={0.3} perspective={1000} shineMode={shineMode}>
+                                <Card3DTilt className="relative h-full w-full overflow-hidden rounded-2xl bg-[#0d1017]" maxTilt={10} scale={1.03} glareOpacity={0.3} perspective={1000} shineMode={shineMode} elementTypes={cardElementTypes}>
                                     <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill unoptimized sizes="(max-width: 768px) 80vw, 350px" className="object-contain drop-shadow-[0_16px_36px_rgba(0,0,0,0.85)] transition-all duration-300 group-hover/card:scale-[1.01]" priority />
                                 </Card3DTilt>
                             </div>
@@ -838,7 +841,7 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
                 </div>
             )}
 
-            {isZoomed && card && <CardLightbox src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} shineMode={shineMode} onClose={() => setIsZoomed(false)} />}
+            {isZoomed && card && <CardLightbox src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} shineMode={shineMode} elementTypes={cardElementTypes} onClose={() => setIsZoomed(false)} />}
         </div>
     );
 }

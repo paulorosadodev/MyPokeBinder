@@ -3,6 +3,8 @@
 import { useRef, useState, useCallback, useEffect, useContext, type CSSProperties, type ReactNode, type MouseEvent } from "react";
 import type { CardShineMode } from "@/types/binder";
 import { UserSettingsContext } from "@/lib/context/UserSettingsContext";
+import { CardElementPattern } from "@/components/ui/CardElementPattern";
+import { resolveCardElementTypes } from "@/lib/pokemon/cardTypes";
 
 interface Card3DTiltProps {
     children: ReactNode;
@@ -14,6 +16,7 @@ interface Card3DTiltProps {
     transitionDuration?: number;
     maxMove?: number;
     shineMode?: CardShineMode;
+    elementTypes?: readonly string[] | null;
     paused?: boolean;
     onClick?: () => void;
     enableTouch?: boolean;
@@ -44,7 +47,7 @@ function applyRestStyles(el: HTMLDivElement) {
     el.style.setProperty("--card-glare-angle", "135deg");
 }
 
-export function Card3DTilt({ children, className = "", glareOpacity = 0.25, maxTilt = 15, scale = 1.05, perspective = 800, transitionDuration = 500, maxMove = 0, shineMode = "none", paused = false, onClick, enableTouch = false }: Card3DTiltProps) {
+export function Card3DTilt({ children, className = "", glareOpacity = 0.25, maxTilt = 15, scale = 1.05, perspective = 800, transitionDuration = 500, maxMove = 0, shineMode = "none", elementTypes, paused = false, onClick, enableTouch = false }: Card3DTiltProps) {
     const settings = useContext(UserSettingsContext);
     const animationsEnabled = settings ? settings.animationsEnabled : true;
     const isTiltDisabled = paused || !animationsEnabled;
@@ -215,6 +218,8 @@ export function Card3DTilt({ children, className = "", glareOpacity = 0.25, maxT
     const sheenClass = !isTiltDisabled && shineMode === "prismatic" ? "prismatic-sheen" : !isTiltDisabled && shineMode === "holo" ? "holo-sheen" : !isTiltDisabled && shineMode === "foil" ? "foil-sheen" : null;
     const glareClass = !isTiltDisabled && shineMode === "prismatic" ? "card-glare card-glare--prismatic" : !isTiltDisabled && shineMode === "holo" ? "card-glare card-glare--holo" : !isTiltDisabled && shineMode === "foil" ? "card-glare card-glare--foil" : !isTiltDisabled ? "card-glare card-glare--soft" : null;
     const idleClass = !animationsEnabled ? null : shineMode === "prismatic" ? "card-idle-prismatic" : shineMode === "holo" ? "card-idle-holo" : shineMode === "foil" ? "card-idle-foil" : null;
+    const elementType = resolveCardElementTypes(elementTypes)[0];
+    const showElementPattern = !isTiltDisabled && shineMode === "foil";
     const activeHover = isHovering && !isTiltDisabled;
 
     const shellStyle: CSSProperties = {
@@ -226,10 +231,25 @@ export function Card3DTilt({ children, className = "", glareOpacity = 0.25, maxT
     };
 
     return (
-        <div ref={containerRef} className={`card-3d-tilt group ${className}`} data-hovering={activeHover ? "true" : undefined} style={shellStyle} onMouseMove={handleMouseMove} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} onTouchStart={enableTouch ? handleTouchStart : undefined} onTouchMove={enableTouch ? handleTouchMove : undefined} onTouchEnd={enableTouch ? handleTouchEnd : undefined} onTouchCancel={enableTouch ? handleTouchCancel : undefined} onClick={onClick}>
+        <div
+            ref={containerRef}
+            className={`card-3d-tilt group ${className}`}
+            data-hovering={activeHover ? "true" : undefined}
+            data-element-type={showElementPattern ? elementType.toLowerCase() : undefined}
+            style={shellStyle}
+            onMouseMove={handleMouseMove}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+            onTouchStart={enableTouch ? handleTouchStart : undefined}
+            onTouchMove={enableTouch ? handleTouchMove : undefined}
+            onTouchEnd={enableTouch ? handleTouchEnd : undefined}
+            onTouchCancel={enableTouch ? handleTouchCancel : undefined}
+            onClick={onClick}
+        >
             {children}
 
             {idleClass ? <div className={idleClass} aria-hidden /> : null}
+            {showElementPattern ? <CardElementPattern type={elementType} /> : null}
             {sheenClass ? <div className={sheenClass} aria-hidden /> : null}
             {glareClass ? <div className={glareClass} aria-hidden /> : null}
         </div>

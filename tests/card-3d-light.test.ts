@@ -104,13 +104,14 @@ describe("Lightweight 3D Card Tilt Logic", () => {
     it("should crop normal foil to the artwork and align the lower reverse foil cutout", () => {
         const css = readFileSync(join(import.meta.dir, "../src/app/globals.css"), "utf8");
         const holoCropRule = css.match(/\.holo-sheen,\s*\.card-glare--holo,\s*\.card-idle-holo\s*\{([\s\S]*?)\}/)?.[1] ?? "";
-        const reverseCropRule = css.match(/\.foil-sheen,\s*\.card-glare--foil,\s*\.card-idle-foil\s*\{([\s\S]*?)\}/)?.[1] ?? "";
+        const reverseCropRule = css.match(/\.foil-sheen,\s*\.card-glare--foil,\s*\.card-idle-foil,\s*\.card-element-pattern\s*\{([\s\S]*?)\}/)?.[1] ?? "";
 
         expect(holoCropRule).toContain("inset: 9% 7.8% 50% 7.8%");
         expect(reverseCropRule).toContain("#000 8.4%, transparent 9%");
         expect(reverseCropRule).toContain("transparent 49.4%, #000 50%");
         expect(reverseCropRule).toContain("-webkit-mask-composite: source-over");
         expect(reverseCropRule).toContain("mask-composite: add");
+        expect(css).toMatch(/\.card-idle-foil,\s*\.card-element-pattern\s*\{/);
         expect(css).not.toContain("#000 11.2%, transparent 11.8%");
         expect(css).not.toContain("transparent 52.4%, #000 53%");
     });

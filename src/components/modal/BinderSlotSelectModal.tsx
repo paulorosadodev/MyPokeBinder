@@ -18,6 +18,7 @@ import { ALL_CARD_VARIANTS, VARIANT_FILTER_OPTIONS, cardCopyGroupKey, formatVari
 import { RARITY_FILTER_OPTIONS } from "@/lib/pokemon/rarity";
 import { ALL_EXPANSIONS_FILTER, CollectionSortDirection, CollectionSortField, buildExpansionFilterOptions, filterAndSortCollectionGroups } from "@/lib/collection/listCards";
 import { isCardMatchingPokemon } from "@/lib/pokemon/match";
+import { resolveCardElementTypes } from "@/lib/pokemon/cardTypes";
 import { X, Sparkles, Check, Search, Plus, BookOpen, Pencil, Loader2, Globe, Layers, ArrowUpDown } from "lucide-react";
 
 interface BinderSlotSelectModalProps {
@@ -97,7 +98,7 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
     useEffect(() => {
         if (!isOpen) return;
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === "Escape" && !editingCardId) {
+            if (e.key === "Escape" && !editingCardId && window.matchMedia("(min-width: 640px)").matches) {
                 onClose();
             }
         };
@@ -229,17 +230,17 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-md"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-0 sm:p-4 backdrop-blur-md"
             onClick={(e) => {
-                if (!editingCardId && e.target === e.currentTarget) onClose();
+                if (!editingCardId && e.target === e.currentTarget && window.matchMedia("(min-width: 640px)").matches) onClose();
             }}
         >
-            <div className="flex h-[90vh] sm:h-[85vh] max-h-[820px] w-full max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl flex-col items-center justify-center gap-5 lg:flex-row lg:items-center">
+            <div className="flex h-dvh max-h-none w-full max-w-none flex-col items-center justify-center gap-0 sm:h-[85vh] sm:max-h-[820px] sm:max-w-2xl sm:gap-5 lg:max-w-4xl lg:flex-row lg:items-center xl:max-w-5xl 2xl:max-w-6xl">
                 <div className="hidden lg:flex lg:w-[240px] xl:w-[300px] 2xl:w-[340px] shrink-0 flex-col items-center justify-center transition-all duration-200">
                     {previewCard ? (
                         <>
                             <div className="relative aspect-[8/11] w-full select-none">
-                                <Card3DTilt key={previewCard.id} className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={10} maxMove={4} scale={1} glareOpacity={0.25} perspective={1000} shineMode={resolveCardShine(previewCard.card_variant, previewCard.card_rarity)}>
+                                <Card3DTilt key={previewCard.id} className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={10} maxMove={4} scale={1} glareOpacity={0.25} perspective={1000} shineMode={resolveCardShine(previewCard.card_variant, previewCard.card_rarity)} elementTypes={resolveCardElementTypes(previewCard.card_types, previewCard.pokemon_dex_id)}>
                                     <Image key={previewCard.id} src={formatTcgdexImageUrl(previewCard.card_image_url)} alt={previewCard.card_name} fill sizes="(max-width: 1280px) 240px, 340px" className="object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.9)]" unoptimized />
                                 </Card3DTilt>
                             </div>
@@ -272,7 +273,7 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
                     )}
                 </div>
 
-                <div className="relative flex h-full w-full flex-1 min-w-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#12151d] shadow-2xl">
+                <div className="relative flex h-full w-full min-w-0 flex-1 flex-col overflow-hidden rounded-none border-0 bg-[#12151d] shadow-2xl sm:rounded-2xl sm:border sm:border-white/10">
                     {editingCardId && (
                         <div className="absolute top-0 inset-x-0 h-1 overflow-hidden rounded-t-2xl bg-white/5 z-30">
                             <div className="h-full w-full bg-poke-blue animate-pulse" />
@@ -421,7 +422,7 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
                                                 }}
                                                 className={`relative aspect-[8/11] w-full ${isNavigating ? "cursor-not-allowed opacity-80" : "cursor-pointer"}`}
                                             >
-                                                <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={resolveCardShine(card.card_variant, card.card_rarity)}>
+                                                <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={resolveCardShine(card.card_variant, card.card_rarity)} elementTypes={resolveCardElementTypes(card.card_types, card.pokemon_dex_id)}>
                                                     <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill sizes="(max-width: 768px) 50vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" unoptimized />
                                                 </Card3DTilt>
                                             </div>

@@ -14,6 +14,7 @@ import { formatTcgdexImageUrl } from "@/lib/pokemon/tcgdex";
 import { getPokemonSilhouetteUrl, POKEMON_151, markSilhouetteLoaded } from "@/lib/pokemon/constants";
 import { getRarityBadgeStyle, RARITY_FILTER_OPTIONS } from "@/lib/pokemon/rarity";
 import { resolveCardShine, VARIANT_FILTER_OPTIONS } from "@/lib/pokemon/variant";
+import { resolveCardElementTypes } from "@/lib/pokemon/cardTypes";
 import { ALL_EXPANSIONS_FILTER, buildCollectionFilterResetKey, buildExpansionFilterOptions, type CollectionSortDirection, type CollectionSortField } from "@/lib/collection/listCards";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { getCardAppearProps } from "@/lib/ui/cardAppear";
@@ -357,7 +358,7 @@ export default function CollectionPage() {
                                         </div>
 
                                         <div className="relative my-1 aspect-[8/11] w-full sm:my-2">
-                                            <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={resolveCardShine(card.card_variant, card.card_rarity)}>
+                                            <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={resolveCardShine(card.card_variant, card.card_rarity)} elementTypes={resolveCardElementTypes(card.card_types, card.pokemon_dex_id)}>
                                                 <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill unoptimized sizes="(max-width: 640px) 30vw, (max-width: 768px) 33vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" priority={index === 0} />
                                             </Card3DTilt>
                                         </div>
@@ -394,12 +395,12 @@ export default function CollectionPage() {
 
             {isPokemonPickerOpen && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-0 sm:p-4 backdrop-blur-sm"
                     onClick={(e) => {
-                        if (e.target === e.currentTarget) setIsPokemonPickerOpen(false);
+                        if (e.target === e.currentTarget && window.matchMedia("(min-width: 640px)").matches) setIsPokemonPickerOpen(false);
                     }}
                 >
-                    <div className="flex h-[90vh] sm:h-[85vh] max-h-[820px] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#12151d] shadow-2xl md:max-w-4xl lg:max-w-5xl">
+                    <div className="flex h-dvh max-h-none w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-[#12151d] shadow-2xl sm:h-[85vh] sm:max-h-[820px] sm:max-w-2xl sm:rounded-2xl sm:border sm:border-white/10 md:max-w-4xl lg:max-w-5xl">
                         <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
                             <div>
                                 <h3 className="text-lg font-bold text-white">Escolha um Pokémon</h3>

@@ -4,22 +4,23 @@ import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { X } from "lucide-react";
 import { Card3DTilt } from "@/components/ui/Card3DTilt";
-import type { CardShineMode } from "@/types/binder";
+import type { CardElementType, CardShineMode } from "@/types/binder";
 
 interface CardLightboxProps {
     src: string | null;
     alt?: string;
     shineMode?: CardShineMode;
+    elementTypes?: CardElementType[];
     onClose: () => void;
 }
 
-export function CardLightbox({ src, alt = "Carta", shineMode = "none", onClose }: CardLightboxProps) {
+export function CardLightbox({ src, alt = "Carta", shineMode = "none", elementTypes, onClose }: CardLightboxProps) {
     const dialogRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (!src) return;
         const onKey = (e: KeyboardEvent) => {
-            if (e.key === "Escape") onClose();
+            if (e.key === "Escape" && window.matchMedia("(min-width: 640px)").matches) onClose();
         };
         document.addEventListener("keydown", onKey);
 
@@ -66,7 +67,7 @@ export function CardLightbox({ src, alt = "Carta", shineMode = "none", onClose }
             aria-modal="true"
             aria-label={alt}
             onClick={(e) => {
-                if (e.target === e.currentTarget) onClose();
+                if (e.target === e.currentTarget && window.matchMedia("(min-width: 640px)").matches) onClose();
             }}
         >
             <button type="button" onClick={onClose} aria-label="Fechar" className="absolute right-4 top-4 z-20 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition-colors hover:bg-white/20 sm:right-6 sm:top-6">
@@ -74,7 +75,7 @@ export function CardLightbox({ src, alt = "Carta", shineMode = "none", onClose }
             </button>
 
             <div className="relative aspect-[8/11] w-[88vw] max-w-[420px] select-none touch-none">
-                <Card3DTilt className="relative h-full w-full overflow-hidden rounded-2xl touch-none" maxTilt={18} scale={1.05} glareOpacity={0.35} perspective={1000} shineMode={shineMode} enableTouch>
+                <Card3DTilt className="relative h-full w-full overflow-hidden rounded-2xl touch-none" maxTilt={18} scale={1.05} glareOpacity={0.35} perspective={1000} shineMode={shineMode} elementTypes={elementTypes} enableTouch>
                     <Image src={src} alt={alt} fill unoptimized priority sizes="(max-width: 768px) 90vw, 500px" className="pointer-events-none object-contain drop-shadow-[0_25px_60px_rgba(0,0,0,0.95)]" />
                 </Card3DTilt>
             </div>

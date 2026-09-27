@@ -22,7 +22,8 @@ Ao visualizar uma carta em tela cheia (fullscreen / lightbox) em dispositivos m�
 
 3. **Experiência de Uso e Fechamento Intuitivo**:
    - Removido o fechamento ao tocar/arrastar sobre a carta no `CardLightbox`.
-   - O fechamento da visualização ampliada permanece disponível via toque no botão de fechar ("X"), tecla `Escape` ou toque na área escura de fundo (backdrop).
+   - No mobile, o fechamento da visualização ampliada fica restrito ao botão interno de fechar ("X"), evitando encerramentos acidentais ao tocar na área escura ou usar um teclado conectado.
+   - A partir do breakpoint `sm`, o fechamento também permanece disponível pela tecla `Escape` ou por clique na área escura de fundo (backdrop).
    - Unificada a visualização ampliada da página de detalhes (`/cards/[id]`) para utilizar o componente padronizado `CardLightbox`.
 
 ## Consequências

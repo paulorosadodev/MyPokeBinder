@@ -1,6 +1,7 @@
 export type CardLanguage = "pt-br" | "en" | "ja";
 export type CardVariant = "normal" | "holo" | "reverse";
 export type CardShineMode = "none" | "foil" | "holo" | "prismatic";
+export type CardElementType = "Colorless" | "Darkness" | "Dragon" | "Fairy" | "Fighting" | "Fire" | "Grass" | "Lightning" | "Metal" | "Psychic" | "Water";
 export type BinderStatusFilter = "all" | "in_binder" | "stored";
 
 export interface CardVariantsFlags {
@@ -18,6 +19,7 @@ export interface UserCard {
     card_image_url: string;
     card_set_name: string;
     card_rarity: string;
+    card_types?: CardElementType[];
     card_language: CardLanguage;
     card_variant: CardVariant;
     is_in_binder: boolean;
@@ -32,6 +34,7 @@ export interface SearchCardItem {
     image: string;
     setName?: string;
     rarity?: string;
+    types?: CardElementType[];
     variants?: CardVariantsFlags;
 }
 

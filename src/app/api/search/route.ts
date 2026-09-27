@@ -3,9 +3,10 @@ import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { formatTcgdexImageUrl, isPocketCard } from "@/lib/pokemon/tcgdex";
 import { coalesceRequest, getFromMemoryCache, setToMemoryCache } from "@/lib/pokemon/coalesce";
 import { normalizeVariantsFlags } from "@/lib/pokemon/variant";
+import { normalizeCardElementTypes } from "@/lib/pokemon/cardTypes";
 import { POKEMON_151 } from "@/lib/pokemon/constants";
 import { isCardMatchingPokemon } from "@/lib/pokemon/match";
-import type { CardVariantsFlags } from "@/types/binder";
+import type { CardElementType, CardVariantsFlags } from "@/types/binder";
 
 interface TcgDexCardSummary {
     id: string;
@@ -19,6 +20,7 @@ interface TcgDexCardDetail {
     name: string;
     image?: string;
     rarity?: string;
+    types?: string[];
     set?: {
         id?: string;
         name?: string;
@@ -29,6 +31,7 @@ interface TcgDexCardDetail {
 interface CachedCardDetail {
     setName: string;
     rarity: string;
+    types: CardElementType[];
     variants: CardVariantsFlags;
 }
 
@@ -122,12 +125,14 @@ export async function GET(request: NextRequest) {
                         image: formatTcgdexImageUrl(card.image),
                         setName: cachedDetail.setName,
                         rarity: cachedDetail.rarity,
+                        types: cachedDetail.types ?? [],
                         variants: cachedDetail.variants,
                     };
                 }
 
                 let setName = "";
                 let rarity = "";
+                let types: CardElementType[] = [];
                 let variants = normalizeVariantsFlags({ normal: true });
 
                 try {
@@ -145,11 +150,12 @@ export async function GET(request: NextRequest) {
                     if (detail) {
                         setName = detail.set?.name || "";
                         rarity = detail.rarity || "";
+                        types = normalizeCardElementTypes(detail.types);
                         variants = normalizeVariantsFlags(detail.variants);
                         if (!variants.normal && !variants.holo && !variants.reverse) {
                             variants = normalizeVariantsFlags({ normal: true });
                         }
-                        setToMemoryCache(`detail_${card.id}`, { setName, rarity, variants } satisfies CachedCardDetail, 86400000);
+                        setToMemoryCache(`detail_${card.id}`, { setName, rarity, types, variants } satisfies CachedCardDetail, 86400000);
                     }
                 } catch {}
 
@@ -160,6 +166,7 @@ export async function GET(request: NextRequest) {
                     image: formatTcgdexImageUrl(card.image),
                     setName,
                     rarity,
+                    types,
                     variants,
                 };
             }),

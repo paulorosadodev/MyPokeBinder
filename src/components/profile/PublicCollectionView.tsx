@@ -13,12 +13,13 @@ import { Select, type SelectOption } from "@/components/ui/Select";
 import { formatTcgdexImageUrl } from "@/lib/pokemon/tcgdex";
 import { getRarityBadgeStyle, RARITY_FILTER_OPTIONS } from "@/lib/pokemon/rarity";
 import { resolveCardShine, VARIANT_FILTER_OPTIONS } from "@/lib/pokemon/variant";
+import { resolveCardElementTypes } from "@/lib/pokemon/cardTypes";
 import { ALL_EXPANSIONS_FILTER, buildCollectionFilterResetKey, buildExpansionFilterOptions, type CollectionSortDirection, type CollectionSortField } from "@/lib/collection/listCards";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { getCardAppearProps } from "@/lib/ui/cardAppear";
 import { buildThemeCssVars } from "@/lib/profile/username";
 import { useInfinitePublicCollectionGroups, usePublicUserExpansions } from "@/lib/swr";
-import { BinderStatusFilter, CardLanguage, UserCard, CollectionCardGroup, type CardShineMode } from "@/types/binder";
+import { BinderStatusFilter, CardLanguage, UserCard, CollectionCardGroup, type CardElementType, type CardShineMode } from "@/types/binder";
 import { ArrowLeft, ArrowUpDown, BookOpen, Globe, Layers, Layers2, RefreshCw, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 
 export interface PublicCollectionPayload {
@@ -69,7 +70,7 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
     const [expansionFilter, setExpansionFilter] = useState(ALL_EXPANSIONS_FILTER);
     const [sortField, setSortField] = useState<SortField>("dex");
     const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
-    const [lightbox, setLightbox] = useState<{ src: string; alt: string; shineMode: CardShineMode } | null>(null);
+    const [lightbox, setLightbox] = useState<{ src: string; alt: string; shineMode: CardShineMode; elementTypes: CardElementType[] } | null>(null);
 
     const [isMobile, setIsMobile] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
@@ -115,8 +116,8 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
         return count;
     }, [statusFilter, languageFilter, rarityFilter, variantFilter, expansionFilter, sortField, sortDirection]);
 
-    const openLightbox = useCallback((src: string, alt: string, shineMode: CardShineMode = "none") => {
-        setLightbox({ src, alt, shineMode });
+    const openLightbox = useCallback((src: string, alt: string, shineMode: CardShineMode = "none", elementTypes: CardElementType[] = ["Colorless"]) => {
+        setLightbox({ src, alt, shineMode, elementTypes });
     }, []);
 
     const closeLightbox = useCallback(() => {
@@ -338,9 +339,10 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
                                     const rarity = getRarityBadgeStyle(card.card_rarity);
                                     const imageSrc = formatTcgdexImageUrl(card.card_image_url);
                                     const shineMode = resolveCardShine(card.card_variant, card.card_rarity);
+                                    const elementTypes = resolveCardElementTypes(card.card_types, card.pokemon_dex_id);
 
                                     return (
-                                        <button key={`${filterResetKey}-${group.key}`} type="button" onClick={() => openLightbox(imageSrc, card.card_name, shineMode)} className={`group relative flex cursor-zoom-in flex-col justify-between rounded-xl border border-white/10 bg-white/[0.03] p-1.5 text-left transition-all duration-200 hover:border-poke-blue/50 hover:bg-white/[0.06] sm:p-2.5 ${appear.className}`} style={appear.style} aria-label={`Ampliar ${card.card_name}`}>
+                                        <button key={`${filterResetKey}-${group.key}`} type="button" onClick={() => openLightbox(imageSrc, card.card_name, shineMode, elementTypes)} className={`group relative flex cursor-zoom-in flex-col justify-between rounded-xl border border-white/10 bg-white/[0.03] p-1.5 text-left transition-all duration-200 hover:border-poke-blue/50 hover:bg-white/[0.06] sm:p-2.5 ${appear.className}`} style={appear.style} aria-label={`Ampliar ${card.card_name}`}>
                                             <div className="z-10 flex min-h-[20px] items-center justify-between gap-1 sm:min-h-[26px]">
                                                 <span className="flex h-4.5 sm:h-5 items-center shrink-0 rounded bg-black/60 px-1 text-[9px] font-bold text-slate-300 backdrop-blur-sm sm:px-1.5 sm:text-[10px]">#{String(card.pokemon_dex_id).padStart(3, "0")}</span>
                                                 <div className="flex items-center gap-0.5 sm:gap-1">
@@ -363,7 +365,7 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
                                                 </div>
                                             </div>
                                             <div className="relative my-1 aspect-[8/11] w-full sm:my-2">
-                                                <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={shineMode}>
+                                                <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={shineMode} elementTypes={elementTypes}>
                                                     <Image src={imageSrc} alt={card.card_name} fill unoptimized sizes="(max-width: 640px) 30vw, (max-width: 768px) 33vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" priority={index === 0} />
                                                 </Card3DTilt>
                                             </div>
@@ -396,7 +398,7 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
                 </main>
             </div>
 
-            <CardLightbox src={lightbox?.src ?? null} alt={lightbox?.alt} shineMode={lightbox?.shineMode} onClose={closeLightbox} />
+            <CardLightbox src={lightbox?.src ?? null} alt={lightbox?.alt} shineMode={lightbox?.shineMode} elementTypes={lightbox?.elementTypes} onClose={closeLightbox} />
         </div>
     );
 }

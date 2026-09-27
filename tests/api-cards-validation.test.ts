@@ -143,6 +143,29 @@ describe("Cards API Validation", () => {
         expect(json.error).toBe("A carta selecionada não corresponde ao Pokémon indicado");
     });
 
+    it("should return 400 for invalid elemental card types", async () => {
+        const request = new NextRequest("http://localhost:3000/api/cards", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-test-user-id": "test-user-id",
+            },
+            body: JSON.stringify({
+                tcgdex_card_id: "base1-44",
+                pokemon_dex_id: 1,
+                card_name: "Bulbasaur",
+                card_image_url: "https://assets.tcgdex.net/en/base/base1/44/high.webp",
+                card_language: "en",
+                card_types: ["Plant"],
+            }),
+        });
+        const response = await postCard(request);
+        expect(response.status).toBe(400);
+
+        const json = await response.json();
+        expect(json.error).toBe("Tipos elementais inválidos");
+    });
+
     it("should return 400 for GET with invalid UUID", async () => {
         const request = new Request("http://localhost:3000/api/cards/not-a-uuid");
         const response = await getCard(request, { params: Promise.resolve({ id: "not-a-uuid" }) });

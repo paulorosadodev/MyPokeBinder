@@ -4,6 +4,7 @@ import { formatTcgdexImageUrl, isPocketCard } from "@/lib/pokemon/tcgdex";
 import { revalidatePublicProfileForUserId } from "@/lib/profile/publicCache";
 import { isCardVariant } from "@/lib/pokemon/variant";
 import { isCardMatchingPokemon } from "@/lib/pokemon/match";
+import { isValidCardElementTypes, resolveCardElementTypes } from "@/lib/pokemon/cardTypes";
 
 export async function GET(request: NextRequest) {
     const auth = await getAuthenticatedUser(request);
@@ -91,6 +92,7 @@ export async function GET(request: NextRequest) {
             card_image_url: string;
             card_set_name: string;
             card_rarity: string;
+            card_types: string[];
             card_language: string;
             card_variant: string;
             is_in_binder: boolean;
@@ -115,6 +117,7 @@ export async function GET(request: NextRequest) {
                 card_image_url: row.card_image_url,
                 card_set_name: row.card_set_name,
                 card_rarity: row.card_rarity,
+                card_types: row.card_types,
                 card_language: row.card_language,
                 card_variant: row.card_variant,
                 is_in_binder: row.is_in_binder,
@@ -130,6 +133,7 @@ export async function GET(request: NextRequest) {
                 card_image_url: row.card_image_url,
                 card_set_name: row.card_set_name,
                 card_rarity: row.card_rarity,
+                card_types: row.card_types,
                 card_language: row.card_language,
                 card_variant: row.card_variant,
                 is_in_binder: row.has_in_binder,
@@ -178,7 +182,7 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const { tcgdex_card_id, pokemon_dex_id, card_name, card_image_url, card_set_name = "", card_rarity = "", card_language = "pt-br", card_variant = "normal" } = body;
+        const { tcgdex_card_id, pokemon_dex_id, card_name, card_image_url, card_set_name = "", card_rarity = "", card_types, card_language = "pt-br", card_variant = "normal" } = body;
 
         if (
             typeof tcgdex_card_id !== "string" ||
@@ -220,6 +224,12 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "A carta selecionada não corresponde ao Pokémon indicado" }, { status: 400 });
         }
 
+        if (card_types !== undefined && !isValidCardElementTypes(card_types)) {
+            return NextResponse.json({ error: "Tipos elementais inválidos" }, { status: 400 });
+        }
+
+        const resolvedCardTypes = card_types === undefined ? resolveCardElementTypes(undefined, pokemon_dex_id) : card_types;
+
         const { data: newCard, error: insertError } = await supabase
             .from("user_cards")
             .insert({
@@ -230,6 +240,7 @@ export async function POST(request: NextRequest) {
                 card_image_url: formatTcgdexImageUrl(card_image_url.trim()),
                 card_set_name: typeof card_set_name === "string" ? card_set_name.trim() : "",
                 card_rarity: typeof card_rarity === "string" ? card_rarity.trim() : "",
+                card_types: resolvedCardTypes,
                 card_language: card_language.toLowerCase(),
                 card_variant: variant,
                 is_in_binder: false,

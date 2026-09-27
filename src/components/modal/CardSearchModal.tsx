@@ -209,6 +209,7 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                     card_image_url: formatTcgdexImageUrl(card.image),
                     card_set_name: card.setName || "",
                     card_rarity: card.rarity || "",
+                    card_types: card.types || [],
                     card_language: lang,
                     card_variant: variant,
                 }),
@@ -242,12 +243,12 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-2 sm:p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-0 sm:p-4 backdrop-blur-sm"
             onClick={(e) => {
-                if (e.target === e.currentTarget) onClose();
+                if (e.target === e.currentTarget && window.matchMedia("(min-width: 640px)").matches) onClose();
             }}
         >
-            <div className="flex h-[90vh] sm:h-[85vh] max-h-[820px] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#12151d] shadow-2xl md:max-w-5xl lg:max-w-6xl">
+            <div className="flex h-dvh max-h-none w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-[#12151d] shadow-2xl sm:h-[85vh] sm:max-h-[820px] sm:max-w-3xl sm:rounded-2xl sm:border sm:border-white/10 md:max-w-5xl lg:max-w-6xl">
                 <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-2.5 sm:px-6 sm:py-3.5">
                     <div>
                         <div className="flex items-center gap-2 sm:gap-2.5">
@@ -327,7 +328,7 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                                     return (
                                         <div key={card.id} className={`group relative flex h-full flex-col justify-between gap-1.5 sm:gap-2 rounded-xl border p-2 sm:p-2.5 transition-all duration-200 ${isSubmittingThis ? "border-poke-blue bg-poke-blue/15 ring-2 ring-poke-blue/40" : "border-white/10 bg-white/[0.03] hover:border-poke-blue/50 hover:bg-white/[0.07]"} ${appear.className}`} style={appear.style}>
                                             <div className="relative aspect-[8/11] w-full shrink-0 cursor-pointer" onClick={() => handleAddCard(card)}>
-                                                <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={shineMode} enableTouch>
+                                                <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={shineMode} elementTypes={card.types} enableTouch>
                                                     <Image src={formatTcgdexImageUrl(card.image)} alt={card.name} fill sizes="(max-width: 768px) 50vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" unoptimized />
                                                 </Card3DTilt>
                                             </div>

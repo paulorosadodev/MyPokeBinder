@@ -116,6 +116,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ use
         card_image_url: string;
         card_set_name: string;
         card_rarity: string;
+        card_types: string[];
         card_language: string;
         card_variant: string;
         is_in_binder: boolean;
@@ -140,6 +141,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ use
             card_image_url: row.card_image_url,
             card_set_name: row.card_set_name,
             card_rarity: row.card_rarity,
+            card_types: row.card_types,
             card_language: row.card_language,
             card_variant: row.card_variant,
             is_in_binder: row.is_in_binder,
@@ -155,6 +157,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ use
             card_image_url: row.card_image_url,
             card_set_name: row.card_set_name,
             card_rarity: row.card_rarity,
+            card_types: row.card_types,
             card_language: row.card_language,
             card_variant: row.card_variant,
             is_in_binder: row.has_in_binder,
