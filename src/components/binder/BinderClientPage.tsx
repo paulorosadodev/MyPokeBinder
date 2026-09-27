@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef, Suspense } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, Suspense, lazy } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSWRConfig } from "swr";
 import { toast } from "sonner";
@@ -12,13 +12,16 @@ import { collectBinderPageImageUrls, getActiveCatalogPages, getAdjacentCatalogPa
 import { CardSearchModal } from "@/components/modal/CardSearchModal";
 import { BinderSlotSelectModal } from "@/components/modal/BinderSlotSelectModal";
 import { PokeballLoader } from "@/components/loading/PokeballLoader";
-import { BinderBookFlip, type BinderBookFlipHandle } from "@/components/binder/BinderBookFlip";
+import { BinderMobile } from "@/components/binder/BinderMobile";
+import type { BinderNavigationHandle } from "@/components/binder/types";
 import { BinderControls } from "@/components/binder/BinderControls";
 import { BinderPageNav } from "@/components/binder/BinderPageNav";
 import { useBinderCards } from "@/lib/swr";
 import { useImagePreloader, preloadImages } from "@/lib/hooks/useImagePreloader";
 import { useBinderEntrance } from "@/lib/hooks/useBinderEntrance";
 import { canHandleBinderEntry, isBinderDataReady, resolveBinderEntryTargetPage, resolveBinderInitialPage, shouldRenderBinder } from "@/lib/pokemon/binderOpen";
+
+const BinderBookFlip = lazy(() => import("@/components/binder/BinderBookFlip").then((module) => ({ default: module.BinderBookFlip })));
 
 interface BinderClientPageProps {
     initialUser?: {
@@ -89,7 +92,7 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
     const [selectActiveCard, setSelectActiveCard] = useState<UserCard | undefined>(undefined);
     const [pendingDropDexId, setPendingDropDexId] = useState<number | null>(null);
 
-    const bookFlipRef = useRef<BinderBookFlipHandle>(null);
+    const bookFlipRef = useRef<BinderNavigationHandle>(null);
     const pendingDropDexIdRef = useRef<number | null>(null);
     const initialModalSlotCardRef = useRef<UserCard | undefined>(undefined);
     const hasCapturedInitialSlotCardRef = useRef(false);
@@ -101,7 +104,7 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
     const highlightRequestIdRef = useRef(0);
     const [isBookReady, setIsBookReady] = useState(false);
     const [isBookEngineReady, setIsBookEngineReady] = useState(false);
-    const { showLoader, canReveal } = useBinderEntrance(isBookEngineReady, skipEntranceAnimation);
+    const { showLoader, canReveal } = useBinderEntrance(isBookEngineReady, skipEntranceAnimation, isMobile);
     const handleBookEngineReady = useCallback(() => setIsBookEngineReady(true), []);
     const viewportModeRef = useRef<boolean | null>(null);
     const highlightGateRef = useRef({ currentPage, isMobile, isBookReady });
@@ -262,6 +265,7 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
         currentImagesReady,
         skipEntranceAnimation,
     });
+    const BinderView = isMobile ? BinderMobile : BinderBookFlip;
     const renderBinder = shouldRenderBinder({ viewportReady, isDataReady, hasMountedBinder });
     const canHandleEntry = canHandleBinderEntry({ viewportReady, isDataReady, hasMountedBinder, isBookReady });
 
@@ -291,12 +295,12 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
     }, [currentPage, isMobile, jumpTargetPage]);
 
     const canGoPrev = useMemo(() => {
-        return currentPage > 0;
-    }, [currentPage]);
+        return currentPage > (isMobile ? 1 : 0);
+    }, [currentPage, isMobile]);
 
     const canGoNext = useMemo(() => {
-        return currentPage < BINDER_CLOSED_BACK_PAGE;
-    }, [currentPage]);
+        return currentPage < (isMobile ? TOTAL_PAGES : BINDER_CLOSED_BACK_PAGE);
+    }, [currentPage, isMobile]);
 
     const handlePrev = useCallback(() => {
         if (!canGoPrev || !isBookReady || bookFlipRef.current?.isBusy()) return;
@@ -701,26 +705,28 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
                                 <ChevronLeft size={24} />
                             </button>
 
-                            <div className="relative flex h-full min-h-0 w-full max-w-6xl flex-1 items-center justify-center max-md:h-auto max-md:flex-none" aria-busy={!canReveal}>
+                            <div className="relative flex h-full min-h-0 w-full max-w-6xl flex-1 items-center justify-center max-md:h-auto max-md:flex-none" aria-busy={!canReveal || !isBookReady}>
                                 {renderBinder ? (
-                                    <BinderBookFlip
-                                        ref={bookFlipRef}
-                                        currentPage={currentPage}
-                                        cardsMap={displayCardsMap}
-                                        availableCounts={availableCounts}
-                                        highlightedDexId={highlightedDexId}
-                                        droppingDexId={droppingDexId}
-                                        isMobile={isMobile}
-                                        imagePages={imagePages}
-                                        priorityPages={activePages}
-                                        readyToOpen={canReveal}
-                                        skipOpeningAnimation={skipEntranceAnimation}
-                                        onEngineReady={handleBookEngineReady}
-                                        onPageChange={handlePageChange}
-                                        onSlotClick={handleSlotClick}
-                                        onSwapClick={handleSwapClick}
-                                        onReady={handleBookReady}
-                                    />
+                                    <Suspense fallback={<div className="binder-book-stage" />}>
+                                        <BinderView
+                                            ref={bookFlipRef}
+                                            currentPage={currentPage}
+                                            cardsMap={displayCardsMap}
+                                            availableCounts={availableCounts}
+                                            highlightedDexId={highlightedDexId}
+                                            droppingDexId={droppingDexId}
+                                            isMobile={isMobile}
+                                            imagePages={imagePages}
+                                            priorityPages={activePages}
+                                            readyToOpen={canReveal}
+                                            skipOpeningAnimation={skipEntranceAnimation}
+                                            onEngineReady={handleBookEngineReady}
+                                            onPageChange={handlePageChange}
+                                            onSlotClick={handleSlotClick}
+                                            onSwapClick={handleSwapClick}
+                                            onReady={handleBookReady}
+                                        />
+                                    </Suspense>
                                 ) : (
                                     <div className="binder-book-stage" />
                                 )}

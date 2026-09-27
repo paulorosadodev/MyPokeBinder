@@ -2,7 +2,7 @@
 
 ## Status
 
-Aceito (revisado)
+Histórico. A implementação mobile descrita nesta ADR foi substituída por uma grade com transição de saída e entrada, sem PageFlip. O motor permanece exclusivo do desktop. O comportamento atual e sua validação estão em [Testes da animação do binder](../agents/testes-binder.md).
 
 ## Contexto
 

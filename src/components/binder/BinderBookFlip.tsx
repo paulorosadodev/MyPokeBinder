@@ -35,31 +35,7 @@ import { BinderSlot } from "./BinderSlot";
 import { PokeballLogo } from "@/components/ui/PokeballLogo";
 import { UserSettingsContext } from "@/lib/context/UserSettingsContext";
 
-export interface BinderBookFlipHandle {
-    flipNext: () => void;
-    flipPrev: () => void;
-    turnToPage: (page: number) => void;
-    getCurrentPageIndex: () => number;
-    isBusy: () => boolean;
-}
-
-interface BinderBookFlipProps {
-    currentPage: number;
-    cardsMap: Map<number, UserCard>;
-    availableCounts?: Record<number, number>;
-    highlightedDexId?: number | null;
-    droppingDexId?: number | null;
-    isMobile?: boolean;
-    imagePages?: readonly number[];
-    priorityPages?: readonly number[];
-    readyToOpen?: boolean;
-    skipOpeningAnimation?: boolean;
-    onEngineReady?: () => void;
-    onPageChange: (page: number) => void;
-    onSlotClick: (dexId: number, pokemonName: string, card?: UserCard) => void;
-    onSwapClick?: (dexId: number, pokemonName: string, card?: UserCard) => void;
-    onReady?: () => void;
-}
+import type { BinderNavigationHandle, BinderViewProps } from "./types";
 
 interface BinderCardsContextValue {
     cardsMap: Map<number, UserCard>;
@@ -308,7 +284,7 @@ const BackCoverSheet = forwardRef<HTMLDivElement>(function BackCoverSheet(_props
 });
 
 export const BinderBookFlip = memo(
-    forwardRef<BinderBookFlipHandle, BinderBookFlipProps>(function BinderBookFlip({ currentPage, cardsMap, availableCounts = {}, highlightedDexId, droppingDexId, isMobile = false, imagePages, priorityPages, readyToOpen = true, skipOpeningAnimation: skipOpeningAnimationProp = false, onEngineReady, onPageChange, onSlotClick, onSwapClick, onReady }, ref) {
+    forwardRef<BinderNavigationHandle, BinderViewProps>(function BinderBookFlip({ currentPage, cardsMap, availableCounts = {}, highlightedDexId, droppingDexId, isMobile = false, imagePages, priorityPages, readyToOpen = true, skipOpeningAnimation: skipOpeningAnimationProp = false, onEngineReady, onPageChange, onSlotClick, onSwapClick, onReady }, ref) {
         const settings = useContext(UserSettingsContext);
         const animationsEnabled = settings ? settings.animationsEnabled : true;
         const [isBookEngineReady, setIsBookEngineReady] = useState(false);
