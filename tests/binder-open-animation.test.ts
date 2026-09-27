@@ -243,12 +243,11 @@ describe("Binder cover open animation plan", () => {
         ).toBe(false);
     });
 
-    it("allows mounting immediately when animating from cover without waiting for card images", () => {
+    it("aguarda as imagens iniciais mesmo quando a abertura começa pela capa", () => {
         expect(
             isBinderDataReady({
                 cardsLoading: true,
                 currentImagesReady: false,
-                animateFromCover: true,
                 skipEntranceAnimation: false,
             }),
         ).toBe(false);
@@ -256,15 +255,6 @@ describe("Binder cover open animation plan", () => {
             isBinderDataReady({
                 cardsLoading: false,
                 currentImagesReady: false,
-                animateFromCover: true,
-                skipEntranceAnimation: false,
-            }),
-        ).toBe(true);
-        expect(
-            isBinderDataReady({
-                cardsLoading: false,
-                currentImagesReady: false,
-                animateFromCover: false,
                 skipEntranceAnimation: false,
             }),
         ).toBe(false);
@@ -272,7 +262,6 @@ describe("Binder cover open animation plan", () => {
             isBinderDataReady({
                 cardsLoading: false,
                 currentImagesReady: true,
-                animateFromCover: false,
                 skipEntranceAnimation: false,
             }),
         ).toBe(true);
@@ -280,7 +269,6 @@ describe("Binder cover open animation plan", () => {
             isBinderDataReady({
                 cardsLoading: false,
                 currentImagesReady: false,
-                animateFromCover: false,
                 skipEntranceAnimation: true,
             }),
         ).toBe(true);

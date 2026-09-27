@@ -367,7 +367,7 @@ export const BinderBookFlip = memo(
 
         const handleCoverClick = useCallback(() => {
             const flip = flipBookRef.current?.pageFlip();
-            if (!flip || isFlippingRef.current) return;
+            if (!flip || isFlippingRef.current || readyOrientationRef.current !== isPortraitBook) return;
             if (flip.getCurrentPageIndex() === 0) {
                 if (!animationsEnabled) {
                     flip.turnToPage(isPortraitBook ? 1 : 2);
@@ -396,6 +396,7 @@ export const BinderBookFlip = memo(
         }, []);
 
         const flipNextPage = useCallback(() => {
+            if (isFlippingRef.current || multiFlipStateRef.current || readyOrientationRef.current !== isPortraitBook) return;
             resetMultiFlip();
             const flip = flipBookRef.current?.pageFlip();
             if (!flip) return;
@@ -413,6 +414,7 @@ export const BinderBookFlip = memo(
         }, [resetMultiFlip, animationsEnabled, isPortraitBook]);
 
         const flipPrevPage = useCallback(() => {
+            if (isFlippingRef.current || multiFlipStateRef.current || readyOrientationRef.current !== isPortraitBook) return;
             resetMultiFlip();
             const flip = flipBookRef.current?.pageFlip();
             if (!flip) return;
@@ -444,6 +446,7 @@ export const BinderBookFlip = memo(
                 flipNext: flipNextPage,
                 flipPrev: flipPrevPage,
                 turnToPage: (page: number) => {
+                    if (isFlippingRef.current || multiFlipStateRef.current || readyOrientationRef.current !== isPortraitBook) return;
                     resetMultiFlip();
                     const flip = flipBookRef.current?.pageFlip();
                     if (!flip) return;
@@ -476,7 +479,7 @@ export const BinderBookFlip = memo(
                     const flip = flipBookRef.current?.pageFlip();
                     return flip ? flip.getCurrentPageIndex() : 0;
                 },
-                isBusy: () => isFlippingRef.current,
+                isBusy: () => isFlippingRef.current || multiFlipStateRef.current !== null || readyOrientationRef.current !== isPortraitBook,
             }),
             [isPortraitBook, resetMultiFlip, animationsEnabled, flipNextPage, flipPrevPage],
         );
@@ -505,6 +508,7 @@ export const BinderBookFlip = memo(
                     if (reduceMotion) {
                         flip.turnToPage(openPlan.targetPhysical);
                         isFlippingRef.current = false;
+                        signalReady();
                         return;
                     }
                     isFlippingRef.current = true;

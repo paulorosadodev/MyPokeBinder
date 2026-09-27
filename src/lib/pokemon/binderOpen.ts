@@ -64,8 +64,8 @@ export function planBinderPageNavigation(currentPhysical: number, targetPhysical
     };
 }
 
-export function isBinderDataReady(options: { cardsLoading: boolean; currentImagesReady: boolean; animateFromCover: boolean; skipEntranceAnimation: boolean }): boolean {
-    return !options.cardsLoading && (options.animateFromCover || options.currentImagesReady || options.skipEntranceAnimation);
+export function isBinderDataReady(options: { cardsLoading: boolean; currentImagesReady: boolean; skipEntranceAnimation: boolean }): boolean {
+    return !options.cardsLoading && (options.currentImagesReady || options.skipEntranceAnimation);
 }
 
 export function shouldRenderBinder(options: { viewportReady: boolean; isDataReady: boolean; hasMountedBinder: boolean }): boolean {

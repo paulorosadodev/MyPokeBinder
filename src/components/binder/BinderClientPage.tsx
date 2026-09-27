@@ -18,7 +18,7 @@ import { BinderPageNav } from "@/components/binder/BinderPageNav";
 import { useBinderCards } from "@/lib/swr";
 import { useImagePreloader, preloadImages } from "@/lib/hooks/useImagePreloader";
 import { useBinderEntrance } from "@/lib/hooks/useBinderEntrance";
-import { canHandleBinderEntry, isBinderDataReady, planBinderOpenAnimation, resolveBinderEntryTargetPage, resolveBinderInitialPage, shouldRenderBinder } from "@/lib/pokemon/binderOpen";
+import { canHandleBinderEntry, isBinderDataReady, resolveBinderEntryTargetPage, resolveBinderInitialPage, shouldRenderBinder } from "@/lib/pokemon/binderOpen";
 
 interface BinderClientPageProps {
     initialUser?: {
@@ -253,16 +253,13 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
     const imagePages = useMemo(() => retainBinderImagePages(retainedImagePages, requestedImagePages), [retainedImagePages, requestedImagePages]);
     const currentSpreadImages = useMemo(() => collectBinderPageImageUrls(activePages, cardsMap), [activePages, cardsMap]);
 
-    const openPlan = useMemo(() => planBinderOpenAnimation(initialPage, isMobile, skipEntranceAnimation), [initialPage, isMobile, skipEntranceAnimation]);
-
     const { allLoaded: currentImagesReady } = useImagePreloader(currentSpreadImages, {
-        enabled: viewportReady && !cardsLoading && !hasMountedBinder && !skipEntranceAnimation && !openPlan.animateFromCover,
+        enabled: viewportReady && !cardsLoading && !hasMountedBinder && !skipEntranceAnimation,
         timeoutMs: 5000,
     });
     const isDataReady = isBinderDataReady({
         cardsLoading,
         currentImagesReady,
-        animateFromCover: openPlan.animateFromCover,
         skipEntranceAnimation,
     });
     const renderBinder = shouldRenderBinder({ viewportReady, isDataReady, hasMountedBinder });
@@ -302,16 +299,16 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
     }, [currentPage]);
 
     const handlePrev = useCallback(() => {
-        if (!canGoPrev) return;
+        if (!canGoPrev || !isBookReady || bookFlipRef.current?.isBusy()) return;
         clearHighlight();
         bookFlipRef.current?.flipPrev();
-    }, [canGoPrev, clearHighlight]);
+    }, [canGoPrev, isBookReady, clearHighlight]);
 
     const handleNext = useCallback(() => {
-        if (!canGoNext) return;
+        if (!canGoNext || !isBookReady || bookFlipRef.current?.isBusy()) return;
         clearHighlight();
         bookFlipRef.current?.flipNext();
-    }, [canGoNext, clearHighlight]);
+    }, [canGoNext, isBookReady, clearHighlight]);
 
     const handlePageChange = useCallback(
         (newPage: number) => {
@@ -339,12 +336,12 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
 
     const handleSelectPage = useCallback(
         (targetPage: number) => {
-            if (activePages.includes(targetPage)) return;
+            if (!isBookReady || bookFlipRef.current?.isBusy() || activePages.includes(targetPage)) return;
             clearHighlight();
             preloadJumpTarget(targetPage);
             bookFlipRef.current?.turnToPage(targetPage);
         },
-        [activePages, clearHighlight, preloadJumpTarget],
+        [activePages, isBookReady, clearHighlight, preloadJumpTarget],
     );
 
     const handleNavigateToPokemon = useCallback(
@@ -365,6 +362,7 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
 
     const handleSearchPokemon = useCallback(
         (targetDexId: number) => {
+            if (!isBookReady || bookFlipRef.current?.isBusy()) return;
             const requestId = highlightRequestIdRef.current + 1;
             highlightRequestIdRef.current = requestId;
             pendingHighlightDexIdRef.current = targetDexId;
@@ -374,7 +372,7 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
                 triggerHighlight(targetDexId);
             });
         },
-        [handleNavigateToPokemon, triggerHighlight, waitForHighlightReady],
+        [isBookReady, handleNavigateToPokemon, triggerHighlight, waitForHighlightReady],
     );
 
     useEffect(() => {
