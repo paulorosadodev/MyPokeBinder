@@ -1,21 +1,22 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Image from "next/image";
 import { SearchCardItem, CardLanguage, CardVariant, UserCard, SearchResponse } from "@/types/binder";
 import { formatTcgdexImageUrl } from "@/lib/pokemon/tcgdex";
-import { getRarityBadgeStyle } from "@/lib/pokemon/rarity";
-import { defaultVariant, formatVariantLabel, resolveCardShine } from "@/lib/pokemon/variant";
-import { COLLECTION_PAGE_SIZE } from "@/lib/collection/listCards";
+import { getRarityBadgeStyle, RARITY_FILTER_OPTIONS } from "@/lib/pokemon/rarity";
+import { formatVariantLabel, resolveCardShine } from "@/lib/pokemon/variant";
+import { ALL_EXPANSIONS_FILTER, COLLECTION_PAGE_SIZE, buildExpansionFilterOptions, filterCatalogCards } from "@/lib/collection/listCards";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { PokeballLoader } from "@/components/loading/PokeballLoader";
-import { LanguageSlider } from "@/components/ui/LanguageSlider";
-import { Select, type SelectOption } from "@/components/ui/Select";
+import { LanguageSlider, type LanguageSliderOption } from "@/components/ui/LanguageSlider";
+import { Select } from "@/components/ui/Select";
 import { Card3DTilt } from "@/components/ui/Card3DTilt";
 import { Spinner } from "@/components/ui/Spinner";
+import { SearchInput } from "@/components/ui/SearchInput";
 import { getCardAppearProps } from "@/lib/ui/cardAppear";
 import { toast } from "sonner";
-import { X, Search, Plus, Circle, Sparkles, RefreshCw } from "lucide-react";
+import { X, Search, Plus, Circle, Sparkles, RefreshCw, Layers, SlidersHorizontal, Globe } from "lucide-react";
 
 interface CardSearchModalProps {
     isOpen: boolean;
@@ -27,38 +28,42 @@ interface CardSearchModalProps {
 
 const clientSearchCache = new Map<string, SearchResponse>();
 
-const VARIANT_SELECT_OPTIONS: SelectOption<CardVariant>[] = [
-    { value: "normal", label: "Normal", icon: <Circle size={12} strokeWidth={2.25} />, description: "Sem holográfico" },
-    { value: "holo", label: "Holo", icon: <Sparkles size={12} strokeWidth={2.25} />, description: "Arte holográfica" },
-    { value: "reverse", label: "Reverse", icon: <RefreshCw size={12} strokeWidth={2.25} />, description: "Fundo holográfico" },
+const LANGUAGE_OPTIONS: LanguageSliderOption<CardLanguage>[] = [
+    { value: "pt-br", label: "PT-BR", shortLabel: "PT", country: "pt-br" },
+    { value: "en", label: "EN", shortLabel: "EN", country: "en" },
+    { value: "ja", label: "JA", shortLabel: "JA", country: "ja" },
 ];
 
-function buildVariantDefaults(cards: SearchCardItem[]): Record<string, CardVariant> {
-    const next: Record<string, CardVariant> = {};
-    for (const card of cards) {
-        next[card.id] = defaultVariant(card.variants);
-    }
-    return next;
-}
+const VARIANT_SLIDER_OPTIONS: LanguageSliderOption<CardVariant>[] = [
+    { value: "normal", label: "Normal", shortLabel: "Norm", icon: <Circle size={11} strokeWidth={2.25} /> },
+    { value: "holo", label: "Holo", shortLabel: "Holo", icon: <Sparkles size={11} strokeWidth={2.25} /> },
+    { value: "reverse", label: "Reverse", shortLabel: "Rev", icon: <RefreshCw size={11} strokeWidth={2.25} /> },
+];
 
 export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdded }: CardSearchModalProps) {
     const [lang, setLang] = useState<CardLanguage>("pt-br");
+    const [variant, setVariant] = useState<CardVariant>("normal");
     const [cards, setCards] = useState<SearchCardItem[]>([]);
-    const [variantsByCard, setVariantsByCard] = useState<Record<string, CardVariant>>({});
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(false);
     const [initialLoading, setInitialLoading] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [submittingCardId, setSubmittingCardId] = useState<string | null>(null);
-    const [openVariantSelectId, setOpenVariantSelectId] = useState<string | null>(null);
     const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [rarityFilter, setRarityFilter] = useState("all");
+    const [expansionFilter, setExpansionFilter] = useState(ALL_EXPANSIONS_FILTER);
+    const [showFilters, setShowFilters] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
             setLang("pt-br");
-            setVariantsByCard({});
-            setOpenVariantSelectId(null);
+            setVariant("normal");
+            setSearchTerm("");
+            setRarityFilter("all");
+            setExpansionFilter(ALL_EXPANSIONS_FILTER);
+            setShowFilters(false);
         }
     }, [isOpen]);
 
@@ -69,12 +74,11 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
         async function loadFirstPage() {
             try {
                 const queryName = pokemonName.replace(/[♀♂]/g, "").trim();
-                const cacheKey = `${queryName}_page_1`;
+                const cacheKey = `${dexId}_${queryName}_page_1`;
                 const cached = clientSearchCache.get(cacheKey);
 
                 if (cached) {
                     setCards(cached.cards ?? []);
-                    setVariantsByCard(buildVariantDefaults(cached.cards ?? []));
                     setHasMore(cached.hasMore ?? false);
                     setPage(1);
                     setError(null);
@@ -87,7 +91,7 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                 setSubmittingCardId(null);
                 setPage(1);
 
-                const res = await fetch(`/api/search?name=${encodeURIComponent(queryName)}&page=1&pageSize=${COLLECTION_PAGE_SIZE}`);
+                const res = await fetch(`/api/search?name=${encodeURIComponent(queryName)}&dexId=${dexId}&page=1&pageSize=${COLLECTION_PAGE_SIZE}`);
                 const data: SearchResponse = await res.json();
 
                 if (!res.ok) {
@@ -99,7 +103,6 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
 
                 if (isMounted) {
                     setCards(data.cards ?? []);
-                    setVariantsByCard(buildVariantDefaults(data.cards ?? []));
                     setHasMore(data.hasMore ?? false);
                 }
             } catch (err: unknown) {
@@ -107,7 +110,6 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                     const msg = err instanceof Error ? err.message : "Falha na busca";
                     setError(msg);
                     setCards([]);
-                    setVariantsByCard({});
                     setHasMore(false);
                 }
             } finally {
@@ -121,7 +123,7 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
         return () => {
             isMounted = false;
         };
-    }, [isOpen, pokemonName]);
+    }, [isOpen, pokemonName, dexId]);
 
     const loadNextPage = useCallback(async () => {
         if (loadingMore || initialLoading || !hasMore) return;
@@ -130,19 +132,18 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
             setLoadingMore(true);
             const nextPage = page + 1;
             const queryName = pokemonName.replace(/[♀♂]/g, "").trim();
-            const cacheKey = `${queryName}_page_${nextPage}`;
+            const cacheKey = `${dexId}_${queryName}_page_${nextPage}`;
             const cached = clientSearchCache.get(cacheKey);
 
             if (cached) {
                 setCards((prev) => [...prev, ...(cached.cards ?? [])]);
-                setVariantsByCard((prev) => ({ ...prev, ...buildVariantDefaults(cached.cards ?? []) }));
                 setPage(nextPage);
                 setHasMore(cached.hasMore ?? false);
                 setLoadingMore(false);
                 return;
             }
 
-            const res = await fetch(`/api/search?name=${encodeURIComponent(queryName)}&page=${nextPage}&pageSize=${COLLECTION_PAGE_SIZE}`);
+            const res = await fetch(`/api/search?name=${encodeURIComponent(queryName)}&dexId=${dexId}&page=${nextPage}&pageSize=${COLLECTION_PAGE_SIZE}`);
             const data: SearchResponse = await res.json();
 
             if (!res.ok) {
@@ -153,7 +154,6 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
             clientSearchCache.set(cacheKey, data);
 
             setCards((prev) => [...prev, ...(data.cards ?? [])]);
-            setVariantsByCard((prev) => ({ ...prev, ...buildVariantDefaults(data.cards ?? []) }));
             setPage(nextPage);
             setHasMore(data.hasMore ?? false);
         } catch (err: unknown) {
@@ -162,7 +162,26 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
         } finally {
             setLoadingMore(false);
         }
-    }, [page, hasMore, loadingMore, initialLoading, pokemonName]);
+    }, [page, hasMore, loadingMore, initialLoading, pokemonName, dexId]);
+
+    const filteredCards = useMemo(
+        () =>
+            filterCatalogCards(cards, {
+                searchTerm,
+                rarityFilter,
+                expansionFilter,
+                dexId,
+            }),
+        [cards, searchTerm, rarityFilter, expansionFilter, dexId],
+    );
+    const expansionOptions = useMemo(() => buildExpansionFilterOptions(cards.map((card) => card.setName)), [cards]);
+    const hasActiveCatalogFilters = Boolean(searchTerm.trim()) || rarityFilter !== "all" || expansionFilter !== ALL_EXPANSIONS_FILTER;
+
+    useEffect(() => {
+        if (!isOpen || initialLoading || loadingMore || !hasMore || !hasActiveCatalogFilters) return;
+        if (filteredCards.length >= 12) return;
+        void loadNextPage();
+    }, [isOpen, initialLoading, loadingMore, hasMore, hasActiveCatalogFilters, filteredCards.length, loadNextPage]);
 
     const sentinelRef = useInfiniteScroll({
         hasMore,
@@ -174,8 +193,6 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
 
     const handleAddCard = async (card: SearchCardItem) => {
         if (submittingCardId) return;
-
-        const cardVariant = variantsByCard[card.id] ?? defaultVariant(card.variants);
 
         try {
             setSubmittingCardId(card.id);
@@ -192,7 +209,7 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                     card_set_name: card.setName || "",
                     card_rarity: card.rarity || "",
                     card_language: lang,
-                    card_variant: cardVariant,
+                    card_variant: variant,
                 }),
             });
 
@@ -205,7 +222,7 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
             onCardAdded(data.card);
             onClose();
             toast.success("Carta adicionada à Coleção!", {
-                description: `${card.name} (${formatVariantLabel(cardVariant)}) cadastrada com sucesso.`,
+                description: `${card.name} (${formatVariantLabel(variant)}) cadastrada com sucesso.`,
             });
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : "Erro ao adicionar";
@@ -220,88 +237,145 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
 
     if (!isOpen) return null;
 
+    const activeFilterCount = (rarityFilter !== "all" ? 1 : 0) + (expansionFilter !== ALL_EXPANSIONS_FILTER ? 1 : 0);
+
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-2 sm:p-4 backdrop-blur-sm"
             onClick={(e) => {
                 if (e.target === e.currentTarget) onClose();
             }}
         >
-            <div className="flex h-[85vh] max-h-[820px] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#12151d] shadow-2xl md:max-w-5xl lg:max-w-6xl">
-                <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-6 py-4">
+            <div className="flex h-[92vh] sm:h-[85vh] max-h-[820px] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#12151d] shadow-2xl md:max-w-5xl lg:max-w-6xl">
+                <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-2.5 sm:px-6 sm:py-3.5">
                     <div>
-                        <div className="flex items-center gap-2.5">
-                            <h2 className="text-xl font-bold text-white tracking-tight">{pokemonName}</h2>
-                            <span className="rounded-md border border-white/10 bg-white/10 px-2 py-0.5 font-mono text-xs font-semibold text-slate-300">#{String(dexId).padStart(3, "0")}</span>
+                        <div className="flex items-center gap-2 sm:gap-2.5">
+                            <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">{pokemonName}</h2>
+                            <span className="rounded-md border border-white/10 bg-white/10 px-2 py-0.5 font-mono text-[11px] sm:text-xs font-semibold text-slate-300">#{String(dexId).padStart(3, "0")}</span>
                         </div>
-                        <p className="mt-0.5 text-xs text-slate-400">Escolha o idioma e a versão física, depois adicione à coleção</p>
+                        <p className="hidden sm:block mt-0.5 text-xs text-slate-400">Escolha o idioma e a versão física, depois adicione à coleção</p>
                     </div>
 
-                    <button onClick={onClose} aria-label="Fechar" className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl bg-white/5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white">
+                    <button onClick={onClose} aria-label="Fechar" className="flex h-8 w-8 sm:h-9 sm:w-9 cursor-pointer items-center justify-center rounded-lg sm:rounded-xl bg-white/5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white">
                         <X size={18} />
                     </button>
                 </div>
 
-                <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/5 bg-black/20 px-6 py-3.5">
-                    <div className="flex flex-wrap items-center gap-2.5">
-                        <span className="text-xs font-medium text-slate-400">Idioma da sua carta:</span>
-                        <LanguageSlider value={lang} onChange={setLang} size="sm" ariaLabel="Idioma da carta a ser adicionada" />
+                <div className="flex shrink-0 flex-col gap-2.5 border-b border-white/5 bg-black/20 px-3 py-2.5 sm:px-6 sm:py-3">
+                    <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                            <div className="relative min-w-0 flex-1">
+                                <Search size={15} className="absolute top-1/2 left-3 -translate-y-1/2 text-slate-500" />
+                                <SearchInput type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Buscar por pokémon, número, coleção ou pokédex..." placeholderClassName="left-8.5 right-8 text-xs sm:text-sm" className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pr-8 pl-8.5 text-xs text-white transition-colors focus:border-poke-blue/60 focus:bg-white/[0.08] focus:outline-none sm:text-sm" />
+                                {searchTerm ? (
+                                    <button type="button" onClick={() => setSearchTerm("")} aria-label="Limpar busca" className="absolute top-1/2 right-2.5 -translate-y-1/2 text-slate-500 hover:text-white">
+                                        <X size={14} />
+                                    </button>
+                                ) : null}
+                            </div>
+
+                            <button type="button" onClick={() => setShowFilters((prev) => !prev)} aria-label="Alternar filtros de raridade e expansão" aria-expanded={showFilters} className={`flex h-8.5 sm:h-9 shrink-0 items-center gap-1.5 rounded-xl border px-2.5 text-xs font-semibold transition-colors sm:hidden ${showFilters || activeFilterCount > 0 ? "border-poke-blue/60 bg-poke-blue/20 text-white" : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"}`}>
+                                <SlidersHorizontal size={13} className={activeFilterCount > 0 ? "text-poke-blue" : "text-slate-400"} />
+                                <span className="hidden min-[380px]:inline">Filtros</span>
+                                {activeFilterCount > 0 && <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-poke-blue px-1 text-[10px] font-bold text-white">{activeFilterCount}</span>}
+                            </button>
+
+                            <div className="hidden sm:flex sm:items-center sm:gap-2">
+                                <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar catálogo por raridade" className="w-40 md:w-44" size="sm" />
+                                <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar catálogo por expansão" className="w-44 md:w-52" size="sm" align="right" />
+                            </div>
+                        </div>
+
+                        {showFilters && (
+                            <div className="grid grid-cols-2 gap-2 pt-0.5 sm:hidden">
+                                <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar catálogo por raridade" className="w-full" size="sm" />
+                                <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar catálogo por expansão" className="w-full" size="sm" align="right" />
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 border-t border-white/5 pt-2 sm:gap-3 sm:pt-2.5">
+                        <div className="flex flex-col gap-1 min-w-0">
+                            <div className="flex items-center gap-1.5 text-slate-400">
+                                <Globe size={11} className="text-poke-blue shrink-0" />
+                                <span className="text-[10px] sm:text-[11px] font-semibold tracking-wide text-slate-300 truncate">Idioma</span>
+                            </div>
+                            <LanguageSlider value={lang} onChange={setLang} options={LANGUAGE_OPTIONS} size="sm" fullWidth ariaLabel="Idioma da carta a ser adicionada" />
+                        </div>
+
+                        <div className="flex flex-col gap-1 min-w-0">
+                            <div className="flex items-center gap-1.5 text-slate-400">
+                                <Sparkles size={11} className="text-poke-blue shrink-0" />
+                                <span className="text-[10px] sm:text-[11px] font-semibold tracking-wide text-slate-300 truncate">Versão</span>
+                            </div>
+                            <LanguageSlider<CardVariant> value={variant} onChange={setVariant} options={VARIANT_SLIDER_OPTIONS} size="sm" fullWidth ariaLabel="Versão física da carta a ser adicionada" />
+                        </div>
                     </div>
                 </div>
 
-                {error && <div className="mx-6 mt-3 shrink-0 rounded-lg border border-red-500/30 bg-red-500/15 p-3 text-xs text-red-200">{error}</div>}
+                {error && <div className="mx-4 sm:mx-6 mt-2.5 sm:mt-3 shrink-0 rounded-lg border border-red-500/30 bg-red-500/15 p-2.5 sm:p-3 text-xs text-red-200">{error}</div>}
 
-                <div ref={setScrollRoot} className="flex-1 overflow-y-auto p-6">
+                <div ref={setScrollRoot} className="flex-1 overflow-y-auto p-3 sm:p-6">
                     {initialLoading ? (
-                        <div className="flex h-full min-h-[250px] flex-col items-center justify-center">
+                        <div className="flex h-full min-h-[200px] sm:min-h-[250px] flex-col items-center justify-center">
                             <PokeballLoader message="Carregando cartas..." size="md" />
                         </div>
                     ) : cards.length === 0 ? (
-                        <div className="flex h-full min-h-[250px] flex-col items-center justify-center gap-2 text-slate-500">
+                        <div className="flex h-full min-h-[200px] sm:min-h-[250px] flex-col items-center justify-center gap-2 text-slate-500">
                             <Search size={32} className="text-slate-600" />
                             <span className="text-sm">Nenhuma carta com imagem encontrada.</span>
                         </div>
+                    ) : filteredCards.length === 0 ? (
+                        <div className="flex h-full min-h-[200px] sm:min-h-[250px] flex-col items-center justify-center gap-3 text-center text-slate-500">
+                            <Search size={32} className="text-slate-600" />
+                            <span className="text-sm text-white">Nenhuma carta encontrada</span>
+                            <span className="text-xs">Tente ajustar a busca ou os filtros.</span>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSearchTerm("");
+                                    setRarityFilter("all");
+                                    setExpansionFilter(ALL_EXPANSIONS_FILTER);
+                                }}
+                                className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-semibold text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
+                            >
+                                Limpar filtros
+                            </button>
+                        </div>
                     ) : (
-                        <div className="flex flex-col gap-6">
-                            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                                {cards.map((card, index) => {
+                        <div className="flex flex-col gap-4 sm:gap-6">
+                            <div className="grid grid-cols-2 gap-2.5 sm:gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                                {filteredCards.map((card, index) => {
                                     const isSubmittingThis = submittingCardId === card.id;
                                     const appear = getCardAppearProps(index);
-                                    const selectedVariant = variantsByCard[card.id] ?? defaultVariant(card.variants);
                                     const rarityInfo = card.rarity ? getRarityBadgeStyle(card.rarity) : null;
-                                    const shineMode = resolveCardShine(selectedVariant, card.rarity);
-                                    const isSelectOpen = openVariantSelectId === card.id;
-                                    const anySelectOpen = openVariantSelectId !== null;
+                                    const shineMode = resolveCardShine(variant, card.rarity);
 
                                     return (
-                                        <div key={card.id} className={`group relative flex h-full flex-col justify-between gap-2 rounded-xl border p-2.5 transition-all duration-200 ${isSubmittingThis ? "border-poke-blue bg-poke-blue/15 ring-2 ring-poke-blue/40" : "border-white/10 bg-white/[0.03] hover:border-poke-blue/50 hover:bg-white/[0.07]"} ${isSelectOpen ? "z-50" : anySelectOpen ? "z-0" : ""} ${appear.className}`} style={appear.style}>
+                                        <div key={card.id} className={`group relative flex h-full flex-col justify-between gap-1.5 sm:gap-2 rounded-xl border p-2 sm:p-2.5 transition-all duration-200 ${isSubmittingThis ? "border-poke-blue bg-poke-blue/15 ring-2 ring-poke-blue/40" : "border-white/10 bg-white/[0.03] hover:border-poke-blue/50 hover:bg-white/[0.07]"} ${appear.className}`} style={appear.style}>
                                             <div className="relative aspect-[2.5/3.5] w-full shrink-0 cursor-pointer" onClick={() => handleAddCard(card)}>
-                                                <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={shineMode} paused={anySelectOpen}>
+                                                <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={shineMode}>
                                                     <Image src={formatTcgdexImageUrl(card.image)} alt={card.name} fill sizes="(max-width: 768px) 50vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" unoptimized />
                                                 </Card3DTilt>
                                             </div>
 
-                                            <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 py-0.5">
+                                            <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 sm:gap-1 py-0.5">
                                                 <div className="flex h-4 items-center min-w-0">
                                                     <span className="truncate text-xs font-semibold text-white group-hover:text-poke-blue transition-colors" title={card.name}>
                                                         {card.name}
                                                     </span>
                                                 </div>
 
-                                                <div className="flex h-5 items-center justify-between gap-1.5 min-w-0">
-                                                    <span className="truncate text-[11px] text-slate-400 min-w-0 flex-1" title={card.setName || "Coleção"}>
+                                                <div className="flex h-4 sm:h-5 items-center justify-between gap-1 min-w-0">
+                                                    <span className="truncate text-[10px] sm:text-[11px] text-slate-400 min-w-0 flex-1" title={card.setName || "Coleção"}>
                                                         {card.setName || "Coleção"}
                                                     </span>
 
                                                     {rarityInfo && (
-                                                        <span title={rarityInfo.label} className={`shrink-0 inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold border max-w-[85px] sm:max-w-[95px] ${rarityInfo.badgeClasses}`}>
+                                                        <span title={rarityInfo.label} className={`shrink-0 inline-flex items-center rounded px-1 sm:px-1.5 py-0.5 text-[8.5px] sm:text-[9px] font-semibold border max-w-[70px] sm:max-w-[95px] ${rarityInfo.badgeClasses}`}>
                                                             <span className="truncate">{rarityInfo.label}</span>
                                                         </span>
                                                     )}
-                                                </div>
-
-                                                <div className="relative w-full" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-                                                    <Select<CardVariant> value={selectedVariant} onChange={(value) => setVariantsByCard((prev) => ({ ...prev, [card.id]: value }))} options={VARIANT_SELECT_OPTIONS} size="sm" className="!w-full sm:!w-full" onOpenChange={(open) => setOpenVariantSelectId(open ? card.id : null)} ariaLabel={`Versão física de ${card.name}`} />
                                                 </div>
                                             </div>
 
@@ -312,8 +386,8 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                                                     handleAddCard(card);
                                                 }}
                                                 disabled={Boolean(submittingCardId)}
-                                                title="Adicionar à Coleção"
-                                                className="mt-auto flex h-7 w-full cursor-pointer items-center justify-center gap-1 rounded-md bg-white/10 px-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-poke-blue group-hover:bg-poke-blue disabled:opacity-60"
+                                                title={`Adicionar ${card.name} (${formatVariantLabel(variant)}) à Coleção`}
+                                                className="mt-auto flex h-6.5 sm:h-7 w-full cursor-pointer items-center justify-center gap-1 rounded-md bg-white/10 px-1 text-[10.5px] sm:text-[11px] font-semibold text-white transition-colors hover:bg-poke-blue group-hover:bg-poke-blue disabled:opacity-60"
                                             >
                                                 {isSubmittingThis ? <Spinner size={12} className="text-white" /> : <Plus size={12} className="shrink-0" />}
                                                 <span className="whitespace-nowrap">Adicionar</span>

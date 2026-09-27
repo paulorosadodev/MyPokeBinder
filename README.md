@@ -101,21 +101,21 @@ O fluxo principal:
 
 ## Stack
 
-| Camada | Tecnologia |
-| --- | --- |
-| Framework | [Next.js 15](https://nextjs.org/) (App Router) |
-| UI | [React 19](https://react.dev/), [Tailwind CSS 4](https://tailwindcss.com/) |
-| Ícones | [Lucide React](https://lucide.dev/) |
-| Auth / DB | [Supabase](https://supabase.com/) (Auth Google OAuth, Postgres, RLS, Realtime) |
-| Catálogo TCG | [TCGdex API](https://tcgdex.dev/) (busca e imagens em inglês) |
-| Silhuetas | Assets locais (`/public/pokemon/gen[1–9]/`) + fallback PokeAPI |
-| Binder 3D | [page-flip](https://github.com/Nodlik/StPageFlip) / `react-pageflip` |
-| Data fetching (client) | [SWR](https://swr.vercel.app/) |
-| Toasts | [Sonner](https://sonner.emilkowal.ski/) |
-| Áudio | Web Audio API (síntese procedural, sem arquivos externos) |
-| Linguagem | TypeScript |
-| Runtime de testes | [Bun](https://bun.sh/) |
-| Qualidade | ESLint, Prettier |
+| Camada                 | Tecnologia                                                                     |
+| ---------------------- | ------------------------------------------------------------------------------ |
+| Framework              | [Next.js 15](https://nextjs.org/) (App Router)                                 |
+| UI                     | [React 19](https://react.dev/), [Tailwind CSS 4](https://tailwindcss.com/)     |
+| Ícones                 | [Lucide React](https://lucide.dev/)                                            |
+| Auth / DB              | [Supabase](https://supabase.com/) (Auth Google OAuth, Postgres, RLS, Realtime) |
+| Catálogo TCG           | [TCGdex API](https://tcgdex.dev/) (busca e imagens em inglês)                  |
+| Silhuetas              | Assets locais (`/public/pokemon/gen[1–9]/`) + fallback PokeAPI                 |
+| Binder 3D              | [page-flip](https://github.com/Nodlik/StPageFlip) / `react-pageflip`           |
+| Data fetching (client) | [SWR](https://swr.vercel.app/)                                                 |
+| Toasts                 | [Sonner](https://sonner.emilkowal.ski/)                                        |
+| Áudio                  | Web Audio API (síntese procedural, sem arquivos externos)                      |
+| Linguagem              | TypeScript                                                                     |
+| Runtime de testes      | [Bun](https://bun.sh/)                                                         |
+| Qualidade              | ESLint, Prettier                                                               |
 
 ---
 
@@ -147,19 +147,19 @@ MyPokeBinder/
 
 ## Rotas da aplicação
 
-| Rota | Descrição |
-| --- | --- |
-| `/` | Binder (autenticado) ou landing (visitante) |
-| `/inicio` | Landing pública |
-| `/login` | Login com Google |
-| `/collection` | Coleção do usuário |
-| `/cards/[id]` | Detalhe / edição do exemplar |
-| `/dashboard` | Progresso e Mini-Grid |
-| `/perfil` → `/perfil/[username]` | Perfil do treinador |
-| `/colecao/[username]` | Coleção pública |
-| `/configuracoes` | Conta, tema, som e animações |
-| `/termos`, `/terms` | Termos de Serviço |
-| `/privacidade`, `/privacy` | Política de Privacidade |
+| Rota                             | Descrição                                   |
+| -------------------------------- | ------------------------------------------- |
+| `/`                              | Binder (autenticado) ou landing (visitante) |
+| `/inicio`                        | Landing pública                             |
+| `/login`                         | Login com Google                            |
+| `/collection`                    | Coleção do usuário                          |
+| `/cards/[id]`                    | Detalhe / edição do exemplar                |
+| `/dashboard`                     | Progresso e Mini-Grid                       |
+| `/perfil` → `/perfil/[username]` | Perfil do treinador                         |
+| `/colecao/[username]`            | Coleção pública                             |
+| `/configuracoes`                 | Conta, tema, som e animações                |
+| `/termos`, `/terms`              | Termos de Serviço                           |
+| `/privacidade`, `/privacy`       | Política de Privacidade                     |
 
 ---
 
@@ -167,18 +167,18 @@ MyPokeBinder/
 
 Route Handlers principais:
 
-| Endpoint | Uso |
-| --- | --- |
-| `GET/PATCH /api/binder` | Estado dos 151 slots / vínculo de carta |
-| `GET/POST /api/cards` | Listar / adicionar cartas à coleção |
-| `GET/PATCH/DELETE /api/cards/[id]` | Detalhe, edição e exclusão |
-| `GET /api/search` | Busca no catálogo TCGdex (EN) |
-| `GET /api/dashboard` | Agregados do Dashboard |
-| `GET/PATCH /api/settings` | Preferências de tema |
-| `GET/PATCH /api/profile` | Perfil do usuário autenticado |
-| `GET /api/profile/[username]` | Perfil público |
-| `GET /api/profile/[username]/collection` | Coleção pública |
-| `DELETE /api/account` | Encerramento de conta (quando aplicável) |
+| Endpoint                                 | Uso                                      |
+| ---------------------------------------- | ---------------------------------------- |
+| `GET/PATCH /api/binder`                  | Estado dos 151 slots / vínculo de carta  |
+| `GET/POST /api/cards`                    | Listar / adicionar cartas à coleção      |
+| `GET/PATCH/DELETE /api/cards/[id]`       | Detalhe, edição e exclusão               |
+| `GET /api/search`                        | Busca no catálogo TCGdex (EN)            |
+| `GET /api/dashboard`                     | Agregados do Dashboard                   |
+| `GET/PATCH /api/settings`                | Preferências de tema                     |
+| `GET/PATCH /api/profile`                 | Perfil do usuário autenticado            |
+| `GET /api/profile/[username]`            | Perfil público                           |
+| `GET /api/profile/[username]/collection` | Coleção pública                          |
+| `DELETE /api/account`                    | Encerramento de conta (quando aplicável) |
 
 Autenticação e autorização são aplicadas nos handlers; o Postgres reforça isolamento com **Row Level Security**.
 
@@ -188,14 +188,14 @@ Autenticação e autorização são aplicadas nos handlers; o Postgres reforça 
 
 Conceitos centrais (ver `docs/CONTEXT.md`):
 
-| Conceito | Significado |
-| --- | --- |
-| **Slot** | Posição fixa #1–#151 no binder |
-| **Binder Card** | Exemplar atualmente em exposição no slot (no máx. 1) |
-| **Coleção** | Todos os exemplares físicos do usuário |
-| **Versão física** | `normal`, `holo` ou `reverse` |
+| Conceito            | Significado                                                            |
+| ------------------- | ---------------------------------------------------------------------- |
+| **Slot**            | Posição fixa #1–#151 no binder                                         |
+| **Binder Card**     | Exemplar atualmente em exposição no slot (no máx. 1)                   |
+| **Coleção**         | Todos os exemplares físicos do usuário                                 |
+| **Versão física**   | `normal`, `holo` ou `reverse`                                          |
 | **Idioma da carta** | Metadado da cópia física (`pt-br` / `en` / `ja`); imagens sempre em EN |
-| **Full Art** | Derivado da raridade TCGdex (não é flag manual) |
+| **Full Art**        | Derivado da raridade TCGdex (não é flag manual)                        |
 
 Tabelas principais (evoluem via migrations em `supabase/migrations/`):
 
@@ -249,15 +249,15 @@ npm start
 
 ## Scripts
 
-| Comando | Descrição |
-| --- | --- |
-| `npm run dev` | Servidor de desenvolvimento Next.js |
-| `npm run build` | Build de produção |
-| `npm start` | Serve o build |
-| `npm test` | Suite de testes (Bun, `concurrency=1`) |
-| `npm run lint` | ESLint |
-| `npm run format` | Prettier (write) |
-| `npm run format:check` | Prettier (check) |
+| Comando                | Descrição                              |
+| ---------------------- | -------------------------------------- |
+| `npm run dev`          | Servidor de desenvolvimento Next.js    |
+| `npm run build`        | Build de produção                      |
+| `npm start`            | Serve o build                          |
+| `npm test`             | Suite de testes (Bun, `concurrency=1`) |
+| `npm run lint`         | ESLint                                 |
+| `npm run format`       | Prettier (write)                       |
+| `npm run format:check` | Prettier (check)                       |
 
 ---
 
@@ -281,12 +281,12 @@ npm test
 
 ## Documentação interna
 
-| Arquivo | Conteúdo |
-| --- | --- |
-| [`docs/CONTEXT.md`](docs/CONTEXT.md) | Vocabulário e regras de domínio |
-| [`docs/adr/`](docs/adr/) | Decisões de arquitetura (ADRs) |
-| [`docs/agents/`](docs/agents/) | Guias para agentes (issue tracker, triage, domínio) |
-| [`AGENTS.md`](AGENTS.md) | Entrypoint para agentes no repositório |
+| Arquivo                              | Conteúdo                                            |
+| ------------------------------------ | --------------------------------------------------- |
+| [`docs/CONTEXT.md`](docs/CONTEXT.md) | Vocabulário e regras de domínio                     |
+| [`docs/adr/`](docs/adr/)             | Decisões de arquitetura (ADRs)                      |
+| [`docs/agents/`](docs/agents/)       | Guias para agentes (issue tracker, triage, domínio) |
+| [`AGENTS.md`](AGENTS.md)             | Entrypoint para agentes no repositório              |
 
 ---
 
@@ -294,8 +294,8 @@ npm test
 
 - MyPokeBinder é um projeto de fã **não oficial**.
 - Pokémon e Pokémon TCG são marcas registradas de seus respectivos proprietários.
-- Dados e imagens de cartas vêm da API pública TCGdex sob uso justo (*fair use*).
-- Dados de autenticação Google são usados apenas para identificação do treinador e isolamento do acervo (RLS), em conformidade com a política de *Limited Use* e com a LGPD.
+- Dados e imagens de cartas vêm da API pública TCGdex sob uso justo (_fair use_).
+- Dados de autenticação Google são usados apenas para identificação do treinador e isolamento do acervo (RLS), em conformidade com a política de _Limited Use_ e com a LGPD.
 
 ---
 

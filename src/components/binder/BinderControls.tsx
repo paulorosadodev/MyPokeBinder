@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from "react";
 import { Search, X } from "lucide-react";
 import { POKEMON_151, PokemonInfo } from "@/lib/pokemon/constants";
+import { parseDexQuery } from "@/lib/collection/listCards";
+import { SearchInput } from "@/components/ui/SearchInput";
 
 interface BinderControlsProps {
     onSearch?: (dexId: number) => void;
@@ -13,11 +15,14 @@ export function BinderControls({ onSearch }: BinderControlsProps) {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const searchContainerRef = useRef<HTMLDivElement | null>(null);
 
-    const normalizedQuery = searchTerm.trim().toLowerCase().replace("#", "");
-    const matchingPokemon: PokemonInfo[] = normalizedQuery
+    const trimmed = searchTerm.trim().toLowerCase();
+    const hasHash = trimmed.startsWith("#");
+    const dexQuery = parseDexQuery(trimmed);
+
+    const matchingPokemon: PokemonInfo[] = trimmed
         ? POKEMON_151.filter((p) => {
-              const matchesDex = String(p.dexId).includes(normalizedQuery);
-              const matchesName = p.name.toLowerCase().includes(normalizedQuery);
+              const matchesDex = hasHash && dexQuery !== null && p.dexId === dexQuery;
+              const matchesName = !hasHash && p.name.toLowerCase().includes(trimmed);
               return matchesDex || matchesName;
           }).slice(0, 6)
         : [];
@@ -56,7 +61,7 @@ export function BinderControls({ onSearch }: BinderControlsProps) {
         <div ref={searchContainerRef} className="relative w-full">
             <div className="flex h-10 w-full items-center gap-2 rounded-xl border border-white/10 bg-[#121620]/85 px-3.5 shadow-lg backdrop-blur-md transition-all focus-within:border-poke-blue/60 focus-within:bg-[#151a26]">
                 <Search size={15} className="flex-shrink-0 text-slate-400" />
-                <input
+                <SearchInput
                     type="text"
                     value={searchTerm}
                     onChange={(e) => {
@@ -65,7 +70,8 @@ export function BinderControls({ onSearch }: BinderControlsProps) {
                     }}
                     onFocus={() => setIsDropdownOpen(true)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Buscar Pokémon por nome ou #..."
+                    placeholder="Buscar por nome ou pokédex..."
+                    placeholderClassName="left-0 right-0"
                     aria-label="Buscar Pokémon no binder"
                     className="w-full bg-transparent text-xs text-white placeholder-slate-500 outline-none"
                 />
@@ -95,7 +101,7 @@ export function BinderControls({ onSearch }: BinderControlsProps) {
                 </div>
             )}
 
-            {isDropdownOpen && normalizedQuery && matchingPokemon.length === 0 && (
+            {isDropdownOpen && trimmed && matchingPokemon.length === 0 && (
                 <div className="absolute top-11 left-0 z-40 w-full overflow-hidden rounded-xl border border-white/10 bg-[#161a26] p-3 text-center shadow-2xl backdrop-blur-xl">
                     <span className="text-xs text-slate-400">Nenhum Pokémon dos 151 encontrado</span>
                 </div>

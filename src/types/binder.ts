@@ -1,6 +1,6 @@
 export type CardLanguage = "pt-br" | "en" | "ja";
 export type CardVariant = "normal" | "holo" | "reverse";
-export type CardShineMode = "none" | "foil" | "prismatic";
+export type CardShineMode = "none" | "foil" | "holo" | "prismatic";
 export type BinderStatusFilter = "all" | "in_binder" | "stored";
 
 export interface CardVariantsFlags {
@@ -67,6 +67,11 @@ export interface CardDetailsResponse {
     card: UserCard;
     copies: UserCard[];
     availableVariants: CardVariant[];
+}
+
+export interface BinderCardsResponse {
+    cards: UserCard[];
+    availableCounts: Record<number, number>;
 }
 
 export interface UserSettings {

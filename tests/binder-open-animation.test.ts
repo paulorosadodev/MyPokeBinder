@@ -15,11 +15,25 @@ import {
     pageFlipPortraitBookRect,
     pageFlipLandscapeBookRect,
     BINDER_FRONT_COVER_PHYSICAL,
+    BINDER_ENTRANCE_MS,
     BINDER_OPEN_HOLD_MS,
     BINDER_FLIP_MS,
+    BINDER_MULTI_FLIP_STEP_MS,
+    BINDER_SWIPE_THRESHOLD_PX,
+    BINDER_LIB_SWIPE_DISTANCE,
+    BINDER_USE_MOUSE_EVENTS,
+    resolveBinderPageSwipe,
+    shouldApplyExternalBinderPageFlip,
     BINDER_PAGE_MIN_WIDTH,
     BINDER_MOBILE_STAGE_MAX_WIDTH,
     BINDER_MIN_STAGE_WIDTH_TO_MOUNT,
+    binderPageFlipAutoSize,
+    planBinderPageNavigation,
+    shouldRenderBinder,
+    resolveBinderInitialPage,
+    shouldSignalBinderReady,
+    canHandleBinderEntry,
+    resolveBinderEntryTargetPage,
 } from "@/lib/pokemon/binderOpen";
 
 describe("Binder cover open animation plan", () => {
@@ -30,9 +44,11 @@ describe("Binder cover open animation plan", () => {
         expect(plan.startPhysical).toBe(0);
         expect(plan.targetPhysical).toBe(2);
         expect(catalogPageToPhysicalIndex(1, false)).toBe(2);
-        expect(BINDER_OPEN_HOLD_MS).toBe(0);
-        expect(BINDER_FLIP_MS).toBeLessThan(400);
-        expect(BINDER_FLIP_MS).toBe(320);
+        expect(BINDER_ENTRANCE_MS).toBe(720);
+        expect(BINDER_OPEN_HOLD_MS).toBe(100);
+        expect(BINDER_ENTRANCE_MS + BINDER_OPEN_HOLD_MS).toBeLessThan(1000);
+        expect(BINDER_FLIP_MS).toBeGreaterThanOrEqual(600);
+        expect(BINDER_FLIP_MS).toBe(650);
     });
 
     it("should keep a mobile-width stage in portrait so only one page is visible", () => {
@@ -59,16 +75,56 @@ describe("Binder cover open animation plan", () => {
         expect(physicalIndexToCatalogPage(0, true)).toBe(0);
     });
 
-    it("should skip the cover animation when landing on a deep-linked catalog page", () => {
-        const landscape = planBinderOpenAnimation(5, false);
-        expect(landscape.animateFromCover).toBe(false);
-        expect(landscape.startPhysical).toBe(landscape.targetPhysical);
-        expect(landscape.startPhysical).toBe(5);
+    it("should open from the cover before navigating to a Pokémon received from the grid", () => {
+        const initialPage = resolveBinderInitialPage({
+            pageParam: null,
+            spreadParam: null,
+            dexIdParam: "50",
+            openSelectParam: null,
+        });
+        const plan = planBinderOpenAnimation(initialPage, false);
 
-        const portrait = planBinderOpenAnimation(5, true);
-        expect(portrait.animateFromCover).toBe(false);
-        expect(portrait.startPhysical).toBe(6);
-        expect(portrait.targetPhysical).toBe(6);
+        expect(initialPage).toBe(1);
+        expect(plan.animateFromCover).toBe(true);
+        expect(plan.startPhysical).toBe(BINDER_FRONT_COVER_PHYSICAL);
+        expect(catalogPageToPhysicalIndex(6, false)).toBe(7);
+    });
+
+    it("should open from the cover and then navigate to every page received by URL", () => {
+        const options = { pageParam: "5", spreadParam: null, dexIdParam: null, openSelectParam: null };
+        const initialPage = resolveBinderInitialPage(options);
+        const targetPage = resolveBinderEntryTargetPage(options);
+        const landscape = planBinderOpenAnimation(initialPage, false);
+        const portrait = planBinderOpenAnimation(initialPage, true);
+
+        expect(initialPage).toBe(1);
+        expect(targetPage).toBe(5);
+        expect(landscape.animateFromCover).toBe(true);
+        expect(landscape.startPhysical).toBe(BINDER_FRONT_COVER_PHYSICAL);
+        expect(portrait.animateFromCover).toBe(true);
+        expect(portrait.startPhysical).toBe(BINDER_FRONT_COVER_PHYSICAL);
+        expect(resolveBinderEntryTargetPage({ pageParam: null, spreadParam: "4", dexIdParam: null, openSelectParam: null })).toBe(7);
+        expect(resolveBinderInitialPage({ pageParam: "5", spreadParam: null, dexIdParam: "50", openSelectParam: "true" })).toBe(1);
+    });
+
+    it("should keep direct opening for binder selector returns without cover animation or page flips", () => {
+        expect(resolveBinderInitialPage({ pageParam: null, spreadParam: null, dexIdParam: "50", openSelectParam: "true" })).toBe(6);
+        expect(resolveBinderEntryTargetPage({ pageParam: null, spreadParam: null, dexIdParam: "50", openSelectParam: "true" })).toBe(6);
+
+        const openPlanDirect = planBinderOpenAnimation(1, false, true);
+        expect(openPlanDirect.animateFromCover).toBe(false);
+        expect(openPlanDirect.startPhysical).toBe(catalogPageToPhysicalIndex(1, false));
+
+        const openPlanPage6 = planBinderOpenAnimation(6, false, true);
+        expect(openPlanPage6.animateFromCover).toBe(false);
+        expect(openPlanPage6.startPhysical).toBe(catalogPageToPhysicalIndex(6, false));
+    });
+
+    it("should signal readiness only after an animated cover has settled", () => {
+        expect(shouldSignalBinderReady({ animateFromCover: true, hasAutoOpened: false, isBusy: false })).toBe(false);
+        expect(shouldSignalBinderReady({ animateFromCover: true, hasAutoOpened: true, isBusy: true })).toBe(false);
+        expect(shouldSignalBinderReady({ animateFromCover: true, hasAutoOpened: true, isBusy: false })).toBe(true);
+        expect(shouldSignalBinderReady({ animateFromCover: false, hasAutoOpened: true, isBusy: false })).toBe(true);
     });
 
     it("should defer page sync until the cover has opened so a second flip cannot skip to page 2", () => {
@@ -130,5 +186,59 @@ describe("Binder cover open animation plan", () => {
         expect(isBinderAlreadyOnTarget(1, 0, true)).toBe(false);
         expect(isBinderAlreadyOnTarget(20, 19, true)).toBe(true);
         expect(isBinderAlreadyOnTarget(21, 19, true)).toBe(false);
+    });
+
+    it("classifies a horizontal finger swipe as a single page turn and ignores vertical or busy gestures", () => {
+        expect(BINDER_SWIPE_THRESHOLD_PX).toBe(56);
+        expect(BINDER_USE_MOUSE_EVENTS).toBe(false);
+        expect(BINDER_LIB_SWIPE_DISTANCE).toBeGreaterThan(1000);
+        expect(BINDER_MULTI_FLIP_STEP_MS).toBe(320);
+        expect(BINDER_MULTI_FLIP_STEP_MS).toBeLessThan(BINDER_FLIP_MS);
+
+        expect(resolveBinderPageSwipe({ dx: -80, dy: 10, isBusy: false })).toBe("next");
+        expect(resolveBinderPageSwipe({ dx: 80, dy: -8, isBusy: false })).toBe("prev");
+        expect(resolveBinderPageSwipe({ dx: -80, dy: 10, isBusy: true })).toBeNull();
+        expect(resolveBinderPageSwipe({ dx: -40, dy: 4, isBusy: false })).toBeNull();
+        expect(resolveBinderPageSwipe({ dx: -80, dy: 90, isBusy: false })).toBeNull();
+    });
+
+    it("does not apply an external page flip while the book is already turning or already on target", () => {
+        expect(shouldApplyExternalBinderPageFlip(true, false)).toBe(false);
+        expect(shouldApplyExternalBinderPageFlip(false, true)).toBe(false);
+        expect(shouldApplyExternalBinderPageFlip(false, false)).toBe(true);
+    });
+
+    it("uses one stable direct turn for mobile jumps in both directions", () => {
+        expect(planBinderPageNavigation(2, 18, true)).toEqual({ mode: "direct", targetPhysical: 18 });
+        expect(planBinderPageNavigation(18, 2, true)).toEqual({ mode: "direct", targetPhysical: 2 });
+        expect(planBinderPageNavigation(2, 18, false)).toEqual({ mode: "sequence", targetPhysical: 18, intermediatePhysicalTargets: [4, 6] });
+        expect(planBinderPageNavigation(18, 2, false)).toEqual({ mode: "sequence", targetPhysical: 2, intermediatePhysicalTargets: [16, 14] });
+        expect(binderPageFlipAutoSize(true)).toBe(false);
+        expect(binderPageFlipAutoSize(false)).toBe(true);
+    });
+
+    it("never replaces an already mounted binder with the opening loader", () => {
+        expect(shouldRenderBinder({ viewportReady: true, isDataReady: true, hasMountedBinder: false })).toBe(true);
+        expect(shouldRenderBinder({ viewportReady: true, isDataReady: false, hasMountedBinder: true })).toBe(true);
+        expect(shouldRenderBinder({ viewportReady: true, isDataReady: false, hasMountedBinder: false })).toBe(false);
+    });
+
+    it("handles the pending grid destination after preload readiness resets", () => {
+        expect(
+            canHandleBinderEntry({
+                viewportReady: true,
+                isDataReady: false,
+                hasMountedBinder: true,
+                isBookReady: true,
+            }),
+        ).toBe(true);
+        expect(
+            canHandleBinderEntry({
+                viewportReady: true,
+                isDataReady: true,
+                hasMountedBinder: false,
+                isBookReady: false,
+            }),
+        ).toBe(false);
     });
 });

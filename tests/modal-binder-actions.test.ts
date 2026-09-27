@@ -76,4 +76,179 @@ describe("Binder Slot Selection and Removal Logic", () => {
         expect(previewCard).toBeUndefined();
         expect(userCards.some((c) => c.pokemon_dex_id === 1)).toBe(false);
     });
+
+    it("should keep modal open during card edit navigation and prevent duplicate actions", () => {
+        let isModalOpen = true;
+        let editingCardId: string | null = null;
+        let navigatedUrl: string | null = null;
+
+        const handleEditCard = (card: UserCard, dexId: number) => {
+            if (editingCardId) return;
+            editingCardId = card.id;
+            navigatedUrl = `/cards/${card.id}?from=binder&dexId=${dexId}`;
+        };
+
+        handleEditCard(mockCard1, 1);
+
+        expect(isModalOpen).toBe(true);
+        expect<string | null>(editingCardId).toEqual(mockCard1.id);
+        expect<string | null>(navigatedUrl).toEqual(`/cards/${mockCard1.id}?from=binder&dexId=1`);
+
+        handleEditCard(mockCard2, 1);
+        expect<string | null>(editingCardId).toEqual(mockCard1.id);
+    });
+
+    it("should build card details cache payload with grouped copies and variants for instant navigation", () => {
+        const collection = [mockCard1, mockCard2];
+        const targetCard = mockCard1;
+
+        const copies = collection.filter((c) => c.tcgdex_card_id === targetCard.tcgdex_card_id);
+        const payload = {
+            card: targetCard,
+            copies,
+            availableVariants: ["normal", "holo", "reverse"],
+        };
+
+        expect(payload.card.id).toBe(mockCard1.id);
+        expect(payload.copies.length).toBe(1);
+        expect(payload.availableVariants).toContain("holo");
+        expect(payload.availableVariants).toContain("reverse");
+    });
+
+    it("should optimistically update binder cards and available counts when removing card from binder in card details", () => {
+        const initialBinderState = {
+            cards: [mockCard1],
+            availableCounts: { 1: 0 } as Record<number, number>,
+        };
+
+        const targetDexId = mockCard1.pokemon_dex_id;
+        const nextIsInBinder = false;
+
+        const updateBinderCache = (prev: typeof initialBinderState) => {
+            const prevCounts = prev.availableCounts ?? {};
+            const currentCount = prevCounts[targetDexId] || 0;
+            if (nextIsInBinder) {
+                const updatedCard: UserCard = { ...mockCard1, is_in_binder: true };
+                return {
+                    cards: [...prev.cards.filter((c) => c.pokemon_dex_id !== targetDexId), updatedCard],
+                    availableCounts: {
+                        ...prevCounts,
+                        [targetDexId]: Math.max(0, currentCount - 1),
+                    },
+                };
+            }
+            return {
+                cards: prev.cards.filter((c) => c.pokemon_dex_id !== targetDexId),
+                availableCounts: {
+                    ...prevCounts,
+                    [targetDexId]: currentCount + 1,
+                },
+            };
+        };
+
+        const updated = updateBinderCache(initialBinderState);
+        expect(updated.cards.some((c) => c.pokemon_dex_id === targetDexId)).toBe(false);
+        expect(updated.availableCounts[targetDexId]).toBe(1);
+    });
+
+    it("should clear active card selection when card is removed from cardsMap", () => {
+        const cardsMap = new Map<number, UserCard>();
+        let selectActiveCardId: string | undefined = mockCard1.id;
+        let selectActiveCard: UserCard | undefined = mockCard1;
+
+        const syncWithCardsMap = (dexId: number) => {
+            const currentActive = cardsMap.get(dexId);
+            if (currentActive?.id !== selectActiveCardId) {
+                selectActiveCardId = currentActive?.id;
+                selectActiveCard = currentActive;
+            }
+        };
+
+        syncWithCardsMap(1);
+        expect(selectActiveCardId).toBeUndefined();
+        expect(selectActiveCard).toBeUndefined();
+    });
+
+    it("should clear selection if selected card is not in updated collection", () => {
+        let selectedCardId: string | undefined = mockCard1.id;
+        let previewCard: UserCard | undefined = mockCard1;
+        const freshCollection: UserCard[] = [];
+
+        if (selectedCardId && freshCollection.length === 0) {
+            selectedCardId = undefined;
+            previewCard = undefined;
+        }
+
+        expect(selectedCardId).toBeUndefined();
+        expect(previewCard).toBeUndefined();
+    });
+
+    it("should defer revealing newly selected card in displayCardsMap until modal is closed", () => {
+        const initialCardsMap = new Map<number, UserCard>();
+        let initialSlotCard: UserCard | undefined = undefined;
+        let selectModalOpen = true;
+        let pendingDropDexId: number | null = null;
+
+        const getDisplayCardsMap = (currentMap: Map<number, UserCard>) => {
+            if (!selectModalOpen || pendingDropDexId === null) {
+                return currentMap;
+            }
+            const next = new Map(currentMap);
+            if (initialSlotCard) {
+                next.set(pendingDropDexId, initialSlotCard);
+            } else {
+                next.delete(pendingDropDexId);
+            }
+            return next;
+        };
+
+        const updatedCardsMap = new Map(initialCardsMap);
+        updatedCardsMap.set(1, mockCard1);
+        pendingDropDexId = 1;
+
+        const displayedWhileModalOpen = getDisplayCardsMap(updatedCardsMap);
+        expect(displayedWhileModalOpen.has(1)).toBe(false);
+
+        selectModalOpen = false;
+        pendingDropDexId = null;
+        let droppingDexId: number | null = 1;
+
+        const displayedAfterModalClose = getDisplayCardsMap(updatedCardsMap);
+        expect(displayedAfterModalClose.has(1)).toBe(true);
+        expect(displayedAfterModalClose.get(1)?.id).toBe(mockCard1.id);
+        expect(droppingDexId).toBe(1);
+    });
+
+    it("should preserve original card in displayCardsMap while replacing card in open modal", () => {
+        const initialCardsMap = new Map<number, UserCard>();
+        initialCardsMap.set(1, mockCard1);
+        const initialSlotCard: UserCard | undefined = mockCard1;
+        let selectModalOpen = true;
+        let pendingDropDexId: number | null = 1;
+
+        const getDisplayCardsMap = (currentMap: Map<number, UserCard>) => {
+            if (!selectModalOpen || pendingDropDexId === null) {
+                return currentMap;
+            }
+            const next = new Map(currentMap);
+            if (initialSlotCard) {
+                next.set(pendingDropDexId, initialSlotCard);
+            } else {
+                next.delete(pendingDropDexId);
+            }
+            return next;
+        };
+
+        const updatedCardsMap = new Map<number, UserCard>();
+        updatedCardsMap.set(1, mockCard2);
+
+        const displayedWhileModalOpen = getDisplayCardsMap(updatedCardsMap);
+        expect(displayedWhileModalOpen.get(1)?.id).toBe(mockCard1.id);
+
+        selectModalOpen = false;
+        pendingDropDexId = null;
+
+        const displayedAfterModalClose = getDisplayCardsMap(updatedCardsMap);
+        expect(displayedAfterModalClose.get(1)?.id).toBe(mockCard2.id);
+    });
 });

@@ -73,4 +73,34 @@ describe("Pokemon Theme Selector Logic", () => {
         expect(getBallTypeForTheme("")).toBe("pokeball");
         expect(getBallTypeForTheme(undefined)).toBe("pokeball");
     });
+
+    it("should recognize all 6 official theme colors and reject unofficial colors", async () => {
+        const { isOfficialThemeColor, OFFICIAL_THEME_COLORS } = await import("../src/lib/pokemon/constants");
+        expect(OFFICIAL_THEME_COLORS).toHaveLength(6);
+        for (const color of OFFICIAL_THEME_COLORS) {
+            expect(isOfficialThemeColor(color)).toBe(true);
+        }
+        expect(isOfficialThemeColor("#000000")).toBe(false);
+        expect(isOfficialThemeColor("#ffffff")).toBe(false);
+        expect(isOfficialThemeColor("#123456")).toBe(false);
+        expect(isOfficialThemeColor("red")).toBe(false);
+    });
+
+    it("PATCH /api/settings should reject non-official theme colors with 400", async () => {
+        const { PATCH: patchSettings } = await import("../src/app/api/settings/route");
+        const { NextRequest } = await import("next/server");
+        const request = new NextRequest("http://localhost:3000/api/settings", {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                "x-test-user-id": "test-user-id",
+            },
+            body: JSON.stringify({ theme_color: "#123456" }),
+        });
+        const res = await patchSettings(request);
+        expect(res.status).toBe(400);
+
+        const data = await res.json();
+        expect(data.error).toBe("Cor inválida. Escolha um dos 6 temas oficiais Pokémon.");
+    });
 });

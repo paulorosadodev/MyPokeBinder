@@ -383,3 +383,11 @@ export function physicalIndexToCatalogPage(physicalIndex: number, isPortrait = f
     if (spreadLeft >= BINDER_PHYSICAL_TRAILING_BLANK) return BINDER_LAST_SPREAD_PAGE;
     return spreadLeft - 1;
 }
+
+export const OFFICIAL_THEME_COLORS = ["#10b981", "#ef4444", "#3b82f6", "#f59e0b", "#8b5cf6", "#ec4899"] as const;
+
+export type OfficialThemeColor = (typeof OFFICIAL_THEME_COLORS)[number];
+
+export function isOfficialThemeColor(color: string): color is OfficialThemeColor {
+    return OFFICIAL_THEME_COLORS.includes(color.toLowerCase() as OfficialThemeColor);
+}

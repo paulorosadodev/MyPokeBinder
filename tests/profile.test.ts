@@ -3,9 +3,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { GET as getProfile } from "../src/app/api/profile/route";
 import { GET as getSharedProfile } from "../src/app/api/profile/[username]/route";
+import { GET as getSharedCollection } from "../src/app/api/profile/[username]/collection/route";
 import { getRarityScore, getRarityImpactTier, getRarityBadgeStyle } from "../src/lib/pokemon/rarity";
 import { buildProfileFromCards } from "../src/lib/profile/buildProfile";
-import { usernameFromEmail, validateUsername, validateDisplayName, buildThemeCssVars } from "../src/lib/profile/username";
+import { usernameFromEmail, validateUsername, validateDisplayName, buildThemeCssVars, safeDecodeParam, isValidProfileParam } from "../src/lib/profile/username";
 import type { UserCard } from "../src/types/binder";
 
 describe("Profile API and Rarity Sorting Logic", () => {
@@ -21,9 +22,56 @@ describe("Profile API and Rarity Sorting Logic", () => {
         expect(response.status).toBe(400);
     });
 
+    it("GET /api/profile/[username] should return 404 and not crash with 500 on malformed percent encoding or invalid characters", async () => {
+        const malformedResponse = await getSharedProfile(new Request("http://localhost:3000/api/profile/%25") as any, {
+            params: Promise.resolve({ username: "%" }),
+        });
+        expect(malformedResponse.status).toBe(404);
+
+        const invalidCharResponse = await getSharedProfile(new Request("http://localhost:3000/api/profile/invalid!") as any, {
+            params: Promise.resolve({ username: "invalid!" }),
+        });
+        expect(invalidCharResponse.status).toBe(404);
+    });
+
+    it("GET /api/profile/[username]/collection should return 404 and not crash with 500 on malformed percent encoding", async () => {
+        const malformedResponse = await getSharedCollection(new Request("http://localhost:3000/api/profile/%25/collection") as any, {
+            params: Promise.resolve({ username: "%" }),
+        });
+        expect(malformedResponse.status).toBe(404);
+    });
+
+    it("safeDecodeParam should safely handle normal, empty, and malformed strings without throwing URIError", () => {
+        expect(safeDecodeParam("ash")).toBe("ash");
+        expect(safeDecodeParam("%20ash%20")).toBe("ash");
+        expect(safeDecodeParam("")).toBe("");
+        expect(safeDecodeParam("   ")).toBe("");
+        expect(safeDecodeParam(null)).toBeNull();
+        expect(safeDecodeParam(undefined)).toBeNull();
+        expect(safeDecodeParam("%")).toBeNull();
+        expect(safeDecodeParam("%80")).toBeNull();
+    });
+
+    it("isValidProfileParam should validate usernames and UUIDs and reject invalid strings", () => {
+        expect(isValidProfileParam("ash")).toBe(true);
+        expect(isValidProfileParam("@ash")).toBe(true);
+        expect(isValidProfileParam("treinador_kanto")).toBe(true);
+        expect(isValidProfileParam("12345678-1234-4234-8234-123456789012")).toBe(true);
+        expect(isValidProfileParam("%")).toBe(false);
+        expect(isValidProfileParam("")).toBe(false);
+        expect(isValidProfileParam("a")).toBe(false);
+        expect(isValidProfileParam("@")).toBe(false);
+        expect(isValidProfileParam("invalid!user")).toBe(false);
+    });
+
     it("should derive default username from email local-part", () => {
         expect(usernameFromEmail("Ash.Ketchum@kanto.com")).toBe("ashketchum");
         expect(usernameFromEmail("123red@kanto.com")).toBe("t123red");
+    });
+
+    it("should sanitize reserved username words derived from email", () => {
+        expect(usernameFromEmail("admin@gmail.com")).toBe("treinador_admin");
+        expect(usernameFromEmail("login@empresa.com")).toBe("treinador_login");
     });
 
     it("should validate usernames", () => {
@@ -91,7 +139,7 @@ describe("Profile API and Rarity Sorting Logic", () => {
                 is_in_binder: false,
                 created_at: "2026-01-02",
             },
-        ] as UserCard[];
+        ] as unknown as UserCard[];
 
         const profile = buildProfileFromCards({
             user: { id: "u1", username: "ash", name: "Ash", avatarUrl: null },
@@ -229,7 +277,7 @@ describe("Profile API and Rarity Sorting Logic", () => {
                 is_in_binder: false,
                 created_at: "2026-01-03",
             },
-        ] as UserCard[];
+        ] as unknown as UserCard[];
 
         const withFavorites = buildProfileFromCards({
             user: { id: "u1", username: "ash", name: "Ash", avatarUrl: null, bio: "Gotta catch em all" },
@@ -266,6 +314,8 @@ describe("Profile API and Rarity Sorting Logic", () => {
     it("should scope observed profile theme to content only — not Header, BottomNav, or loaders", () => {
         const viewSource = readFileSync(join(import.meta.dir, "../src/components/profile/TrainerProfileView.tsx"), "utf8");
         const routeLoadingSource = readFileSync(join(import.meta.dir, "../src/components/profile/ProfileRouteLoading.tsx"), "utf8");
+        const profilePageSource = readFileSync(join(import.meta.dir, "../src/app/perfil/[username]/page.tsx"), "utf8");
+        const collectionPageSource = readFileSync(join(import.meta.dir, "../src/app/colecao/[username]/page.tsx"), "utf8");
 
         expect(viewSource).toContain("function ProfileThemeScope");
         expect(viewSource).toContain("<ProfileThemeScope themeColor={themeColor}>");
@@ -273,10 +323,21 @@ describe("Profile API and Rarity Sorting Logic", () => {
         expect(viewSource).not.toContain("ProfileShell themeColor=");
         expect(viewSource).not.toContain("color={profile?.themeColor}");
         expect(viewSource).toContain('<PokeballLoader message="Carregando perfil do treinador..." size="lg" />');
+        expect(viewSource).toContain("key={username}");
+        expect(viewSource).toContain("profile-enter");
+        expect(viewSource).toContain("getCardAppearProps");
+        expect(viewSource).not.toContain("useImagePreloader");
 
-        expect(routeLoadingSource).toContain("<Header />");
-        expect(routeLoadingSource).toContain("<PokeballLoader");
+        expect(routeLoadingSource).not.toContain("<Header />");
+        expect(routeLoadingSource).toContain("RouteLoading");
+        expect(routeLoadingSource).not.toContain("PokeballLoader");
         expect(routeLoadingSource).not.toContain("buildThemeCssVars");
         expect(routeLoadingSource).not.toContain("color=");
+        expect(routeLoadingSource).toContain("bg-[#0a0c10]");
+
+        expect(profilePageSource).toContain("<Suspense");
+        expect(profilePageSource).toContain("<ProfileRouteLoading");
+        expect(collectionPageSource).toContain("<Suspense");
+        expect(collectionPageSource).toContain('message="Carregando coleção..."');
     });
 });

@@ -8,22 +8,23 @@ import useSWR from "swr";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { move } from "@dnd-kit/helpers";
-import { Header } from "@/components/layout/Header";
 import { PokeballLoader } from "@/components/loading/PokeballLoader";
+import { TrainerNotFound } from "@/components/profile/TrainerNotFound";
 import { Card3DTilt } from "@/components/ui/Card3DTilt";
 import { CardLightbox } from "@/components/ui/CardLightbox";
 import { FlagIcon } from "@/components/ui/FlagIcon";
+import { SearchInput } from "@/components/ui/SearchInput";
 import { Select, type SelectOption } from "@/components/ui/Select";
 import { DashboardMiniSlot } from "@/components/dashboard/DashboardMiniSlot";
 import { formatTcgdexImageUrl } from "@/lib/pokemon/tcgdex";
 import { getRarityBadgeStyle, RARITY_FILTER_OPTIONS } from "@/lib/pokemon/rarity";
 import { resolveCardShine } from "@/lib/pokemon/variant";
-import { getPokemonSilhouetteUrl } from "@/lib/pokemon/constants";
-import { buildCollectionFilterResetKey } from "@/lib/collection/listCards";
+import { buildCollectionFilterResetKey, matchesCardSearch } from "@/lib/collection/listCards";
 import { useClientPagedWindow } from "@/lib/hooks/useClientPagedWindow";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
-import { useImagePreloader } from "@/lib/hooks/useImagePreloader";
 import { buildThemeCssVars } from "@/lib/profile/username";
+import { getCardAppearProps } from "@/lib/ui/cardAppear";
+import { fetcher as jsonFetcher } from "@/lib/swr";
 import { BinderStatusFilter, UserCard, type CardShineMode } from "@/types/binder";
 import type { ProfilePayload } from "@/lib/profile/buildProfile";
 import { toast } from "sonner";
@@ -54,13 +55,6 @@ const fetcher = async (url: string): Promise<ProfilePayload> => {
     return data.profile;
 };
 
-const cardsFetcher = async (url: string): Promise<UserCard[]> => {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("fetch_failed");
-    const data = await res.json();
-    return (data.cards ?? []) as UserCard[];
-};
-
 function FeaturedSlotFrame({ children, className = "" }: { children: ReactNode; className?: string }) {
     return (
         <div className={`relative w-full ${className}`} style={{ aspectRatio: "2.5 / 3.5" }}>
@@ -69,7 +63,7 @@ function FeaturedSlotFrame({ children, className = "" }: { children: ReactNode; 
     );
 }
 
-function FeaturedCardTile({ card, onMaximize }: { card: UserCard; onMaximize?: (src: string, alt: string, shineMode: CardShineMode) => void }) {
+function FeaturedCardTile({ card, onMaximize, priority = false }: { card: UserCard; onMaximize?: (src: string, alt: string, shineMode: CardShineMode) => void; priority?: boolean }) {
     const imageSrc = formatTcgdexImageUrl(card.card_image_url);
     const shineMode = resolveCardShine(card.card_variant, card.card_rarity);
 
@@ -77,14 +71,14 @@ function FeaturedCardTile({ card, onMaximize }: { card: UserCard; onMaximize?: (
         <FeaturedSlotFrame className="z-0">
             <button type="button" onClick={() => onMaximize?.(imageSrc, card.card_name, shineMode)} aria-label={`Ampliar ${card.card_name}`} className="relative z-0 h-full w-full cursor-zoom-in overflow-hidden rounded-xl">
                 <Card3DTilt className="relative h-full w-full overflow-hidden rounded-xl" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.25} perspective={900} shineMode={shineMode}>
-                    <Image src={imageSrc} alt={card.card_name} fill sizes="(max-width: 640px) 45vw, 200px" className="object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.55)]" unoptimized priority />
+                    <Image src={imageSrc} alt={card.card_name} fill sizes="(max-width: 640px) 45vw, 200px" className="object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.55)]" unoptimized priority={priority} />
                 </Card3DTilt>
             </button>
         </FeaturedSlotFrame>
     );
 }
 
-function SortableFeaturedCard({ id, index, card, onRemove }: { id: string; index: number; card: UserCard; onRemove: () => void }) {
+function SortableFeaturedCard({ id, index, card, onRemove, priority = false }: { id: string; index: number; card: UserCard; onRemove: () => void; priority?: boolean }) {
     const { ref, isDragging } = useSortable({ id, index });
     const imageSrc = formatTcgdexImageUrl(card.card_image_url);
     const shineMode = resolveCardShine(card.card_variant, card.card_rarity);
@@ -93,7 +87,7 @@ function SortableFeaturedCard({ id, index, card, onRemove }: { id: string; index
         <div ref={ref} className={`relative w-full touch-none select-none !cursor-grab active:!cursor-grabbing ${isDragging ? "z-30" : "z-0"}`} style={{ aspectRatio: "2.5 / 3.5" }} aria-label={`${card.card_name}, arraste para reordenar`}>
             <div className={`absolute inset-0 overflow-hidden rounded-xl ${isDragging ? "opacity-90 ring-2 ring-poke-blue/60" : ""}`}>
                 <Card3DTilt className="relative h-full w-full overflow-hidden rounded-xl" maxTilt={0} maxMove={0} scale={1} glareOpacity={0} perspective={900} shineMode={shineMode} paused>
-                    <Image src={imageSrc} alt={card.card_name} fill sizes="(max-width: 640px) 45vw, 200px" className="pointer-events-none object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.55)]" unoptimized priority draggable={false} />
+                    <Image src={imageSrc} alt={card.card_name} fill sizes="(max-width: 640px) 45vw, 200px" className="pointer-events-none object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.55)]" unoptimized priority={priority} draggable={false} />
                 </Card3DTilt>
                 <span className="pointer-events-none absolute bottom-1.5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-0.5 rounded-md bg-black/55 px-1.5 py-0.5 text-white/80 backdrop-blur-sm">
                     <GripVertical size={12} strokeWidth={2.5} />
@@ -125,10 +119,27 @@ function ProfileThemeScope({ themeColor, children }: { themeColor?: string; chil
     return <div style={themeColor ? buildThemeCssVars(themeColor) : undefined}>{children}</div>;
 }
 
-export function TrainerProfileView({ username }: { username: string }) {
+export function TrainerProfileView({ username, fallbackData }: { username: string; fallbackData?: ProfilePayload }) {
     const router = useRouter();
-    const { data: profile, error, isLoading, mutate } = useSWR<ProfilePayload>(`/api/profile/${encodeURIComponent(username)}`, fetcher);
-    const { data: collectionCards = [] } = useSWR(profile?.isOwner ? "/api/cards" : null, cardsFetcher);
+    const {
+        data: profile,
+        error,
+        isLoading,
+        mutate,
+    } = useSWR<ProfilePayload>(username ? `/api/profile/${encodeURIComponent(username)}` : null, fetcher, {
+        fallbackData,
+        revalidateOnFocus: false,
+        revalidateOnReconnect: false,
+        shouldRetryOnError: false,
+        dedupingInterval: 10000,
+    });
+    const { data: collectionPayload } = useSWR<{ cards: UserCard[] }>(profile?.isOwner ? "/api/cards" : null, jsonFetcher, {
+        revalidateOnFocus: false,
+        revalidateOnReconnect: false,
+        shouldRetryOnError: false,
+        dedupingInterval: 10000,
+    });
+    const collectionCards = collectionPayload?.cards ?? [];
     const [avatarError, setAvatarError] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
     const [isEditingFeatured, setIsEditingFeatured] = useState(false);
@@ -147,8 +158,7 @@ export function TrainerProfileView({ username }: { username: string }) {
         if (profile?.favoriteCardIds) {
             setDraftFavoriteIds(profile.favoriteCardIds);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [favoriteCardIdsKey]);
+    }, [favoriteCardIdsKey, profile?.favoriteCardIds]);
 
     const cardsById = useMemo(() => {
         const map = new Map<string, UserCard>();
@@ -164,32 +174,10 @@ export function TrainerProfileView({ username }: { username: string }) {
     const displayFavoriteIds = isEditingFeatured ? draftFavoriteIds : (profile?.favoriteCardIds ?? []);
     const displayFeaturedCards = displayFavoriteIds.map((id) => cardsById.get(id)).filter(Boolean) as UserCard[];
 
-    const profileImageUrls = useMemo(() => {
-        if (!profile) return [];
-        const urls: string[] = [];
-        if (profile.user.avatarUrl) urls.push(profile.user.avatarUrl);
-        for (const card of profile.featuredCards ?? []) {
-            urls.push(formatTcgdexImageUrl(card.card_image_url));
-        }
-        for (const slot of profile.slots ?? []) {
-            urls.push(getPokemonSilhouetteUrl(slot.pokemon_dex_id));
-        }
-        return urls;
-    }, [profile]);
-
-    const { allLoaded: imagesReady } = useImagePreloader(profileImageUrls, {
-        enabled: Boolean(profile),
-        timeoutMs: 8000,
-    });
-
     const filteredPickerCards = useMemo(() => {
         return collectionCards.filter((card) => {
             if (pickerSearch.trim()) {
-                const term = pickerSearch.toLowerCase().trim();
-                const matchesName = card.card_name.toLowerCase().includes(term);
-                const matchesSet = (card.card_set_name || "").toLowerCase().includes(term);
-                const matchesDex = `#${card.pokemon_dex_id}`.includes(term) || String(card.pokemon_dex_id) === term;
-                if (!matchesName && !matchesSet && !matchesDex) return false;
+                if (!matchesCardSearch(card, pickerSearch)) return false;
             }
             if (pickerStatus === "in_binder" && !card.is_in_binder) return false;
             if (pickerStatus === "stored" && card.is_in_binder) return false;
@@ -314,26 +302,16 @@ export function TrainerProfileView({ username }: { username: string }) {
         }
     };
 
-    if ((isLoading && !profile) || (profile && !imagesReady)) {
+    if (error) {
+        if (error.message === "not_found") {
+            return <TrainerNotFound username={username} type="profile" />;
+        }
         return (
             <ProfileShell>
-                <Header />
-                <main className="flex flex-1 items-center justify-center bg-[#0a0c10]">
-                    <PokeballLoader message="Carregando perfil do treinador..." size="lg" />
-                </main>
-            </ProfileShell>
-        );
-    }
-
-    if (error || !profile) {
-        const isNotFound = error?.message === "not_found";
-        return (
-            <ProfileShell>
-                <Header />
                 <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center p-6 text-center">
                     <div className="rounded-2xl border border-white/10 bg-[#12151d] p-8 shadow-xl">
-                        <p className="text-base font-bold text-white">{isNotFound ? "Perfil não encontrado." : "Não foi possível carregar os dados do perfil."}</p>
-                        <p className="mt-1 text-xs text-slate-400">{isNotFound ? "Este treinador não existe ou o link está incorreto." : "Verifique sua conexão ou tente novamente mais tarde."}</p>
+                        <p className="text-base font-bold text-white">Não foi possível carregar os dados do perfil.</p>
+                        <p className="mt-1 text-xs text-slate-400">Verifique sua conexão ou tente novamente mais tarde.</p>
                         <NextLink href="/" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-poke-blue px-4 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90">
                             <BookOpen size={14} />
                             <span>Voltar ao Binder</span>
@@ -344,17 +322,29 @@ export function TrainerProfileView({ username }: { username: string }) {
         );
     }
 
+    if (isLoading && !profile) {
+        return (
+            <ProfileShell>
+                <main className="flex flex-1 items-center justify-center bg-[#0a0c10]">
+                    <PokeballLoader message="Carregando perfil do treinador..." size="lg" />
+                </main>
+            </ProfileShell>
+        );
+    }
+
+    if (!profile) {
+        return <TrainerNotFound username={username} type="profile" />;
+    }
+
     const { user, stats, slots, rarityBreakdown, isOwner, themeColor } = profile;
     const maxRarityCount = rarityBreakdown.reduce((max, item) => Math.max(max, item.count), 0) || 1;
     const showFeaturedSection = isOwner || displayFeaturedCards.length > 0;
 
     return (
         <ProfileShell>
-            <Header />
-
             <ProfileThemeScope themeColor={themeColor}>
-                <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 pb-28 md:pb-16">
-                    <section className={`relative rounded-3xl border border-white/10 bg-gradient-to-b from-[#161a26]/90 via-[#10131d]/90 to-[#0c0e15]/90 shadow-2xl backdrop-blur-xl ${isEditingFeatured ? "overflow-visible" : "overflow-hidden"}`}>
+                <main key={username} className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 pb-28 md:pb-16">
+                    <section className={`profile-enter relative rounded-3xl border border-white/10 bg-gradient-to-b from-[#161a26]/90 via-[#10131d]/90 to-[#0c0e15]/90 shadow-2xl backdrop-blur-xl ${isEditingFeatured ? "overflow-visible" : "overflow-hidden"}`}>
                         <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-poke-blue/10 blur-3xl" />
                         <div className="pointer-events-none absolute -bottom-24 left-1/3 h-56 w-56 rounded-full bg-poke-blue/10 blur-3xl" />
 
@@ -362,7 +352,7 @@ export function TrainerProfileView({ username }: { username: string }) {
                             <div className="flex items-center gap-4 sm:gap-5">
                                 <div className="relative shrink-0">
                                     {user.avatarUrl && !avatarError ? (
-                                        <Image src={user.avatarUrl} alt={user.username} width={80} height={80} className="h-16 w-16 rounded-full border-2 border-white/20 object-cover shadow-xl ring-2 ring-white/10 sm:h-20 sm:w-20" referrerPolicy="no-referrer" onError={() => setAvatarError(true)} unoptimized priority />
+                                        <Image src={user.avatarUrl} alt={user.username} width={80} height={80} className="h-16 w-16 rounded-full border-2 border-white/20 object-cover shadow-xl ring-2 ring-white/10 sm:h-20 sm:w-20" referrerPolicy="no-referrer" onError={() => setAvatarError(true)} unoptimized />
                                     ) : (
                                         <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-white/20 bg-gradient-to-br from-white/15 to-white/5 font-mono text-2xl font-black text-white shadow-xl ring-2 ring-white/10 sm:h-20 sm:w-20">{(user.username[0] || "T").toUpperCase()}</div>
                                     )}
@@ -443,7 +433,7 @@ export function TrainerProfileView({ username }: { username: string }) {
                                                 {draftFavoriteIds.map((id, index) => {
                                                     const card = cardsById.get(id);
                                                     if (!card) return null;
-                                                    return <SortableFeaturedCard key={id} id={id} index={index} card={card} onRemove={() => toggleFavorite(id)} />;
+                                                    return <SortableFeaturedCard key={id} id={id} index={index} card={card} onRemove={() => toggleFavorite(id)} priority={index === 0} />;
                                                 })}
                                                 {Array.from({ length: Math.max(0, 4 - draftFavoriteIds.length) }).map((_, emptyIndex) => (
                                                     <FeaturedEmptySlot key={`empty-${emptyIndex}`} editing onAdd={openPicker} />
@@ -452,18 +442,29 @@ export function TrainerProfileView({ username }: { username: string }) {
                                         ) : (
                                             [0, 1, 2, 3].map((slotIndex) => {
                                                 const card = displayFeaturedCards[slotIndex];
+                                                const appear = getCardAppearProps(slotIndex, { stepMs: 55, maxDelayMs: 220 });
                                                 if (card) {
-                                                    return <FeaturedCardTile key={card.id} card={card} onMaximize={openLightbox} />;
+                                                    return (
+                                                        <div key={card.id} className={appear.className} style={appear.style}>
+                                                            <FeaturedCardTile card={card} onMaximize={openLightbox} priority={slotIndex === 0} />
+                                                        </div>
+                                                    );
                                                 }
 
                                                 if (isOwner) {
-                                                    return <FeaturedEmptySlot key={`empty-${slotIndex}`} editing={false} onAdd={startEditingAndOpenPicker} />;
+                                                    return (
+                                                        <div key={`empty-${slotIndex}`} className={appear.className} style={appear.style}>
+                                                            <FeaturedEmptySlot editing={false} onAdd={startEditingAndOpenPicker} />
+                                                        </div>
+                                                    );
                                                 }
 
                                                 return (
-                                                    <FeaturedSlotFrame key={`pad-${slotIndex}`}>
-                                                        <div className="h-full w-full" aria-hidden />
-                                                    </FeaturedSlotFrame>
+                                                    <div key={`pad-${slotIndex}`} className={appear.className} style={appear.style}>
+                                                        <FeaturedSlotFrame>
+                                                            <div className="h-full w-full" aria-hidden />
+                                                        </FeaturedSlotFrame>
+                                                    </div>
                                                 );
                                             })
                                         )}
@@ -473,7 +474,7 @@ export function TrainerProfileView({ username }: { username: string }) {
                         ) : null}
                     </section>
 
-                    <section className="grid grid-cols-2 gap-3 sm:gap-4">
+                    <section className="profile-enter profile-enter-d1 grid grid-cols-2 gap-3 sm:gap-4">
                         <div className="flex flex-col justify-between rounded-2xl border border-white/10 bg-[#12151d]/90 px-4 py-4 sm:px-5 sm:py-5">
                             <div className="flex items-center gap-1.5 text-slate-400">
                                 <BookOpen size={14} className="text-poke-blue" />
@@ -505,7 +506,7 @@ export function TrainerProfileView({ username }: { username: string }) {
                         </div>
                     </section>
 
-                    <section className="flex flex-col gap-5 rounded-2xl border border-white/10 bg-[#12151d]/90 p-5 shadow-xl backdrop-blur-md sm:p-6">
+                    <section className="profile-enter profile-enter-d2 flex flex-col gap-5 rounded-2xl border border-white/10 bg-[#12151d]/90 p-5 shadow-xl backdrop-blur-md sm:p-6">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
                                 <h2 className="text-base font-bold text-white sm:text-lg">Mini-Grid dos 151</h2>
@@ -532,7 +533,7 @@ export function TrainerProfileView({ username }: { username: string }) {
                     </section>
 
                     {rarityBreakdown.length > 0 && (
-                        <section className="rounded-2xl border border-white/10 bg-[#12151d]/90 p-5 shadow-xl backdrop-blur-md sm:p-6">
+                        <section className="profile-enter profile-enter-d3 rounded-2xl border border-white/10 bg-[#12151d]/90 p-5 shadow-xl backdrop-blur-md sm:p-6">
                             <div className="mb-4">
                                 <h3 className="text-base font-bold text-white">Distribuição por raridades</h3>
                                 <p className="text-xs text-slate-400">Nomes oficiais das raridades (Pokémon Estampas Ilustradas)</p>
@@ -583,7 +584,7 @@ export function TrainerProfileView({ username }: { username: string }) {
                         <div className="flex shrink-0 flex-col gap-2.5 border-b border-white/10 px-4 py-3">
                             <div className="relative w-full">
                                 <Search size={15} className="absolute top-1/2 left-3 -translate-y-1/2 text-slate-500" />
-                                <input type="text" value={pickerSearch} onChange={(e) => setPickerSearch(e.target.value)} placeholder="Buscar por nome, número ou coleção..." className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pr-9 pl-9 text-xs text-white placeholder-slate-500 transition-colors focus:border-poke-blue/60 focus:bg-white/[0.08] focus:outline-none" />
+                                <SearchInput type="text" value={pickerSearch} onChange={(e) => setPickerSearch(e.target.value)} placeholder="Buscar por pokémon, número, coleção ou pokédex..." placeholderClassName="left-9 right-9" className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pr-9 pl-9 text-xs text-white transition-colors focus:border-poke-blue/60 focus:bg-white/[0.08] focus:outline-none" />
                                 {pickerSearch ? (
                                     <button type="button" onClick={() => setPickerSearch("")} aria-label="Limpar busca" className="absolute top-1/2 right-2.5 -translate-y-1/2 text-slate-500 hover:text-white">
                                         <X size={14} />

@@ -11,6 +11,7 @@ export interface UserProfile {
     username?: string;
     name?: string;
     avatarUrl?: string | null;
+    bio?: string;
 }
 
 interface AuthContextType {
@@ -48,7 +49,7 @@ function setCachedUser(user: UserProfile | null) {
 
 async function buildUserProfile(authUser: { id: string; email?: string | null; user_metadata?: Record<string, unknown> }): Promise<UserProfile> {
     const supabase = createClient();
-    const { data: profile } = await supabase.from("profiles").select("username, display_name, avatar_url").eq("id", authUser.id).maybeSingle();
+    const { data: profile } = await supabase.from("profiles").select("username, display_name, avatar_url, bio").eq("id", authUser.id).maybeSingle();
 
     const fallbackUsername = usernameFromEmail(authUser.email);
 
@@ -58,6 +59,7 @@ async function buildUserProfile(authUser: { id: string; email?: string | null; u
         username: profile?.username || fallbackUsername,
         name: profile?.display_name || profile?.username || fallbackUsername,
         avatarUrl: profile?.avatar_url || (authUser.user_metadata?.avatar_url as string | undefined) || (authUser.user_metadata?.picture as string | undefined) || null,
+        bio: profile?.bio || "",
     };
 }
 

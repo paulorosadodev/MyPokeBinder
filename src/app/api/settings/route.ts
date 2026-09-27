@@ -1,11 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
+import { isOfficialThemeColor } from "@/lib/pokemon/constants";
+import { revalidatePublicProfileForUserId } from "@/lib/profile/publicCache";
 
 const DEFAULT_SETTINGS = {
     theme_color: "#ef4444",
 };
-
-const HEX_COLOR_REGEX = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
 export async function GET(request: NextRequest) {
     const auth = await getAuthenticatedUser(request);
@@ -52,10 +52,10 @@ export async function PATCH(request: NextRequest) {
 
         if (typeof body.theme_color === "string") {
             const trimmedColor = body.theme_color.trim();
-            if (HEX_COLOR_REGEX.test(trimmedColor)) {
+            if (isOfficialThemeColor(trimmedColor)) {
                 updates.theme_color = trimmedColor;
             } else {
-                return NextResponse.json({ error: "Cor inválida. Use o formato hexadecimal (#RRGGBB)." }, { status: 400 });
+                return NextResponse.json({ error: "Cor inválida. Escolha um dos 6 temas oficiais Pokémon." }, { status: 400 });
             }
         }
 
@@ -73,6 +73,7 @@ export async function PATCH(request: NextRequest) {
                     updated_at: new Date().toISOString(),
                 })
                 .eq("id", user.id);
+            await revalidatePublicProfileForUserId(supabase, user.id);
         }
 
         return NextResponse.json({ settings: data });

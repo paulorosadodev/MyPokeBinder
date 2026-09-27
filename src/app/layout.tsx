@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Outfit } from "next/font/google";
 import { cookies } from "next/headers";
 import { AppToaster } from "@/components/ui/AppToaster";
+import { AppShell } from "@/components/layout/AppShell";
 import { UserSettingsProvider } from "@/lib/context/UserSettingsContext";
 import { AuthProvider } from "@/lib/context/AuthContext";
 import { createClient } from "@/lib/supabase/server";
@@ -16,7 +17,10 @@ const outfit = Outfit({
 export const metadata: Metadata = {
     title: "MyPokeBinder | Pokémon TCG",
     description: "Binder digital interativo 3x3 para colecionadores das 151 cartas originais de Pokémon TCG.",
-    colorScheme: "only light" as Metadata["colorScheme"],
+};
+
+export const viewport: Viewport = {
+    colorScheme: "only light",
 };
 
 function getFaviconSvg(color: string) {
@@ -46,14 +50,16 @@ export default async function RootLayout({
               username: undefined as string | undefined,
               name: undefined as string | undefined,
               avatarUrl: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+              bio: undefined as string | undefined,
           }
         : null;
 
     if (user && initialUser) {
-        const { data: profile } = await supabase.from("profiles").select("username, display_name, avatar_url").eq("id", user.id).maybeSingle();
+        const { data: profile } = await supabase.from("profiles").select("username, display_name, avatar_url, bio").eq("id", user.id).maybeSingle();
         if (profile) {
             initialUser.username = profile.username || undefined;
             initialUser.name = profile.display_name || profile.username || undefined;
+            initialUser.bio = profile.bio || "";
             if (profile.avatar_url) initialUser.avatarUrl = profile.avatar_url;
         }
     }
@@ -86,7 +92,7 @@ export default async function RootLayout({
             <body className={`${outfit.variable} font-sans antialiased selection:bg-red-500/30 selection:text-white`} suppressHydrationWarning>
                 <AuthProvider initialUser={initialUser}>
                     <UserSettingsProvider initialTheme={initialTheme}>
-                        {children}
+                        <AppShell>{children}</AppShell>
                         <AppToaster />
                     </UserSettingsProvider>
                 </AuthProvider>

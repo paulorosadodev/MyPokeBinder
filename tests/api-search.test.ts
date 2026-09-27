@@ -123,4 +123,24 @@ describe("GET /api/search", () => {
         expect(page1Json.cards[0].id).not.toBe(page2Json.cards[0].id);
         expect(page1Json.hasMore).toBe(true);
     }, 15000);
+
+    it("should return only Mew cards and exclude Mewtwo cards when searching for Mew", async () => {
+        const req = new NextRequest("http://localhost:3000/api/search?name=Mew&dexId=151&page=1&pageSize=36", {
+            headers: { "x-test-user-id": "test-user-id" },
+        });
+        const res = await GET(req);
+        expect(res.status).toBe(200);
+
+        const json = await res.json();
+        expect(Array.isArray(json.cards)).toBe(true);
+        expect(json.cards.length).toBeGreaterThan(0);
+
+        for (const card of json.cards) {
+            const cleanName = card.name
+                .toLowerCase()
+                .replace(/mewtwo/gi, " ")
+                .trim();
+            expect(/\bmew\b/i.test(cleanName)).toBe(true);
+        }
+    }, 15000);
 });

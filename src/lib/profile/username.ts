@@ -7,8 +7,29 @@ export const DISPLAY_NAME_MAX_LENGTH = 40;
 export const BIO_MAX_LENGTH = 160;
 
 export const USERNAME_REGEX = /^[a-z][a-z0-9_]{2,19}$/;
+export const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-const RESERVED_USERNAMES = new Set(["api", "auth", "login", "logout", "perfil", "profile", "configuracoes", "settings", "collection", "colecao", "dashboard", "cards", "inicio", "home", "admin", "me", "termos", "terms", "privacy", "privacidade", "mypokebinder"]);
+export function safeDecodeParam(raw: string | null | undefined): string | null {
+    if (raw === null || raw === undefined) return null;
+    const trimmed = raw.trim();
+    if (!trimmed) return "";
+    try {
+        return decodeURIComponent(trimmed).trim();
+    } catch {
+        return null;
+    }
+}
+
+export function isValidProfileParam(raw: string | null | undefined): boolean {
+    if (!raw) return false;
+    const trimmed = raw.trim();
+    if (!trimmed) return false;
+    if (UUID_REGEX.test(trimmed)) return true;
+    const clean = (trimmed.startsWith("@") ? trimmed.slice(1) : trimmed).toLowerCase();
+    return USERNAME_REGEX.test(clean);
+}
+
+export const RESERVED_USERNAMES = new Set(["api", "auth", "login", "logout", "perfil", "profile", "configuracoes", "settings", "collection", "colecao", "dashboard", "cards", "inicio", "home", "admin", "me", "termos", "terms", "privacy", "privacidade", "mypokebinder"]);
 
 export function sanitizeUsernameCandidate(raw: string): string {
     let value = raw
@@ -26,6 +47,9 @@ export function sanitizeUsernameCandidate(raw: string): string {
     }
     if (value.length < USERNAME_MIN_LENGTH) {
         value = `${value}xxx`.slice(0, USERNAME_MIN_LENGTH);
+    }
+    if (RESERVED_USERNAMES.has(value)) {
+        value = `treinador_${value}`.slice(0, USERNAME_MAX_LENGTH);
     }
     return value;
 }

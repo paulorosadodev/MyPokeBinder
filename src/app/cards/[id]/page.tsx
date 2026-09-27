@@ -3,14 +3,14 @@
 import { useState, useEffect, use } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { Header } from "@/components/layout/Header";
 import { PokeballLoader } from "@/components/loading/PokeballLoader";
 import { LanguageSlider } from "@/components/ui/LanguageSlider";
 import { Card3DTilt } from "@/components/ui/Card3DTilt";
+import { CardLightbox } from "@/components/ui/CardLightbox";
 import { formatTcgdexImageUrl } from "@/lib/pokemon/tcgdex";
-import { getPokemonSilhouetteUrl } from "@/lib/pokemon/constants";
 import { useCardDetails } from "@/lib/swr";
-import { CardLanguage, CardVariant } from "@/types/binder";
+import { useSWRConfig } from "swr";
+import { CardLanguage, CardVariant, UserCard } from "@/types/binder";
 import { getRarityBadgeStyle } from "@/lib/pokemon/rarity";
 import { formatVariantLabel, isCardVariant, resolveCardShine } from "@/lib/pokemon/variant";
 import { toast } from "sonner";
@@ -34,6 +34,7 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
     const dexIdParam = searchParams.get("dexId");
 
     const { card, copies, isLoading, isError, mutate } = useCardDetails(cardId);
+    const { mutate: globalMutate } = useSWRConfig();
 
     const [isUpdatingBinder, setIsUpdatingBinder] = useState(false);
     const [updatingLang, setUpdatingLang] = useState<CardLanguage | null>(null);
@@ -41,15 +42,10 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
     const [updatingVariant, setUpdatingVariant] = useState<CardVariant | null>(null);
     const [optimisticVariant, setOptimisticVariant] = useState<CardVariant | null>(null);
     const [isUpdatingCopies, setIsUpdatingCopies] = useState(false);
-    const [isImageLoaded, setIsImageLoaded] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isZoomed, setIsZoomed] = useState(false);
-
-    useEffect(() => {
-        setIsImageLoaded(false);
-    }, [cardId, card?.card_image_url]);
 
     useEffect(() => {
         setOptimisticLang(null);
@@ -58,17 +54,6 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
     useEffect(() => {
         setOptimisticVariant(null);
     }, [card?.card_variant]);
-
-    useEffect(() => {
-        if (!isZoomed) return;
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === "Escape") {
-                setIsZoomed(false);
-            }
-        };
-        window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [isZoomed]);
 
     const handleBack = () => {
         if (fromParam === "binder") {
@@ -105,8 +90,35 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
         if (!card || (optimisticLang ?? card.card_language) === newLang || updatingLang !== null) return;
         setOptimisticLang(newLang);
         setUpdatingLang(newLang);
+        const targetDexId = card.pokemon_dex_id;
+        const collectionKey = `/api/cards?pokemon_dex_id=${targetDexId}`;
         try {
             setActionError(null);
+
+            if (card.is_in_binder) {
+                globalMutate(
+                    "/api/binder",
+                    (prev?: { cards: UserCard[]; availableCounts?: Record<number, number> }) => {
+                        if (!prev) return prev;
+                        return {
+                            ...prev,
+                            cards: prev.cards.map((c) => (c.id === card.id ? { ...c, card_language: newLang } : c)),
+                        };
+                    },
+                    false,
+                );
+            }
+
+            globalMutate(
+                collectionKey,
+                (prev?: { cards: UserCard[] }) => {
+                    if (!prev) return prev;
+                    return {
+                        cards: prev.cards.map((c) => (c.id === card.id ? { ...c, card_language: newLang } : c)),
+                    };
+                },
+                false,
+            );
 
             const res = await fetch(`/api/cards/${card.id}`, {
                 method: "PATCH",
@@ -118,12 +130,25 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
             if (!res.ok) throw new Error(data.error || "Erro ao atualizar idioma");
 
             await mutate();
+            if (card.is_in_binder) {
+                globalMutate("/api/binder");
+            }
+            globalMutate(collectionKey);
+            globalMutate("/api/cards");
+            router.refresh();
+
             const langLabels: Record<string, string> = { "pt-br": "Português", en: "Inglês", ja: "Japonês" };
             toast.success("Idioma atualizado", {
                 description: `Idioma alterado para ${langLabels[newLang] || newLang.toUpperCase()}.`,
             });
         } catch (err: unknown) {
             setOptimisticLang(null);
+            await mutate();
+            if (card.is_in_binder) {
+                globalMutate("/api/binder");
+            }
+            globalMutate(collectionKey);
+            globalMutate("/api/cards");
             const msg = err instanceof Error ? err.message : "Erro ao atualizar idioma";
             setActionError(msg);
             toast.error("Erro ao atualizar idioma", {
@@ -139,8 +164,35 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
         if (!card || currentVariant === newVariant || updatingVariant !== null) return;
         setOptimisticVariant(newVariant);
         setUpdatingVariant(newVariant);
+        const targetDexId = card.pokemon_dex_id;
+        const collectionKey = `/api/cards?pokemon_dex_id=${targetDexId}`;
         try {
             setActionError(null);
+
+            if (card.is_in_binder) {
+                globalMutate(
+                    "/api/binder",
+                    (prev?: { cards: UserCard[]; availableCounts?: Record<number, number> }) => {
+                        if (!prev) return prev;
+                        return {
+                            ...prev,
+                            cards: prev.cards.map((c) => (c.id === card.id ? { ...c, card_variant: newVariant } : c)),
+                        };
+                    },
+                    false,
+                );
+            }
+
+            globalMutate(
+                collectionKey,
+                (prev?: { cards: UserCard[] }) => {
+                    if (!prev) return prev;
+                    return {
+                        cards: prev.cards.map((c) => (c.id === card.id ? { ...c, card_variant: newVariant } : c)),
+                    };
+                },
+                false,
+            );
 
             const res = await fetch(`/api/cards/${card.id}`, {
                 method: "PATCH",
@@ -152,11 +204,24 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
             if (!res.ok) throw new Error(data.error || "Erro ao atualizar versão");
 
             await mutate();
+            if (card.is_in_binder) {
+                globalMutate("/api/binder");
+            }
+            globalMutate(collectionKey);
+            globalMutate("/api/cards");
+            router.refresh();
+
             toast.success("Versão atualizada", {
                 description: `Versão alterada para ${formatVariantLabel(newVariant)}.`,
             });
         } catch (err: unknown) {
             setOptimisticVariant(null);
+            await mutate();
+            if (card.is_in_binder) {
+                globalMutate("/api/binder");
+            }
+            globalMutate(collectionKey);
+            globalMutate("/api/cards");
             const msg = err instanceof Error ? err.message : "Erro ao atualizar versão";
             setActionError(msg);
             toast.error("Erro ao atualizar versão", {
@@ -169,10 +234,78 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
 
     const handleToggleBinder = async () => {
         if (!card || isUpdatingBinder) return;
+        const nextIsInBinder = !card.is_in_binder;
+        const targetDexId = card.pokemon_dex_id;
+        const collectionKey = `/api/cards?pokemon_dex_id=${targetDexId}`;
         try {
             setIsUpdatingBinder(true);
             setActionError(null);
-            const nextIsInBinder = !card.is_in_binder;
+
+            globalMutate(
+                "/api/binder",
+                (prev?: { cards: UserCard[]; availableCounts?: Record<number, number> }) => {
+                    if (!prev) return prev;
+                    const prevCounts = prev.availableCounts ?? {};
+                    const currentCount = prevCounts[targetDexId] || 0;
+                    if (nextIsInBinder) {
+                        const updatedCard: UserCard = { ...card, is_in_binder: true };
+                        return {
+                            cards: [...prev.cards.filter((c) => c.pokemon_dex_id !== targetDexId), updatedCard],
+                            availableCounts: {
+                                ...prevCounts,
+                                [targetDexId]: Math.max(0, currentCount - 1),
+                            },
+                        };
+                    } else {
+                        return {
+                            cards: prev.cards.filter((c) => c.pokemon_dex_id !== targetDexId),
+                            availableCounts: {
+                                ...prevCounts,
+                                [targetDexId]: currentCount + 1,
+                            },
+                        };
+                    }
+                },
+                false,
+            );
+
+            globalMutate(
+                collectionKey,
+                (prev?: { cards: UserCard[] }) => {
+                    if (!prev) return prev;
+                    return {
+                        cards: prev.cards.map((c) => {
+                            if (c.id === card.id) {
+                                return { ...c, is_in_binder: nextIsInBinder };
+                            }
+                            if (nextIsInBinder && c.pokemon_dex_id === targetDexId) {
+                                return { ...c, is_in_binder: false };
+                            }
+                            return c;
+                        }),
+                    };
+                },
+                false,
+            );
+
+            globalMutate(
+                "/api/cards",
+                (prev?: { cards: UserCard[] }) => {
+                    if (!prev) return prev;
+                    return {
+                        cards: prev.cards.map((c) => {
+                            if (c.id === card.id) {
+                                return { ...c, is_in_binder: nextIsInBinder };
+                            }
+                            if (nextIsInBinder && c.pokemon_dex_id === targetDexId) {
+                                return { ...c, is_in_binder: false };
+                            }
+                            return c;
+                        }),
+                    };
+                },
+                false,
+            );
 
             const res = await fetch(`/api/cards/${card.id}`, {
                 method: "PATCH",
@@ -184,10 +317,20 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
             if (!res.ok) throw new Error(data.error || "Erro ao alterar exibição no binder");
 
             await mutate();
+            globalMutate("/api/binder");
+            globalMutate(collectionKey);
+            globalMutate("/api/cards");
+            globalMutate("/api/dashboard");
+            router.refresh();
+
             toast.success(nextIsInBinder ? "Adicionada ao Binder!" : "Removida do Binder", {
                 description: `${card.card_name} foi ${nextIsInBinder ? "colocada em exibição" : "guardada na coleção"}.`,
             });
         } catch (err: unknown) {
+            await mutate();
+            globalMutate("/api/binder");
+            globalMutate(collectionKey);
+            globalMutate("/api/cards");
             const msg = err instanceof Error ? err.message : "Erro ao alterar exibição no binder";
             setActionError(msg);
             toast.error("Erro ao alterar exibição no binder", {
@@ -200,9 +343,28 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
 
     const handleAddDuplicateCopy = async () => {
         if (!card || isUpdatingCopies) return;
+        const targetDexId = card.pokemon_dex_id;
+        const collectionKey = `/api/cards?pokemon_dex_id=${targetDexId}`;
         try {
             setIsUpdatingCopies(true);
             setActionError(null);
+
+            globalMutate(
+                "/api/binder",
+                (prev?: { cards: UserCard[]; availableCounts?: Record<number, number> }) => {
+                    if (!prev) return prev;
+                    const prevCounts = prev.availableCounts ?? {};
+                    const currentCount = prevCounts[targetDexId] || 0;
+                    return {
+                        ...prev,
+                        availableCounts: {
+                            ...prevCounts,
+                            [targetDexId]: currentCount + 1,
+                        },
+                    };
+                },
+                false,
+            );
 
             const res = await fetch("/api/cards", {
                 method: "POST",
@@ -224,10 +386,20 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
             if (!res.ok) throw new Error(data.error || "Erro ao adicionar cópia idêntica");
 
             await mutate();
+            globalMutate("/api/binder");
+            globalMutate(collectionKey);
+            globalMutate("/api/cards");
+            globalMutate("/api/dashboard");
+            router.refresh();
+
             toast.success("Cópia adicionada!", {
                 description: `Mais um exemplar de ${card.card_name} adicionado à coleção.`,
             });
         } catch (err: unknown) {
+            await mutate();
+            globalMutate("/api/binder");
+            globalMutate(collectionKey);
+            globalMutate("/api/cards");
             const msg = err instanceof Error ? err.message : "Erro ao adicionar cópia";
             setActionError(msg);
             toast.error("Erro ao adicionar cópia", {
@@ -240,11 +412,52 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
 
     const handleRemoveDuplicateCopy = async () => {
         if (!card || copies.length <= 1 || isUpdatingCopies) return;
+        const copyToDelete = copies.find((c) => !c.is_in_binder && c.id !== card.id) || copies.find((c) => c.id !== card.id) || card;
+        const targetDexId = card.pokemon_dex_id;
+        const collectionKey = `/api/cards?pokemon_dex_id=${targetDexId}`;
+        const isCopyInBinder = Boolean(copyToDelete.is_in_binder);
         try {
             setIsUpdatingCopies(true);
             setActionError(null);
 
-            const copyToDelete = copies.find((c) => !c.is_in_binder && c.id !== card.id) || copies.find((c) => c.id !== card.id) || card;
+            globalMutate(
+                "/api/binder",
+                (prev?: { cards: UserCard[]; availableCounts?: Record<number, number> }) => {
+                    if (!prev) return prev;
+                    const prevCounts = prev.availableCounts ?? {};
+                    const currentCount = prevCounts[targetDexId] || 0;
+                    return {
+                        cards: isCopyInBinder ? prev.cards.filter((c) => c.id !== copyToDelete.id) : prev.cards,
+                        availableCounts: {
+                            ...prevCounts,
+                            [targetDexId]: isCopyInBinder ? currentCount : Math.max(0, currentCount - 1),
+                        },
+                    };
+                },
+                false,
+            );
+
+            globalMutate(
+                collectionKey,
+                (prev?: { cards: UserCard[] }) => {
+                    if (!prev) return prev;
+                    return {
+                        cards: prev.cards.filter((c) => c.id !== copyToDelete.id),
+                    };
+                },
+                false,
+            );
+
+            globalMutate(
+                "/api/cards",
+                (prev?: { cards: UserCard[] }) => {
+                    if (!prev) return prev;
+                    return {
+                        cards: prev.cards.filter((c) => c.id !== copyToDelete.id),
+                    };
+                },
+                false,
+            );
 
             const res = await fetch(`/api/cards/${copyToDelete.id}`, {
                 method: "DELETE",
@@ -257,6 +470,12 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
                 description: `Um exemplar de ${card.card_name} foi removido da coleção.`,
             });
 
+            globalMutate("/api/binder");
+            globalMutate(collectionKey);
+            globalMutate("/api/cards");
+            globalMutate("/api/dashboard");
+            router.refresh();
+
             if (copyToDelete.id === card.id) {
                 const remaining = copies.filter((c) => c.id !== card.id);
                 if (remaining.length > 0) {
@@ -267,6 +486,10 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
 
             await mutate();
         } catch (err: unknown) {
+            await mutate();
+            globalMutate("/api/binder");
+            globalMutate(collectionKey);
+            globalMutate("/api/cards");
             const msg = err instanceof Error ? err.message : "Erro ao remover cópia";
             setActionError(msg);
             toast.error("Erro ao remover cópia", {
@@ -279,9 +502,50 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
 
     const handleDeleteAllCopies = async () => {
         if (!card || isDeleting) return;
+        const targetDexId = card.pokemon_dex_id;
+        const collectionKey = `/api/cards?pokemon_dex_id=${targetDexId}`;
+        const deletedIds = new Set(copies.map((c) => c.id));
+        deletedIds.add(card.id);
         try {
             setIsDeleting(true);
             setActionError(null);
+
+            globalMutate(
+                "/api/binder",
+                (prev?: { cards: UserCard[]; availableCounts?: Record<number, number> }) => {
+                    if (!prev) return prev;
+                    return {
+                        cards: prev.cards.filter((c) => !deletedIds.has(c.id) && c.pokemon_dex_id !== targetDexId),
+                        availableCounts: {
+                            ...(prev.availableCounts || {}),
+                            [targetDexId]: 0,
+                        },
+                    };
+                },
+                false,
+            );
+
+            globalMutate(
+                collectionKey,
+                (prev?: { cards: UserCard[] }) => {
+                    if (!prev) return prev;
+                    return {
+                        cards: prev.cards.filter((c) => !deletedIds.has(c.id)),
+                    };
+                },
+                false,
+            );
+
+            globalMutate(
+                "/api/cards",
+                (prev?: { cards: UserCard[] }) => {
+                    if (!prev) return prev;
+                    return {
+                        cards: prev.cards.filter((c) => !deletedIds.has(c.id)),
+                    };
+                },
+                false,
+            );
 
             for (const copy of copies) {
                 const res = await fetch(`/api/cards/${copy.id}`, { method: "DELETE" });
@@ -291,12 +555,17 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
                 }
             }
 
+            globalMutate("/api/binder");
+            globalMutate(collectionKey);
+            globalMutate("/api/cards");
+            globalMutate("/api/dashboard");
+            router.refresh();
+
             setIsDeleteModalOpen(false);
             toast.success("Exemplar excluído", {
                 description: `Todas as cópias de ${card.card_name} foram removidas da coleção.`,
             });
             if (fromParam === "binder") {
-                const targetDexId = card?.pokemon_dex_id || (dexIdParam ? parseInt(dexIdParam, 10) : undefined);
                 if (targetDexId) {
                     router.push(`/?dexId=${targetDexId}&openSelect=true`);
                 } else {
@@ -306,6 +575,10 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
                 router.push("/collection");
             }
         } catch (err: unknown) {
+            await mutate();
+            globalMutate("/api/binder");
+            globalMutate(collectionKey);
+            globalMutate("/api/cards");
             const msg = err instanceof Error ? err.message : "Erro ao excluir carta";
             setActionError(msg);
             setIsDeleting(false);
@@ -323,8 +596,6 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
 
     return (
         <div className="flex min-h-screen flex-col">
-            <Header />
-
             <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 pb-28 md:pb-16">
                 <div className="flex items-center justify-between">
                     <button type="button" onClick={handleBack} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-slate-300 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white">
@@ -366,15 +637,8 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
                                 }}
                                 className="group/card relative z-0 aspect-[2.5/3.5] w-full max-w-[290px] cursor-pointer select-none isolate"
                             >
-                                <Card3DTilt className="relative h-full w-full overflow-hidden rounded-2xl" maxTilt={10} scale={1.03} glareOpacity={0.3} perspective={1000} shineMode={shineMode}>
-                                    {!isImageLoaded && (
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#0d1017] p-6">
-                                            <div className="relative h-36 w-36 animate-pulse">
-                                                <Image src={getPokemonSilhouetteUrl(card.pokemon_dex_id)} alt={card.card_name} fill unoptimized sizes="150px" className="object-contain opacity-25" priority />
-                                            </div>
-                                        </div>
-                                    )}
-                                    <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill unoptimized sizes="(max-width: 768px) 80vw, 350px" className={`object-contain drop-shadow-[0_16px_36px_rgba(0,0,0,0.85)] transition-all duration-300 group-hover/card:scale-[1.01] ${isImageLoaded ? "opacity-100" : "opacity-0"}`} priority onLoad={() => setIsImageLoaded(true)} />
+                                <Card3DTilt className="relative h-full w-full overflow-hidden rounded-2xl bg-[#0d1017]" maxTilt={10} scale={1.03} glareOpacity={0.3} perspective={1000} shineMode={shineMode}>
+                                    <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill unoptimized sizes="(max-width: 768px) 80vw, 350px" className="object-contain drop-shadow-[0_16px_36px_rgba(0,0,0,0.85)] transition-all duration-300 group-hover/card:scale-[1.01]" priority />
                                 </Card3DTilt>
                             </div>
 
@@ -578,19 +842,7 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
                 </div>
             )}
 
-            {isZoomed && card && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md transition-opacity duration-200" onClick={() => setIsZoomed(false)}>
-                    <button type="button" onClick={() => setIsZoomed(false)} aria-label="Fechar ampliação da carta" className="absolute right-6 top-6 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition-colors hover:bg-white/20">
-                        <X size={20} />
-                    </button>
-
-                    <div role="button" tabIndex={0} onClick={() => setIsZoomed(false)} className="relative aspect-[2.5/3.5] w-[88vw] max-w-[420px] cursor-pointer select-none">
-                        <Card3DTilt className="relative h-full w-full overflow-hidden rounded-2xl" maxTilt={16} scale={1.05} glareOpacity={0.35} perspective={1000} shineMode={shineMode}>
-                            <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill unoptimized sizes="(max-width: 768px) 90vw, 500px" className="object-contain drop-shadow-[0_25px_60px_rgba(0,0,0,0.95)]" priority />
-                        </Card3DTilt>
-                    </div>
-                </div>
-            )}
+            {isZoomed && card && <CardLightbox src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} shineMode={shineMode} onClose={() => setIsZoomed(false)} />}
         </div>
     );
 }

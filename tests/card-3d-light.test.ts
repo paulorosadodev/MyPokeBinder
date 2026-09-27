@@ -1,4 +1,5 @@
 import { describe, it, expect } from "bun:test";
+import { CARD_3D_REST_TRANSFORM, getCard3DNeutralTransform } from "@/components/ui/Card3DTilt";
 
 describe("Lightweight 3D Card Tilt Logic", () => {
     it("should compute strictly unscaled transform with scale 1", () => {
@@ -61,8 +62,12 @@ describe("Lightweight 3D Card Tilt Logic", () => {
     });
 
     it("should return neutral resting transform on reset without scale distortion", () => {
-        const restingTransform = "rotateX(0deg) rotateY(0deg) translate3d(0,0,0) scale3d(1,1,1)";
-        expect(restingTransform).toBe("rotateX(0deg) rotateY(0deg) translate3d(0,0,0) scale3d(1,1,1)");
+        expect(CARD_3D_REST_TRANSFORM).toBe("none");
+    });
+
+    it("should provide matching function-list neutral transform for smooth return interpolation", () => {
+        expect(getCard3DNeutralTransform(900)).toBe("perspective(900px) rotateX(0deg) rotateY(0deg) translate3d(0px,0px,0) scale3d(1,1,1)");
+        expect(getCard3DNeutralTransform()).toBe("perspective(800px) rotateX(0deg) rotateY(0deg) translate3d(0px,0px,0) scale3d(1,1,1)");
     });
 
     it("should maintain light configuration parameters for collection and modals", () => {

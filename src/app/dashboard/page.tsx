@@ -2,7 +2,6 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Header } from "@/components/layout/Header";
 import { useDashboardData } from "@/lib/swr";
 import { PokeballLoader } from "@/components/loading/PokeballLoader";
 import { DashboardMiniSlot } from "@/components/dashboard/DashboardMiniSlot";
@@ -21,8 +20,6 @@ export default function DashboardPage() {
 
     return (
         <div className="flex min-h-screen flex-col bg-[#0a0c10] text-slate-100">
-            <Header />
-
             <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 pb-28 md:pb-16">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Dashboard</h1>

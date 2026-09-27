@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Header } from "@/components/layout/Header";
 import { useUserSettings, THEME_PRESETS } from "@/lib/context/UserSettingsContext";
 import { useAuth } from "@/lib/context/AuthContext";
 import { toast } from "sonner";
@@ -20,6 +19,7 @@ export default function SettingsPage() {
     const [avatarError, setAvatarError] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [isAssetsLoaded, setIsAssetsLoaded] = useState(false);
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [nameDraft, setNameDraft] = useState("");
     const [usernameDraft, setUsernameDraft] = useState("");
     const [bioDraft, setBioDraft] = useState("");
@@ -31,28 +31,50 @@ export default function SettingsPage() {
     const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
     useEffect(() => {
-        if (user?.username) {
-            setUsernameDraft(user.username);
+        if (!isLoading && !user) {
+            router.replace("/login");
+            return;
         }
-        if (user?.name) {
-            setNameDraft(user.name);
-        } else if (user?.username) {
-            setNameDraft(user.username);
+
+        if (user && currentUserId !== user.id) {
+            setCurrentUserId(user.id);
+            setUsernameDraft(user.username || "");
+            setNameDraft(user.name || user.username || "");
+            if (typeof user.bio === "string") {
+                setBioDraft(user.bio);
+                setSavedBio(user.bio);
+                setProfileHydrated(true);
+            } else {
+                setProfileHydrated(false);
+            }
         }
-    }, [user?.username, user?.name]);
+    }, [user, isLoading, currentUserId, router]);
 
     useEffect(() => {
+        if (profileHydrated || !user) return;
         let cancelled = false;
         const load = async () => {
             try {
-                const res = await fetch("/api/profile");
-                if (!res.ok) return;
+                const res = await fetch("/api/profile?basic=true");
+                if (!res.ok) {
+                    if (!cancelled) setProfileHydrated(true);
+                    return;
+                }
                 const data = await res.json();
                 const profile = data.profile;
-                if (cancelled || !profile) return;
+                if (cancelled || !profile) {
+                    if (!cancelled) setProfileHydrated(true);
+                    return;
+                }
                 const bio = profile.user?.bio || "";
                 setBioDraft(bio);
                 setSavedBio(bio);
+                if (profile.user?.username) {
+                    setUsernameDraft(profile.user.username);
+                }
+                if (profile.user?.name) {
+                    setNameDraft(profile.user.name);
+                }
                 setProfileHydrated(true);
             } catch {
                 if (!cancelled) setProfileHydrated(true);
@@ -62,7 +84,7 @@ export default function SettingsPage() {
         return () => {
             cancelled = true;
         };
-    }, []);
+    }, [profileHydrated, user]);
 
     useEffect(() => {
         const urls = THEME_PRESETS.map((p) => getPokemonThemeSelectorSpriteUrl((p as { dexId: number }).dexId));
@@ -119,9 +141,7 @@ export default function SettingsPage() {
             }
             sessionStorage.removeItem("mypokebinder_collection_filters");
             document.cookie = "mypokebinder_theme_color=; path=/; max-age=0; SameSite=Lax";
-        } catch {
-            // ignore storage errors (private mode, etc.)
-        }
+        } catch {}
     };
 
     const handleDeleteAccount = async () => {
@@ -228,10 +248,9 @@ export default function SettingsPage() {
         }
     };
 
-    if (!isAssetsLoaded) {
+    if (!isAssetsLoaded || isLoading || !profileHydrated) {
         return (
             <div className="flex min-h-screen flex-col">
-                <Header />
                 <main className="flex flex-1 items-center justify-center">
                     <PokeballLoader size="lg" message="Carregando configurações..." />
                 </main>
@@ -241,8 +260,6 @@ export default function SettingsPage() {
 
     return (
         <div className="flex min-h-screen flex-col">
-            <Header />
-
             <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 px-4 py-5 sm:gap-6 sm:px-6 sm:py-8 pb-28 md:pb-16">
                 <div className="flex flex-col gap-3 sm:gap-4">
                     <div>
@@ -295,7 +312,7 @@ export default function SettingsPage() {
                             ) : (
                                 <>
                                     {user?.avatarUrl && !avatarError ? (
-                                        <Image src={user.avatarUrl} alt={user.name || user.username || "Avatar"} width={64} height={64} priority className="h-16 w-16 rounded-full border border-white/20 bg-white/10 object-cover shadow-sm ring-1 ring-white/10" referrerPolicy="no-referrer" onError={() => setAvatarError(true)} unoptimized />
+                                        <Image src={user.avatarUrl} alt={user.name || user.username || "Avatar"} width={64} height={64} className="h-16 w-16 rounded-full border border-white/20 bg-white/10 object-cover shadow-sm ring-1 ring-white/10" referrerPolicy="no-referrer" onError={() => setAvatarError(true)} unoptimized />
                                     ) : (
                                         <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/15 bg-white/10 text-xl font-bold text-white shadow-sm">{(user?.name?.[0] || user?.username?.[0] || user?.email?.[0] || "P").toUpperCase()}</div>
                                     )}
@@ -317,7 +334,6 @@ export default function SettingsPage() {
                                 <label className="flex flex-col gap-1.5">
                                     <span className="text-xs font-semibold text-slate-300">Nome</span>
                                     <input type="text" value={nameDraft} onChange={(e) => setNameDraft(e.target.value.slice(0, DISPLAY_NAME_MAX_LENGTH))} maxLength={DISPLAY_NAME_MAX_LENGTH} autoComplete="nickname" className="w-full rounded-xl border border-white/10 bg-black/30 px-3.5 py-2.5 text-sm font-semibold text-white outline-none transition-colors placeholder:text-slate-600 focus:border-poke-blue/50 focus:ring-1 focus:ring-poke-blue/30" placeholder="Como quer ser chamado" />
-                                    <span className="text-[10px] text-slate-500">Aparece no seu perfil público</span>
                                 </label>
 
                                 <label className="flex flex-col gap-1.5">
@@ -342,9 +358,6 @@ export default function SettingsPage() {
                                             placeholder="seu_username"
                                         />
                                     </div>
-                                    <span className="text-[10px] text-slate-500">
-                                        Único · /perfil/<span className="font-mono text-slate-400">{usernameDraft || "username"}</span>
-                                    </span>
                                 </label>
                             </div>
 

@@ -46,7 +46,10 @@ export function resolveCardShine(variant?: CardVariant | string | null, rarity?:
     if (isFullArtRarity(rarity)) {
         return "prismatic";
     }
-    if (variant === "holo" || variant === "reverse") {
+    if (variant === "holo") {
+        return "holo";
+    }
+    if (variant === "reverse") {
         return "foil";
     }
     return "none";

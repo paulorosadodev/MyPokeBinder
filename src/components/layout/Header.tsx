@@ -111,7 +111,7 @@ export function Header({ userEmail, userAvatar }: HeaderProps) {
                                 </div>
 
                                 {resolvedUserAvatar && !avatarError ? (
-                                    <Image src={resolvedUserAvatar} alt={navLabel} width={32} height={32} priority className={`h-8 w-8 rounded-full bg-white/10 object-cover shadow-sm transition-all duration-200 ${activeNavIndex === 3 ? "ring-2 ring-[var(--theme-primary)] shadow-[0_0_8px_var(--theme-primary-glow)]" : "ring-1 ring-white/20"}`} referrerPolicy="no-referrer" onError={() => setAvatarError(true)} unoptimized />
+                                    <Image src={resolvedUserAvatar} alt={navLabel} width={32} height={32} className={`h-8 w-8 rounded-full bg-white/10 object-cover shadow-sm transition-all duration-200 ${activeNavIndex === 3 ? "ring-2 ring-[var(--theme-primary)] shadow-[0_0_8px_var(--theme-primary-glow)]" : "ring-1 ring-white/20"}`} referrerPolicy="no-referrer" onError={() => setAvatarError(true)} unoptimized />
                                 ) : (
                                     <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all duration-200 ${activeNavIndex === 3 ? "bg-[var(--theme-primary)] text-white shadow-[0_0_8px_var(--theme-primary-glow)]" : "bg-white/10 text-slate-200"}`}>{navInitial}</div>
                                 )}

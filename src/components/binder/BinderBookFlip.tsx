@@ -3,8 +3,34 @@
 import { useEffect, useState, useRef, useImperativeHandle, forwardRef, memo, useCallback, createContext, useContext, useMemo, useLayoutEffect } from "react";
 import HTMLFlipBook from "react-pageflip";
 import { UserCard } from "@/types/binder";
-import { POKEMON_151, TOTAL_PAGES, SLOTS_PER_PAGE, BINDER_PHYSICAL_FRONT_COVER, catalogPageToPhysicalIndex, getBinderSheetPlan, getSpreadLeftIndex, physicalIndexToCatalogPage } from "@/lib/pokemon/constants";
-import { BINDER_DESKTOP_MAX_SHADOW_OPACITY, BINDER_FLIP_MS, BINDER_MOBILE_MAX_SHADOW_OPACITY, BINDER_OPEN_HOLD_MS, BINDER_PAGE_HEIGHT, BINDER_PAGE_MAX_WIDTH, BINDER_PAGE_MIN_WIDTH, BINDER_PAGE_WIDTH, binderPageFlipDisableFlipByClick, canMountBinderEngine, isBinderAlreadyOnTarget, isBinderPageBusy, planBinderOpenAnimation, shouldDeferBinderPageSync, shouldUsePortraitBinder } from "@/lib/pokemon/binderOpen";
+import { POKEMON_151, TOTAL_PAGES, SLOTS_PER_PAGE, BINDER_PHYSICAL_FRONT_COVER, catalogPageToPhysicalIndex, getBinderSheetPlan, physicalIndexToCatalogPage } from "@/lib/pokemon/constants";
+import {
+    BINDER_DESKTOP_MAX_SHADOW_OPACITY,
+    BINDER_ENTRANCE_MS,
+    BINDER_FLIP_MS,
+    BINDER_LIB_SWIPE_DISTANCE,
+    BINDER_MOBILE_MAX_SHADOW_OPACITY,
+    BINDER_MULTI_FLIP_STEP_MS,
+    BINDER_OPEN_HOLD_MS,
+    BINDER_PAGE_HEIGHT,
+    BINDER_PAGE_MAX_WIDTH,
+    BINDER_PAGE_MIN_WIDTH,
+    BINDER_PAGE_MIN_WIDTH_MOBILE,
+    BINDER_PAGE_MIN_HEIGHT_MOBILE,
+    BINDER_PAGE_WIDTH,
+    BINDER_USE_MOUSE_EVENTS,
+    binderPageFlipAutoSize,
+    binderPageFlipDisableFlipByClick,
+    canMountBinderEngine,
+    isBinderAlreadyOnTarget,
+    isBinderPageBusy,
+    planBinderOpenAnimation,
+    planBinderPageNavigation,
+    resolveBinderPageSwipe,
+    shouldApplyExternalBinderPageFlip,
+    shouldDeferBinderPageSync,
+    shouldSignalBinderReady,
+} from "@/lib/pokemon/binderOpen";
 import { BinderSlot } from "./BinderSlot";
 import { PokeballLogo } from "@/components/ui/PokeballLogo";
 import { UserSettingsContext } from "@/lib/context/UserSettingsContext";
@@ -14,15 +40,21 @@ export interface BinderBookFlipHandle {
     flipPrev: () => void;
     turnToPage: (page: number) => void;
     getCurrentPageIndex: () => number;
+    isBusy: () => boolean;
 }
 
 interface BinderBookFlipProps {
     currentPage: number;
     cardsMap: Map<number, UserCard>;
+    availableCounts?: Record<number, number>;
     highlightedDexId?: number | null;
     droppingDexId?: number | null;
     isMobile?: boolean;
+    imagePages?: readonly number[];
+    priorityPages?: readonly number[];
     readyToOpen?: boolean;
+    skipOpeningAnimation?: boolean;
+    onEngineReady?: () => void;
     onPageChange: (page: number) => void;
     onSlotClick: (dexId: number, pokemonName: string, card?: UserCard) => void;
     onSwapClick?: (dexId: number, pokemonName: string, card?: UserCard) => void;
@@ -31,8 +63,11 @@ interface BinderBookFlipProps {
 
 interface BinderCardsContextValue {
     cardsMap: Map<number, UserCard>;
+    availableCounts: Record<number, number>;
     highlightedDexId?: number | null;
     droppingDexId?: number | null;
+    imagePages: ReadonlySet<number>;
+    priorityPages: ReadonlySet<number>;
     pauseTilt: boolean;
     onSlotClick: (dexId: number, pokemonName: string, card?: UserCard) => void;
     onSwapClick?: (dexId: number, pokemonName: string, card?: UserCard) => void;
@@ -40,8 +75,11 @@ interface BinderCardsContextValue {
 
 const BinderCardsContext = createContext<BinderCardsContextValue>({
     cardsMap: new Map(),
+    availableCounts: {},
     highlightedDexId: null,
     droppingDexId: null,
+    imagePages: new Set<number>(),
+    priorityPages: new Set<number>(),
     pauseTilt: false,
     onSlotClick: () => {},
 });
@@ -177,7 +215,9 @@ interface PageSheetProps {
 
 const PageSheet = memo(
     forwardRef<HTMLDivElement, PageSheetProps>(function PageSheet({ pageNum }, ref) {
-        const { cardsMap, highlightedDexId, droppingDexId, pauseTilt, onSlotClick, onSwapClick } = useContext(BinderCardsContext);
+        const { cardsMap, availableCounts, highlightedDexId, droppingDexId, imagePages, priorityPages, pauseTilt, onSlotClick, onSwapClick } = useContext(BinderCardsContext);
+        const mountImage = imagePages.has(pageNum);
+        const imagePriority = priorityPages.has(pageNum);
         const totalSlotsCount = 151;
         const startSlot = (pageNum - 1) * SLOTS_PER_PAGE + 1;
         const pageSlots = Array.from({ length: SLOTS_PER_PAGE }, (_, i) => startSlot + i);
@@ -208,9 +248,12 @@ const PageSheet = memo(
                                     dexId={dexId}
                                     pokemonName={pokemon?.name ?? ""}
                                     card={card}
+                                    availableCount={availableCounts[dexId] || 0}
                                     isTrailing={isTrailing}
                                     isHighlighted={highlightedDexId === dexId}
                                     isDropping={droppingDexId === dexId}
+                                    mountImage={mountImage}
+                                    priority={imagePriority}
                                     pauseTilt={pauseTilt}
                                     onClick={() => {
                                         if (!isTrailing && pokemon) {
@@ -265,7 +308,7 @@ const BackCoverSheet = forwardRef<HTMLDivElement>(function BackCoverSheet(_props
 });
 
 export const BinderBookFlip = memo(
-    forwardRef<BinderBookFlipHandle, BinderBookFlipProps>(function BinderBookFlip({ currentPage, cardsMap, highlightedDexId, droppingDexId, isMobile = false, readyToOpen = true, onPageChange, onSlotClick, onSwapClick, onReady }, ref) {
+    forwardRef<BinderBookFlipHandle, BinderBookFlipProps>(function BinderBookFlip({ currentPage, cardsMap, availableCounts = {}, highlightedDexId, droppingDexId, isMobile = false, imagePages, priorityPages, readyToOpen = true, skipOpeningAnimation: skipOpeningAnimationProp = false, onEngineReady, onPageChange, onSlotClick, onSwapClick, onReady }, ref) {
         const settings = useContext(UserSettingsContext);
         const animationsEnabled = settings ? settings.animationsEnabled : true;
         const [isBookEngineReady, setIsBookEngineReady] = useState(false);
@@ -274,10 +317,17 @@ export const BinderBookFlip = memo(
         const stageRef = useRef<HTMLDivElement>(null);
         const isFlippingRef = useRef(false);
         const isPortraitBook = Boolean(isMobile);
-        const skipOpeningAnimation = !animationsEnabled;
+        const skipOpeningAnimation = !animationsEnabled || Boolean(skipOpeningAnimationProp);
         const openPlan = useMemo(() => planBinderOpenAnimation(currentPage, isPortraitBook, skipOpeningAnimation), [currentPage, isPortraitBook, skipOpeningAnimation]);
         const hasAutoOpenedRef = useRef(!openPlan.animateFromCover || skipOpeningAnimation);
+        const readyOrientationRef = useRef<boolean | null>(null);
         const [engineMounted, setEngineMounted] = useState(false);
+
+        const signalReady = useCallback(() => {
+            if (readyOrientationRef.current === isPortraitBook) return;
+            readyOrientationRef.current = isPortraitBook;
+            onReady?.();
+        }, [isPortraitBook, onReady]);
 
         useLayoutEffect(() => {
             const stage = stageRef.current;
@@ -303,8 +353,17 @@ export const BinderBookFlip = memo(
 
         const handleInit = useCallback(() => {
             setIsBookEngineReady(true);
-            onReady?.();
-        }, [onReady]);
+            onEngineReady?.();
+            if (
+                shouldSignalBinderReady({
+                    animateFromCover: openPlan.animateFromCover,
+                    hasAutoOpened: hasAutoOpenedRef.current,
+                    isBusy: false,
+                })
+            ) {
+                signalReady();
+            }
+        }, [openPlan.animateFromCover, signalReady, onEngineReady]);
 
         const handleCoverClick = useCallback(() => {
             const flip = flipBookRef.current?.pageFlip();
@@ -319,9 +378,8 @@ export const BinderBookFlip = memo(
         }, [animationsEnabled, isPortraitBook]);
 
         const multiFlipStateRef = useRef<{
-            remainingSteps: number;
+            remainingPhysicalTargets: number[];
             targetPhysical: number;
-            direction: "next" | "prev";
         } | null>(null);
         const multiFlipTimeoutRef = useRef<number | null>(null);
 
@@ -337,6 +395,40 @@ export const BinderBookFlip = memo(
             }
         }, []);
 
+        const flipNextPage = useCallback(() => {
+            resetMultiFlip();
+            const flip = flipBookRef.current?.pageFlip();
+            if (!flip) return;
+            const curIndex = flip.getCurrentPageIndex();
+            if (curIndex >= flip.getPageCount() - 1) return;
+            if (!animationsEnabled) {
+                flip.turnToPage(curIndex + (isPortraitBook ? 1 : 2));
+                return;
+            }
+            if (isPortraitBook) {
+                flip.flip(curIndex + 1);
+                return;
+            }
+            flip.flipNext();
+        }, [resetMultiFlip, animationsEnabled, isPortraitBook]);
+
+        const flipPrevPage = useCallback(() => {
+            resetMultiFlip();
+            const flip = flipBookRef.current?.pageFlip();
+            if (!flip) return;
+            const curIndex = flip.getCurrentPageIndex();
+            if (curIndex <= 0) return;
+            if (!animationsEnabled) {
+                flip.turnToPage(Math.max(0, curIndex - (isPortraitBook ? 1 : 2)));
+                return;
+            }
+            if (isPortraitBook) {
+                flip.flip(curIndex - 1);
+                return;
+            }
+            flip.flipPrev();
+        }, [resetMultiFlip, animationsEnabled, isPortraitBook]);
+
         useEffect(() => {
             return () => {
                 try {
@@ -349,30 +441,8 @@ export const BinderBookFlip = memo(
         useImperativeHandle(
             ref,
             () => ({
-                flipNext: () => {
-                    resetMultiFlip();
-                    const flip = flipBookRef.current?.pageFlip();
-                    if (!flip) return;
-                    const curIndex = flip.getCurrentPageIndex();
-                    if (curIndex >= flip.getPageCount() - 1) return;
-                    if (!animationsEnabled) {
-                        flip.turnToPage(curIndex + (isPortraitBook ? 1 : 2));
-                        return;
-                    }
-                    flip.flipNext();
-                },
-                flipPrev: () => {
-                    resetMultiFlip();
-                    const flip = flipBookRef.current?.pageFlip();
-                    if (!flip) return;
-                    const curIndex = flip.getCurrentPageIndex();
-                    if (curIndex <= 0) return;
-                    if (!animationsEnabled) {
-                        flip.turnToPage(Math.max(0, curIndex - (isPortraitBook ? 1 : 2)));
-                        return;
-                    }
-                    flip.flipPrev();
-                },
+                flipNext: flipNextPage,
+                flipPrev: flipPrevPage,
                 turnToPage: (page: number) => {
                     resetMultiFlip();
                     const flip = flipBookRef.current?.pageFlip();
@@ -388,42 +458,27 @@ export const BinderBookFlip = memo(
                         return;
                     }
 
-                    const currentSpread = isPortrait ? currentIndex : getSpreadLeftIndex(currentIndex);
-                    const targetSpread = isPortrait ? physical : getSpreadLeftIndex(physical);
-                    const spreadDelta = isPortrait ? physical - currentIndex : (targetSpread - currentSpread) / 2;
-
-                    let intermediateSteps = 0;
-                    if (Math.abs(spreadDelta) >= 4) {
-                        intermediateSteps = 2;
-                    } else if (Math.abs(spreadDelta) >= 2) {
-                        intermediateSteps = 1;
-                    }
-
-                    if (intermediateSteps === 0) {
+                    const navigation = planBinderPageNavigation(currentIndex, physical, isPortrait);
+                    if (navigation.mode === "direct") {
                         flip.getSettings().flippingTime = BINDER_FLIP_MS;
-                        flip.flip(physical);
+                        flip.flip(navigation.targetPhysical);
                         return;
                     }
 
-                    const direction = spreadDelta > 0 ? "next" : "prev";
                     multiFlipStateRef.current = {
-                        remainingSteps: intermediateSteps,
-                        targetPhysical: physical,
-                        direction,
+                        remainingPhysicalTargets: navigation.intermediatePhysicalTargets.slice(1),
+                        targetPhysical: navigation.targetPhysical,
                     };
-                    flip.getSettings().flippingTime = 180;
-                    if (direction === "next") {
-                        flip.flipNext();
-                    } else {
-                        flip.flipPrev();
-                    }
+                    flip.getSettings().flippingTime = BINDER_MULTI_FLIP_STEP_MS;
+                    flip.flip(navigation.intermediatePhysicalTargets[0]);
                 },
                 getCurrentPageIndex: () => {
                     const flip = flipBookRef.current?.pageFlip();
                     return flip ? flip.getCurrentPageIndex() : 0;
                 },
+                isBusy: () => isFlippingRef.current,
             }),
-            [isPortraitBook, resetMultiFlip, animationsEnabled],
+            [isPortraitBook, resetMultiFlip, animationsEnabled, flipNextPage, flipPrevPage],
         );
 
         useEffect(() => {
@@ -437,6 +492,7 @@ export const BinderBookFlip = memo(
             const currentIndex = flip.getCurrentPageIndex();
             if (isBinderAlreadyOnTarget(currentIndex, openPlan.targetPhysical, isPortrait)) {
                 hasAutoOpenedRef.current = true;
+                signalReady();
                 return;
             }
 
@@ -460,14 +516,14 @@ export const BinderBookFlip = memo(
                     }
                     flip.flip(openPlan.targetPhysical);
                 },
-                reduceMotion ? 0 : BINDER_OPEN_HOLD_MS,
+                reduceMotion ? 0 : BINDER_ENTRANCE_MS + BINDER_OPEN_HOLD_MS,
             );
 
             return () => {
                 cancelled = true;
                 window.clearTimeout(timer);
             };
-        }, [engineMounted, isBookEngineReady, readyToOpen, openPlan, isPortraitBook, animationsEnabled]);
+        }, [engineMounted, isBookEngineReady, readyToOpen, openPlan, isPortraitBook, animationsEnabled, signalReady]);
 
         useEffect(() => {
             if (!engineMounted || !isBookEngineReady) return;
@@ -478,13 +534,13 @@ export const BinderBookFlip = memo(
             const isPortrait = (flip.getOrientation?.() ?? (isPortraitBook ? "portrait" : "landscape")) === "portrait";
             const target = catalogPageToPhysicalIndex(currentPage, isPortrait);
             const currentIndex = flip.getCurrentPageIndex();
-            if (isBinderAlreadyOnTarget(currentIndex, target, isPortrait)) return;
-            if (!animationsEnabled) {
+            if (!shouldApplyExternalBinderPageFlip(isBinderAlreadyOnTarget(currentIndex, target, isPortrait), isFlippingRef.current)) return;
+            if (!animationsEnabled || skipOpeningAnimation) {
                 flip.turnToPage(target);
             } else {
                 flip.flip(target);
             }
-        }, [currentPage, engineMounted, isBookEngineReady, isPortraitBook, openPlan.animateFromCover, animationsEnabled]);
+        }, [currentPage, engineMounted, isBookEngineReady, isPortraitBook, openPlan.animateFromCover, animationsEnabled, skipOpeningAnimation]);
 
         useEffect(() => {
             if (!engineMounted || !isBookEngineReady) return;
@@ -492,10 +548,11 @@ export const BinderBookFlip = memo(
             if (!flip) return;
             const flipSettings = flip.getSettings();
             if (flipSettings) {
-                flipSettings.useMouseEvents = animationsEnabled;
+                flipSettings.useMouseEvents = BINDER_USE_MOUSE_EVENTS;
                 flipSettings.drawShadow = animationsEnabled;
                 flipSettings.showPageCorners = false;
                 flipSettings.disableFlipByClick = !animationsEnabled || binderPageFlipDisableFlipByClick(isPortraitBook);
+                flipSettings.swipeDistance = BINDER_LIB_SWIPE_DISTANCE;
             }
             const ui = flip.getUI();
             if (ui && typeof ui.removeHandlers === "function" && typeof ui.setHandlers === "function") {
@@ -504,12 +561,76 @@ export const BinderBookFlip = memo(
             }
         }, [engineMounted, isBookEngineReady, animationsEnabled, isPortraitBook]);
 
-        const handleChangeState = useCallback((e: { data: unknown }) => {
-            const state = typeof e.data === "string" ? e.data : "";
-            const busy = isBinderPageBusy(state);
-            isFlippingRef.current = busy;
-            setIsPageBusy(busy);
-        }, []);
+        useEffect(() => {
+            const stage = stageRef.current;
+            if (!stage || !engineMounted) return;
+
+            let startX = 0;
+            let startY = 0;
+            let pointerId: number | null = null;
+            let suppressClick = false;
+
+            const onPointerDown = (event: PointerEvent) => {
+                pointerId = event.pointerId;
+                startX = event.clientX;
+                startY = event.clientY;
+            };
+
+            const onPointerUp = (event: PointerEvent) => {
+                if (pointerId !== event.pointerId) return;
+                pointerId = null;
+                const direction = resolveBinderPageSwipe({
+                    dx: event.clientX - startX,
+                    dy: event.clientY - startY,
+                    isBusy: isFlippingRef.current,
+                });
+                if (!direction) return;
+                suppressClick = true;
+                if (direction === "next") {
+                    flipNextPage();
+                } else {
+                    flipPrevPage();
+                }
+            };
+
+            const onClick = (event: Event) => {
+                if (!suppressClick) return;
+                suppressClick = false;
+                event.preventDefault();
+                event.stopPropagation();
+            };
+
+            stage.addEventListener("pointerdown", onPointerDown, true);
+            stage.addEventListener("pointerup", onPointerUp, true);
+            stage.addEventListener("pointercancel", onPointerUp, true);
+            stage.addEventListener("click", onClick, true);
+
+            return () => {
+                stage.removeEventListener("pointerdown", onPointerDown, true);
+                stage.removeEventListener("pointerup", onPointerUp, true);
+                stage.removeEventListener("pointercancel", onPointerUp, true);
+                stage.removeEventListener("click", onClick, true);
+            };
+        }, [engineMounted, flipNextPage, flipPrevPage]);
+
+        const handleChangeState = useCallback(
+            (e: { data: unknown }) => {
+                const state = typeof e.data === "string" ? e.data : "";
+                const busy = isBinderPageBusy(state);
+                isFlippingRef.current = busy;
+                setIsPageBusy(busy);
+                if (
+                    shouldSignalBinderReady({
+                        animateFromCover: openPlan.animateFromCover,
+                        hasAutoOpened: hasAutoOpenedRef.current,
+                        isBusy: busy,
+                    })
+                ) {
+                    signalReady();
+                }
+            },
+            [openPlan.animateFromCover, signalReady],
+        );
 
         const handleFlip = useCallback(
             (e: { data: unknown }) => {
@@ -519,17 +640,13 @@ export const BinderBookFlip = memo(
                 const isPortrait = orientation === "portrait";
 
                 const multi = multiFlipStateRef.current;
-                if (multi && multi.remainingSteps > 0) {
-                    multi.remainingSteps -= 1;
-                    if (multi.remainingSteps > 0) {
+                if (multi) {
+                    const nextPhysicalTarget = multi.remainingPhysicalTargets.shift();
+                    if (nextPhysicalTarget != null) {
                         multiFlipTimeoutRef.current = window.setTimeout(() => {
                             const currentFlip = flipBookRef.current?.pageFlip();
                             if (!currentFlip) return;
-                            if (multi.direction === "next") {
-                                currentFlip.flipNext();
-                            } else {
-                                currentFlip.flipPrev();
-                            }
+                            currentFlip.flip(nextPhysicalTarget);
                         }, 20);
                     } else {
                         multiFlipTimeoutRef.current = window.setTimeout(() => {
@@ -549,16 +666,22 @@ export const BinderBookFlip = memo(
             [onPageChange, isPortraitBook],
         );
 
+        const imagePageSet = useMemo(() => new Set(imagePages ?? []), [imagePages]);
+        const priorityPageSet = useMemo(() => new Set(priorityPages ?? []), [priorityPages]);
+
         const contextValue = useMemo(
             () => ({
                 cardsMap,
+                availableCounts,
                 highlightedDexId,
                 droppingDexId,
+                imagePages: imagePageSet,
+                priorityPages: priorityPageSet,
                 pauseTilt: isPageBusy,
                 onSlotClick,
                 onSwapClick,
             }),
-            [cardsMap, highlightedDexId, droppingDexId, isPageBusy, onSlotClick, onSwapClick],
+            [cardsMap, availableCounts, highlightedDexId, droppingDexId, imagePageSet, priorityPageSet, isPageBusy, onSlotClick, onSwapClick],
         );
 
         const bookSheets = useMemo(() => {
@@ -583,13 +706,8 @@ export const BinderBookFlip = memo(
 
         return (
             <BinderCardsContext.Provider value={contextValue}>
-                <div className="relative w-full max-w-full overflow-x-clip flex flex-col items-center select-none">
-                    <div ref={stageRef} className={`binder-book-stage relative w-full flex items-center justify-center ${isPortraitBook ? "binder-book-stage--portrait" : ""} ${isPageBusy ? "binder-book-stage--busy" : ""}`}>
-                        {!isBookEngineReady && openPlan.animateFromCover ? (
-                            <div className={`pointer-events-none absolute z-10 overflow-hidden rounded-xl shadow-2xl bg-[#0e121b] ${isPortraitBook ? "inset-0" : "top-0 right-0 h-full w-1/2"}`} aria-hidden="true">
-                                <FrontCoverContent />
-                            </div>
-                        ) : null}
+                <div className={`relative flex h-auto min-h-0 w-full max-w-full flex-col items-center overflow-x-clip select-none md:h-full ${readyToOpen && isBookEngineReady ? (animationsEnabled ? "binder-stage-entrance" : "") : "invisible"}`} style={{ "--binder-entrance-duration": `${BINDER_ENTRANCE_MS}ms` } as React.CSSProperties}>
+                    <div ref={stageRef} className={`binder-book-stage relative flex h-auto min-h-0 w-full items-center justify-center md:h-full ${isPortraitBook ? "binder-book-stage--portrait" : ""} ${isPageBusy ? "binder-book-stage--busy" : ""}`}>
                         {engineMounted && (
                             <HTMLFlipBook
                                 key={isPortraitBook ? "portrait" : "landscape"}
@@ -597,14 +715,14 @@ export const BinderBookFlip = memo(
                                 width={BINDER_PAGE_WIDTH}
                                 height={BINDER_PAGE_HEIGHT}
                                 size="stretch"
-                                minWidth={BINDER_PAGE_MIN_WIDTH}
-                                maxWidth={BINDER_PAGE_MAX_WIDTH}
-                                minHeight={isPortraitBook ? 420 : 540}
+                                minWidth={isPortraitBook ? BINDER_PAGE_MIN_WIDTH_MOBILE : BINDER_PAGE_MIN_WIDTH}
+                                maxWidth={isPortraitBook ? 480 : BINDER_PAGE_MAX_WIDTH}
+                                minHeight={isPortraitBook ? BINDER_PAGE_MIN_HEIGHT_MOBILE : 540}
                                 maxHeight={isPortraitBook ? 760 : 820}
                                 maxShadowOpacity={isPortraitBook ? BINDER_MOBILE_MAX_SHADOW_OPACITY : BINDER_DESKTOP_MAX_SHADOW_OPACITY}
                                 showCover={true}
                                 mobileScrollSupport={true}
-                                swipeDistance={animationsEnabled ? 30 : 999999}
+                                swipeDistance={BINDER_LIB_SWIPE_DISTANCE}
                                 clickEventForward={true}
                                 disableFlipByClick={!animationsEnabled || binderPageFlipDisableFlipByClick(isPortraitBook)}
                                 flippingTime={BINDER_FLIP_MS}
@@ -615,8 +733,8 @@ export const BinderBookFlip = memo(
                                 onChangeState={handleChangeState}
                                 drawShadow={animationsEnabled}
                                 startZIndex={0}
-                                autoSize={true}
-                                useMouseEvents={animationsEnabled}
+                                autoSize={binderPageFlipAutoSize(isPortraitBook)}
+                                useMouseEvents={BINDER_USE_MOUSE_EVENTS}
                                 showPageCorners={false}
                                 className={`binder-flipbook-root ${isPortraitBook ? "binder-flipbook-root--portrait" : ""} ${!animationsEnabled ? "binder-flipbook-root--static" : ""} ${isBookEngineReady ? "opacity-100" : "opacity-0"}`}
                                 style={{}}

@@ -8,6 +8,7 @@ interface BinderSpreadProps {
     currentPage: number;
     isMobile: boolean;
     cardsMap: Map<number, UserCard>;
+    availableCounts?: Record<number, number>;
     highlightedDexId?: number | null;
     droppingDexId?: number | null;
     isOpening?: boolean;
@@ -16,7 +17,7 @@ interface BinderSpreadProps {
     onSwapClick?: (dexId: number, pokemonName: string, card?: UserCard) => void;
 }
 
-export function BinderSpread({ currentPage, isMobile, cardsMap, highlightedDexId, droppingDexId, isOpening = false, flipDirection = null, onSlotClick, onSwapClick }: BinderSpreadProps) {
+export function BinderSpread({ currentPage, isMobile, cardsMap, availableCounts = {}, highlightedDexId, droppingDexId, isOpening = false, flipDirection = null, onSlotClick, onSwapClick }: BinderSpreadProps) {
     const pageTransitionClass = flipDirection === "next" ? "page-anim-next" : flipDirection === "prev" ? "page-anim-prev" : "";
 
     if (isMobile) {
@@ -50,6 +51,7 @@ export function BinderSpread({ currentPage, isMobile, cardsMap, highlightedDexId
                                     dexId={dexId}
                                     pokemonName={pokemon?.name ?? ""}
                                     card={card}
+                                    availableCount={availableCounts[dexId] || 0}
                                     isTrailing={isTrailing}
                                     isHighlighted={highlightedDexId === dexId}
                                     isDropping={droppingDexId === dexId}
@@ -106,6 +108,7 @@ export function BinderSpread({ currentPage, isMobile, cardsMap, highlightedDexId
                                     dexId={dexId}
                                     pokemonName={pokemon?.name ?? ""}
                                     card={card}
+                                    availableCount={availableCounts[dexId] || 0}
                                     isTrailing={isTrailing}
                                     isHighlighted={highlightedDexId === dexId}
                                     isDropping={droppingDexId === dexId}
@@ -157,6 +160,7 @@ export function BinderSpread({ currentPage, isMobile, cardsMap, highlightedDexId
                                             dexId={dexId}
                                             pokemonName={pokemon?.name ?? ""}
                                             card={card}
+                                            availableCount={availableCounts[dexId] || 0}
                                             isTrailing={isTrailing}
                                             isHighlighted={highlightedDexId === dexId}
                                             isDropping={droppingDexId === dexId}

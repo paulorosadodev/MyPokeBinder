@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Header } from "@/components/layout/Header";
 import { PokeballLoader } from "@/components/loading/PokeballLoader";
 import { FlagIcon } from "@/components/ui/FlagIcon";
+import { SearchInput } from "@/components/ui/SearchInput";
 
 import { Card3DTilt } from "@/components/ui/Card3DTilt";
 import { Select, SelectOption } from "@/components/ui/Select";
@@ -14,7 +14,7 @@ import { formatTcgdexImageUrl } from "@/lib/pokemon/tcgdex";
 import { getPokemonSilhouetteUrl, POKEMON_151, markSilhouetteLoaded } from "@/lib/pokemon/constants";
 import { getRarityBadgeStyle, RARITY_FILTER_OPTIONS } from "@/lib/pokemon/rarity";
 import { formatVariantLabel, resolveCardShine } from "@/lib/pokemon/variant";
-import { buildCollectionFilterResetKey, filterAndSortCollectionGroups, groupCollectionCards, type CollectionSortDirection, type CollectionSortField } from "@/lib/collection/listCards";
+import { ALL_EXPANSIONS_FILTER, buildCollectionFilterResetKey, buildExpansionFilterOptions, filterAndSortCollectionGroups, groupCollectionCards, type CollectionSortDirection, type CollectionSortField } from "@/lib/collection/listCards";
 import { useClientPagedWindow } from "@/lib/hooks/useClientPagedWindow";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { getCardAppearProps } from "@/lib/ui/cardAppear";
@@ -48,60 +48,31 @@ export default function CollectionPage() {
     const router = useRouter();
     const { cards, isLoading, isError, mutate } = useAllCollectionCards();
 
-    const [searchTerm, setSearchTerm] = useState(() => {
-        if (typeof window !== "undefined") {
-            try {
-                const saved = sessionStorage.getItem("mypokebinder_collection_filters");
-                if (saved) return JSON.parse(saved).searchTerm || "";
-            } catch {}
-        }
-        return "";
-    });
-    const [statusFilter, setStatusFilter] = useState<BinderStatusFilter>(() => {
-        if (typeof window !== "undefined") {
-            try {
-                const saved = sessionStorage.getItem("mypokebinder_collection_filters");
-                if (saved) return JSON.parse(saved).statusFilter || "all";
-            } catch {}
-        }
-        return "all";
-    });
-    const [languageFilter, setLanguageFilter] = useState<string>(() => {
-        if (typeof window !== "undefined") {
-            try {
-                const saved = sessionStorage.getItem("mypokebinder_collection_filters");
-                if (saved) return JSON.parse(saved).languageFilter || "all";
-            } catch {}
-        }
-        return "all";
-    });
-    const [rarityFilter, setRarityFilter] = useState<string>(() => {
-        if (typeof window !== "undefined") {
-            try {
-                const saved = sessionStorage.getItem("mypokebinder_collection_filters");
-                if (saved) return JSON.parse(saved).rarityFilter || "all";
-            } catch {}
-        }
-        return "all";
-    });
-    const [sortField, setSortField] = useState<SortField>(() => {
-        if (typeof window !== "undefined") {
-            try {
-                const saved = sessionStorage.getItem("mypokebinder_collection_filters");
-                if (saved) return JSON.parse(saved).sortField || "dex";
-            } catch {}
-        }
-        return "dex";
-    });
-    const [sortDirection, setSortDirection] = useState<SortDirection>(() => {
-        if (typeof window !== "undefined") {
-            try {
-                const saved = sessionStorage.getItem("mypokebinder_collection_filters");
-                if (saved) return JSON.parse(saved).sortDirection || "asc";
-            } catch {}
-        }
-        return "asc";
-    });
+    const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState<BinderStatusFilter>("all");
+    const [languageFilter, setLanguageFilter] = useState<string>("all");
+    const [rarityFilter, setRarityFilter] = useState<string>("all");
+    const [expansionFilter, setExpansionFilter] = useState<string>(ALL_EXPANSIONS_FILTER);
+    const [sortField, setSortField] = useState<SortField>("dex");
+    const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+    const isFiltersRestored = useRef(false);
+
+    useEffect(() => {
+        try {
+            const saved = sessionStorage.getItem("mypokebinder_collection_filters");
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (parsed.searchTerm) setSearchTerm(parsed.searchTerm);
+                if (parsed.statusFilter) setStatusFilter(parsed.statusFilter);
+                if (parsed.languageFilter) setLanguageFilter(parsed.languageFilter);
+                if (parsed.rarityFilter) setRarityFilter(parsed.rarityFilter);
+                if (parsed.expansionFilter) setExpansionFilter(parsed.expansionFilter);
+                if (parsed.sortField) setSortField(parsed.sortField);
+                if (parsed.sortDirection) setSortDirection(parsed.sortDirection);
+            }
+        } catch {}
+        isFiltersRestored.current = true;
+    }, []);
 
     const [isPokemonPickerOpen, setIsPokemonPickerOpen] = useState(false);
     const [pokemonPickerSearch, setPokemonPickerSearch] = useState("");
@@ -129,11 +100,14 @@ export default function CollectionPage() {
                 statusFilter,
                 languageFilter,
                 rarityFilter,
+                expansionFilter,
                 sortField,
                 sortDirection,
             }),
-        [groupedCards, searchTerm, statusFilter, languageFilter, rarityFilter, sortField, sortDirection],
+        [groupedCards, searchTerm, statusFilter, languageFilter, rarityFilter, expansionFilter, sortField, sortDirection],
     );
+
+    const expansionOptions = useMemo(() => buildExpansionFilterOptions(cards.map((card) => card.card_set_name)), [cards]);
 
     const filterResetKey = useMemo(
         () =>
@@ -142,10 +116,11 @@ export default function CollectionPage() {
                 statusFilter,
                 languageFilter,
                 rarityFilter,
+                expansionFilter,
                 sortField,
                 sortDirection,
             }),
-        [searchTerm, statusFilter, languageFilter, rarityFilter, sortField, sortDirection],
+        [searchTerm, statusFilter, languageFilter, rarityFilter, expansionFilter, sortField, sortDirection],
     );
 
     const { visibleItems, hasMore, loadMore } = useClientPagedWindow(filteredAndSortedGroups, {
@@ -158,7 +133,7 @@ export default function CollectionPage() {
     });
 
     useEffect(() => {
-        if (typeof window === "undefined") return;
+        if (!isFiltersRestored.current || typeof window === "undefined") return;
         try {
             sessionStorage.setItem(
                 "mypokebinder_collection_filters",
@@ -167,12 +142,13 @@ export default function CollectionPage() {
                     statusFilter,
                     languageFilter,
                     rarityFilter,
+                    expansionFilter,
                     sortField,
                     sortDirection,
                 }),
             );
         } catch {}
-    }, [searchTerm, statusFilter, languageFilter, rarityFilter, sortField, sortDirection]);
+    }, [searchTerm, statusFilter, languageFilter, rarityFilter, expansionFilter, sortField, sortDirection]);
 
     const filteredPokemonList = useMemo(() => {
         if (!pokemonPickerSearch.trim()) return POKEMON_151;
@@ -193,8 +169,6 @@ export default function CollectionPage() {
 
     return (
         <div className="flex min-h-screen flex-col">
-            <Header />
-
             <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 pb-28 md:pb-16">
                 <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                     <div>
@@ -217,7 +191,7 @@ export default function CollectionPage() {
                 <div className="relative z-30 flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#121520]/80 p-3.5 sm:p-4 shadow-xl backdrop-blur-md">
                     <div className="relative w-full">
                         <Search size={16} className="absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-500" />
-                        <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder={isMobile ? "Buscar Pokémon, nº ou coleção..." : "Buscar por nome do Pokémon, número ou coleção..."} className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pr-9 pl-10 text-xs sm:text-sm text-white placeholder-slate-500 placeholder:truncate transition-colors focus:border-poke-blue/60 focus:bg-white/[0.08] focus:outline-none" />
+                        <SearchInput type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Buscar por pokémon, número, coleção ou pokédex..." placeholderClassName="left-10 right-9" className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pr-9 pl-10 text-xs sm:text-sm text-white transition-colors focus:border-poke-blue/60 focus:bg-white/[0.08] focus:outline-none" />
                         {searchTerm && (
                             <button type="button" onClick={() => setSearchTerm("")} aria-label="Limpar busca" className="absolute top-1/2 right-3 -translate-y-1/2 text-slate-500 hover:text-white">
                                 <X size={15} />
@@ -232,6 +206,8 @@ export default function CollectionPage() {
                             <Select<string> value={languageFilter} onChange={setLanguageFilter} options={LANGUAGE_FILTER_OPTIONS} icon={<Globe size={13} />} ariaLabel="Filtrar coleção por idioma da carta" className="w-full sm:w-[180px]" menuClassName="sm:left-0 sm:right-auto" align="right" />
 
                             <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar coleção por raridade" className="w-full sm:w-[195px]" />
+
+                            <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar coleção por expansão" className="w-full sm:w-[210px]" />
                         </div>
 
                         <div className="flex w-full min-w-0 items-center gap-1.5 sm:w-auto lg:ml-auto">
@@ -293,6 +269,7 @@ export default function CollectionPage() {
                                 setStatusFilter("all");
                                 setLanguageFilter("all");
                                 setRarityFilter("all");
+                                setExpansionFilter(ALL_EXPANSIONS_FILTER);
                                 setSortField("dex");
                                 setSortDirection("asc");
                                 if (typeof window !== "undefined") {
@@ -306,13 +283,13 @@ export default function CollectionPage() {
                     </div>
                 ) : (
                     <div className="flex flex-col gap-4">
-                        <div className="relative z-0 isolate grid grid-cols-3 gap-2 auto-rows-fr sm:grid-cols-3 sm:gap-3.5 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                        <div key={filterResetKey} className="relative z-0 isolate grid grid-cols-3 gap-2 auto-rows-fr sm:grid-cols-3 sm:gap-3.5 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                             {visibleItems.map((group, index) => {
                                 const card = group.card;
                                 const appear = getCardAppearProps(index);
 
                                 return (
-                                    <div key={group.key} onClick={() => router.push(`/cards/${card.id}?from=collection`)} className={`group relative flex cursor-pointer flex-col justify-between rounded-xl border border-white/10 bg-white/[0.03] p-1.5 transition-all duration-200 hover:border-poke-blue/50 hover:bg-white/[0.06] sm:p-2.5 ${appear.className}`} style={appear.style}>
+                                    <div key={`${filterResetKey}-${group.key}`} onClick={() => router.push(`/cards/${card.id}?from=collection`)} className={`group relative flex cursor-pointer flex-col justify-between rounded-xl border border-white/10 bg-white/[0.03] p-1.5 transition-all duration-200 hover:border-poke-blue/50 hover:bg-white/[0.06] sm:p-2.5 ${appear.className}`} style={appear.style}>
                                         <div className="z-10 flex min-h-[20px] items-center justify-between sm:min-h-[26px]">
                                             <span className="rounded bg-black/60 px-1 py-0.5 text-[9px] font-bold text-slate-300 backdrop-blur-sm sm:px-1.5 sm:text-[10px]">#{String(card.pokemon_dex_id).padStart(3, "0")}</span>
 
@@ -333,7 +310,7 @@ export default function CollectionPage() {
 
                                         <div className="relative my-1 aspect-[2.5/3.5] w-full sm:my-2">
                                             <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={resolveCardShine(card.card_variant, card.card_rarity)}>
-                                                <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill unoptimized sizes="(max-width: 640px) 30vw, (max-width: 768px) 33vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" />
+                                                <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill unoptimized sizes="(max-width: 640px) 30vw, (max-width: 768px) 33vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" priority={index === 0} />
                                             </Card3DTilt>
                                         </div>
 
@@ -383,7 +360,7 @@ export default function CollectionPage() {
                         <div className="border-b border-white/5 bg-black/20 p-4">
                             <div className="relative">
                                 <Search size={16} className="absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-500" />
-                                <input type="text" value={pokemonPickerSearch} onChange={(e) => setPokemonPickerSearch(e.target.value)} placeholder="Filtrar por nome ou número (#001 a #151)..." className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pr-4 pl-10 text-xs text-white placeholder-slate-500 focus:border-poke-blue/60 focus:outline-none" autoFocus />
+                                <SearchInput type="text" value={pokemonPickerSearch} onChange={(e) => setPokemonPickerSearch(e.target.value)} placeholder="Filtrar por nome ou número (#001 a #151)..." placeholderClassName="left-10 right-4" className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pr-4 pl-10 text-xs text-white focus:border-poke-blue/60 focus:outline-none" autoFocus />
                             </div>
                         </div>
 

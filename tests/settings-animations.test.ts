@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach } from "bun:test";
-import { planBinderOpenAnimation } from "@/lib/pokemon/binderOpen";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { BINDER_FLIP_MS, BINDER_LIB_SWIPE_DISTANCE, BINDER_USE_MOUSE_EVENTS, planBinderOpenAnimation } from "@/lib/pokemon/binderOpen";
 
 describe("Settings and Animations Configuration Logic", () => {
     const ANIMATIONS_KEY = "mypokebinder_animations_enabled";
@@ -83,22 +85,22 @@ describe("Settings and Animations Configuration Logic", () => {
     });
 
     it("should guarantee flipping time is strictly positive to prevent page-flip library assertion errors", () => {
-        const BINDER_FLIP_MS = 320;
         expect(BINDER_FLIP_MS).toBeGreaterThan(0);
+        expect(BINDER_FLIP_MS).toBe(650);
     });
 
-    it("should configure flipbook handlers to prevent manual dragging and folding when animations are disabled", () => {
+    it("should configure flipbook handlers to prevent library dragging and folding on every device", () => {
         const getFlipbookInteractionProps = (animationsEnabled: boolean) => ({
-            useMouseEvents: animationsEnabled,
-            swipeDistance: animationsEnabled ? 30 : 999999,
+            useMouseEvents: BINDER_USE_MOUSE_EVENTS,
+            swipeDistance: BINDER_LIB_SWIPE_DISTANCE,
             disableFlipByClick: !animationsEnabled,
             drawShadow: animationsEnabled,
             classNameModifier: !animationsEnabled ? "binder-flipbook-root--static" : "",
         });
 
         const activeProps = getFlipbookInteractionProps(true);
-        expect(activeProps.useMouseEvents).toBe(true);
-        expect(activeProps.swipeDistance).toBe(30);
+        expect(activeProps.useMouseEvents).toBe(false);
+        expect(activeProps.swipeDistance).toBeGreaterThan(1000);
         expect(activeProps.disableFlipByClick).toBe(false);
         expect(activeProps.drawShadow).toBe(true);
         expect(activeProps.classNameModifier).toBe("");
@@ -148,5 +150,15 @@ describe("Settings and Animations Configuration Logic", () => {
         expect(resolveDevicePreference(ANIMATIONS_KEY)).toBe(false);
         expect(resolveDevicePreference(SOUND_KEY)).toBe(false);
         expect(serverPayload.theme_color).toBe("#3b82f6");
+    });
+
+    it("should safely handle realtime channels and avoid duplicate subscriptions after subscribe", () => {
+        const contextSource = readFileSync(join(import.meta.dir, "../src/lib/context/UserSettingsContext.tsx"), "utf8");
+
+        expect(contextSource).toContain("let isCancelled = false;");
+        expect(contextSource).toContain("if (isCancelled || !data?.user) return;");
+        expect(contextSource).toContain("if (existingChannel) {");
+        expect(contextSource).toContain("await supabase.removeChannel(existingChannel);");
+        expect(contextSource).toContain("isCancelled = true;");
     });
 });

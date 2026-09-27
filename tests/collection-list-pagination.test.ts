@@ -1,5 +1,7 @@
 import { describe, expect, it } from "bun:test";
-import { COLLECTION_PAGE_SIZE, buildCollectionFilterResetKey, filterAndSortCollectionGroups, groupCollectionCards, slicePagedWindow } from "../src/lib/collection/listCards";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { COLLECTION_PAGE_SIZE, buildCollectionFilterResetKey, buildExpansionFilterOptions, filterAndSortCollectionGroups, filterCatalogCards, groupCollectionCards, matchesCardNumber, slicePagedWindow } from "../src/lib/collection/listCards";
 import type { CollectionCardGroup, UserCard } from "../src/types/binder";
 
 function makeCard(overrides: Partial<UserCard> & Pick<UserCard, "id" | "tcgdex_card_id" | "card_name">): UserCard {
@@ -92,6 +94,93 @@ describe("filterAndSortCollectionGroups", () => {
             sortDirection: "asc",
         });
         expect(byDex.map((g) => g.card.card_name)).toEqual(["Mew"]);
+
+        const byDexWithoutHash = filterAndSortCollectionGroups(groups, {
+            searchTerm: "99",
+            statusFilter: "all",
+            languageFilter: "all",
+            rarityFilter: "all",
+            sortField: "dex",
+            sortDirection: "asc",
+        });
+        expect(byDexWithoutHash.map((g) => g.card.card_name)).toEqual([]);
+
+        const customCollection: CollectionCardGroup[] = groupCollectionCards([
+            makeCard({
+                id: "c1",
+                tcgdex_card_id: "sv3.5-025",
+                card_name: "Bulbasaur",
+                pokemon_dex_id: 1,
+            }),
+            makeCard({
+                id: "c2",
+                tcgdex_card_id: "base1-58",
+                card_name: "Pikachu",
+                pokemon_dex_id: 25,
+            }),
+        ]);
+
+        const cardNumSearch = filterAndSortCollectionGroups(customCollection, {
+            searchTerm: "25",
+            statusFilter: "all",
+            languageFilter: "all",
+            rarityFilter: "all",
+            sortField: "dex",
+            sortDirection: "asc",
+        });
+        expect(cardNumSearch.map((g) => g.card.card_name)).toEqual(["Bulbasaur"]);
+
+        const cardNumWithSlash = filterAndSortCollectionGroups(customCollection, {
+            searchTerm: "025/165",
+            statusFilter: "all",
+            languageFilter: "all",
+            rarityFilter: "all",
+            sortField: "dex",
+            sortDirection: "asc",
+        });
+        expect(cardNumWithSlash.map((g) => g.card.card_name)).toEqual(["Bulbasaur"]);
+
+        const invalidSlashSearch = filterAndSortCollectionGroups(customCollection, {
+            searchTerm: "8/dfhdfhd",
+            statusFilter: "all",
+            languageFilter: "all",
+            rarityFilter: "all",
+            sortField: "dex",
+            sortDirection: "asc",
+        });
+        expect(invalidSlashSearch).toHaveLength(0);
+
+        const explicitDexSearch = filterAndSortCollectionGroups(customCollection, {
+            searchTerm: "#25",
+            statusFilter: "all",
+            languageFilter: "all",
+            rarityFilter: "all",
+            sortField: "dex",
+            sortDirection: "asc",
+        });
+        expect(explicitDexSearch.map((g) => g.card.card_name)).toEqual(["Pikachu"]);
+
+        const pokedexThreeCollection: CollectionCardGroup[] = groupCollectionCards([makeCard({ id: "v3", tcgdex_card_id: "base1-15", card_name: "Venusaur", pokemon_dex_id: 3 }), makeCard({ id: "n30", tcgdex_card_id: "base1-30", card_name: "Nidorina", pokemon_dex_id: 30 }), makeCard({ id: "n32", tcgdex_card_id: "base1-32", card_name: "Nidoran M", pokemon_dex_id: 32 })]);
+
+        const exactThree = filterAndSortCollectionGroups(pokedexThreeCollection, {
+            searchTerm: "#3",
+            statusFilter: "all",
+            languageFilter: "all",
+            rarityFilter: "all",
+            sortField: "dex",
+            sortDirection: "asc",
+        });
+        expect(exactThree.map((g) => g.card.card_name)).toEqual(["Venusaur"]);
+
+        const exactZeroThree = filterAndSortCollectionGroups(pokedexThreeCollection, {
+            searchTerm: "#03",
+            statusFilter: "all",
+            languageFilter: "all",
+            rarityFilter: "all",
+            sortField: "dex",
+            sortDirection: "asc",
+        });
+        expect(exactZeroThree.map((g) => g.card.card_name)).toEqual(["Venusaur"]);
     });
 
     it("filters by binder status, language and rarity", () => {
@@ -124,6 +213,41 @@ describe("filterAndSortCollectionGroups", () => {
             sortDirection: "asc",
         });
         expect(rarity.map((g) => g.card.card_name)).toEqual(["Pikachu"]);
+    });
+
+    it("filters by exact expansion name and ignores search-only substring matches", () => {
+        const jungle = filterAndSortCollectionGroups(groups, {
+            searchTerm: "",
+            statusFilter: "all",
+            languageFilter: "all",
+            rarityFilter: "all",
+            expansionFilter: "Jungle",
+            sortField: "dex",
+            sortDirection: "asc",
+        });
+        expect(jungle.map((g) => g.card.card_name)).toEqual(["Pikachu"]);
+
+        const baseSet = filterAndSortCollectionGroups(groups, {
+            searchTerm: "",
+            statusFilter: "all",
+            languageFilter: "all",
+            rarityFilter: "all",
+            expansionFilter: "Base Set",
+            sortField: "dex",
+            sortDirection: "asc",
+        });
+        expect(baseSet.map((g) => g.card.card_name)).toEqual(["Bulbasaur", "Mew"]);
+
+        const missing = filterAndSortCollectionGroups(groups, {
+            searchTerm: "",
+            statusFilter: "all",
+            languageFilter: "all",
+            rarityFilter: "all",
+            expansionFilter: "Scarlet & Violet",
+            sortField: "dex",
+            sortDirection: "asc",
+        });
+        expect(missing).toHaveLength(0);
     });
 
     it("sorts by dex, name and recent", () => {
@@ -206,5 +330,111 @@ describe("slicePagedWindow + reset key", () => {
 
         expect(base).toBe(same);
         expect(base).not.toBe(changed);
+
+        const withExpansion = buildCollectionFilterResetKey({
+            searchTerm: "pika",
+            statusFilter: "all",
+            languageFilter: "en",
+            rarityFilter: "rare",
+            expansionFilter: "Jungle",
+            sortField: "dex",
+            sortDirection: "asc",
+        });
+        expect(withExpansion).not.toBe(same);
+
+        const withDifferentSortField = buildCollectionFilterResetKey({
+            searchTerm: "pika",
+            statusFilter: "all",
+            languageFilter: "en",
+            rarityFilter: "rare",
+            sortField: "name",
+            sortDirection: "asc",
+        });
+        expect(withDifferentSortField).not.toBe(base);
+
+        const withDifferentSortDirection = buildCollectionFilterResetKey({
+            searchTerm: "pika",
+            statusFilter: "all",
+            languageFilter: "en",
+            rarityFilter: "rare",
+            sortField: "dex",
+            sortDirection: "desc",
+        });
+        expect(withDifferentSortDirection).not.toBe(base);
+    });
+
+    it("binds filterResetKey to grid and card keys in collection views to re-trigger appear animation", () => {
+        const collectionPage = readFileSync(join(import.meta.dir, "../src/app/collection/page.tsx"), "utf8");
+        const publicCollectionView = readFileSync(join(import.meta.dir, "../src/components/profile/PublicCollectionView.tsx"), "utf8");
+
+        expect(collectionPage).toContain('<div key={filterResetKey} className="relative z-0 isolate grid');
+        expect(collectionPage).toContain("key={`${filterResetKey}-${group.key}`}");
+
+        expect(publicCollectionView).toContain('<div key={filterResetKey} className="relative z-0 isolate grid');
+        expect(publicCollectionView).toContain("key={`${filterResetKey}-${group.key}`}");
+    });
+
+    it("initializes collection filters with SSR-safe defaults to prevent hydration mismatch", () => {
+        const collectionPage = readFileSync(join(import.meta.dir, "../src/app/collection/page.tsx"), "utf8");
+
+        expect(collectionPage).toContain('const [sortField, setSortField] = useState<SortField>("dex");');
+        expect(collectionPage).toContain('const [sortDirection, setSortDirection] = useState<SortDirection>("asc");');
+        expect(collectionPage).not.toContain('useState(() => {\n        if (typeof window !== "undefined")');
+    });
+});
+
+describe("buildExpansionFilterOptions + filterCatalogCards", () => {
+    it("builds unique sorted expansion options with an all sentinel", () => {
+        const options = buildExpansionFilterOptions(["Jungle", "Base Set", " jungle ", "", null, "Base Set"]);
+        expect(options[0]).toEqual({ value: "all", label: "Todas as expansões" });
+        expect(options.slice(1).map((option) => option.value)).toEqual(["Base Set", "Jungle"]);
+    });
+
+    it("filters catalog cards by name, set, local id, rarity and exact expansion", () => {
+        const cards = [
+            { id: "sv1-1", localId: "1", name: "Sprigatito", image: "a", setName: "Scarlet & Violet", rarity: "Common" },
+            { id: "sv1-25", localId: "25", name: "Pikachu", image: "b", setName: "Scarlet & Violet", rarity: "Rare" },
+            { id: "base1-58", localId: "58", name: "Pikachu", image: "c", setName: "Base Set", rarity: "Common" },
+        ];
+
+        expect(filterCatalogCards(cards, { searchTerm: "pika", rarityFilter: "all", expansionFilter: "all" }).map((card) => card.id)).toEqual(["sv1-25", "base1-58"]);
+
+        expect(filterCatalogCards(cards, { searchTerm: "25", rarityFilter: "all", expansionFilter: "all" }).map((card) => card.id)).toEqual(["sv1-25"]);
+
+        expect(filterCatalogCards(cards, { searchTerm: "25/165", rarityFilter: "all", expansionFilter: "all" }).map((card) => card.id)).toEqual(["sv1-25"]);
+
+        expect(filterCatalogCards(cards, { searchTerm: "025/165", rarityFilter: "all", expansionFilter: "all" }).map((card) => card.id)).toEqual(["sv1-25"]);
+
+        expect(filterCatalogCards(cards, { searchTerm: "#25", rarityFilter: "all", expansionFilter: "all", dexId: 25 }).map((card) => card.id)).toEqual(["sv1-25", "base1-58"]);
+
+        expect(filterCatalogCards(cards, { searchTerm: "#1", rarityFilter: "all", expansionFilter: "all", dexId: 25 }).map((card) => card.id)).toEqual([]);
+
+        expect(filterCatalogCards(cards, { searchTerm: "", rarityFilter: "rare", expansionFilter: "all" }).map((card) => card.id)).toEqual(["sv1-25"]);
+
+        expect(filterCatalogCards(cards, { searchTerm: "", rarityFilter: "all", expansionFilter: "Base Set" }).map((card) => card.id)).toEqual(["base1-58"]);
+
+        const cardsWithEight = [
+            { id: "c-8", localId: "8", name: "Card 8", image: "a" },
+            { id: "c-08", localId: "08", name: "Card 08", image: "b" },
+            { id: "c-18", localId: "18", name: "Card 18", image: "c" },
+            { id: "c-28", localId: "28", name: "Card 28", image: "d" },
+            { id: "c-58", localId: "58", name: "Card 58", image: "e" },
+            { id: "c-80", localId: "80", name: "Card 80", image: "f" },
+            { id: "c-88", localId: "88", name: "Card 88", image: "g" },
+        ];
+
+        expect(filterCatalogCards(cardsWithEight, { searchTerm: "8/45", rarityFilter: "all", expansionFilter: "all" }).map((c) => c.id)).toEqual(["c-8", "c-08"]);
+
+        expect(matchesCardNumber("8", "8/45")).toBe(true);
+        expect(matchesCardNumber("08", "8/45")).toBe(true);
+        expect(matchesCardNumber("008", "8/45")).toBe(true);
+        expect(matchesCardNumber("8", "8/dfhdfhd")).toBe(false);
+        expect(matchesCardNumber("8", "8/")).toBe(false);
+        expect(matchesCardNumber("8", "/45")).toBe(false);
+        expect(matchesCardNumber("18", "8/45")).toBe(false);
+        expect(matchesCardNumber("28", "8/45")).toBe(false);
+        expect(matchesCardNumber("58", "8/45")).toBe(false);
+        expect(matchesCardNumber("80", "8/45")).toBe(false);
+        expect(matchesCardNumber("88", "8/45")).toBe(false);
     });
 });

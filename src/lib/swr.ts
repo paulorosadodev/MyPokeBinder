@@ -15,14 +15,15 @@ export const fetcher = async <T>(url: string): Promise<T> => {
     return res.json();
 };
 
-export function useBinderCards(fallbackData?: { cards: UserCard[] }) {
-    const { data, error, isLoading, mutate } = useSWR<{ cards: UserCard[] }>("/api/binder", fetcher, {
+export function useBinderCards(fallbackData?: { cards: UserCard[]; availableCounts?: Record<number, number> }) {
+    const { data, error, isLoading, mutate } = useSWR<{ cards: UserCard[]; availableCounts?: Record<number, number> }>("/api/binder", fetcher, {
         ...defaultSWRConfig,
         fallbackData,
         revalidateOnMount: true,
     });
     return {
         cards: data?.cards ?? [],
+        availableCounts: data?.availableCounts ?? fallbackData?.availableCounts ?? {},
         isLoading: isLoading && !data,
         isError: error,
         mutate,
@@ -57,7 +58,7 @@ export function useCardDetails(id?: string | null) {
         card: data?.card ?? null,
         copies: data?.copies ?? [],
         availableVariants: data?.availableVariants ?? ["normal", "holo", "reverse"],
-        isLoading,
+        isLoading: isLoading && !data,
         isError: error,
         mutate,
     };

@@ -68,4 +68,51 @@ describe("AuthContext and User Profile Logic", () => {
         expect(safeParseUser("invalid json {]")).toBeNull();
         expect(safeParseUser(JSON.stringify({ id: "1", username: "brock" }))).toEqual({ id: "1", username: "brock" });
     });
+
+    it("should include and persist bio in user profile", () => {
+        const profile: UserProfile = {
+            id: "user-789",
+            email: "gary@pallet.com",
+            username: "garyoak",
+            name: "Gary Oak",
+            avatarUrl: null,
+            bio: "Colecionador de cartas vintage de Kanto.",
+        };
+
+        const serialized = JSON.stringify(profile);
+        const parsed: UserProfile = JSON.parse(serialized);
+
+        expect(parsed.bio).toBe("Colecionador de cartas vintage de Kanto.");
+    });
+
+    it("should keep settings page in loading state until assets, auth and profile hydration are ready", () => {
+        const isSettingsPageReady = (isAssetsLoaded: boolean, isLoading: boolean, profileHydrated: boolean): boolean => {
+            return isAssetsLoaded && !isLoading && profileHydrated;
+        };
+
+        expect(isSettingsPageReady(false, false, true)).toBe(false);
+        expect(isSettingsPageReady(true, true, true)).toBe(false);
+        expect(isSettingsPageReady(true, false, false)).toBe(false);
+        expect(isSettingsPageReady(true, false, true)).toBe(true);
+    });
+
+    it("should initialize bioDraft synchronously when user profile already has bio", () => {
+        const user: UserProfile = {
+            id: "user-100",
+            username: "red",
+            name: "Red",
+            bio: "Mestre Pokémon",
+        };
+
+        let bioDraft = "";
+        let profileHydrated = false;
+
+        if (typeof user.bio === "string") {
+            bioDraft = user.bio;
+            profileHydrated = true;
+        }
+
+        expect(bioDraft).toBe("Mestre Pokémon");
+        expect(profileHydrated).toBe(true);
+    });
 });

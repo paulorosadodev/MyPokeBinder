@@ -4,25 +4,25 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import NextLink from "next/link";
 import useSWR from "swr";
-import { Header } from "@/components/layout/Header";
 import { PokeballLoader } from "@/components/loading/PokeballLoader";
+import { TrainerNotFound } from "@/components/profile/TrainerNotFound";
 import { Card3DTilt } from "@/components/ui/Card3DTilt";
 import { CardLightbox } from "@/components/ui/CardLightbox";
 import { FlagIcon } from "@/components/ui/FlagIcon";
+import { SearchInput } from "@/components/ui/SearchInput";
 import { Select, type SelectOption } from "@/components/ui/Select";
 import { formatTcgdexImageUrl } from "@/lib/pokemon/tcgdex";
 import { getRarityBadgeStyle, RARITY_FILTER_OPTIONS } from "@/lib/pokemon/rarity";
 import { formatVariantLabel, resolveCardShine } from "@/lib/pokemon/variant";
-import { buildCollectionFilterResetKey, filterAndSortCollectionGroups, groupCollectionCards, type CollectionSortDirection, type CollectionSortField } from "@/lib/collection/listCards";
+import { ALL_EXPANSIONS_FILTER, buildCollectionFilterResetKey, buildExpansionFilterOptions, filterAndSortCollectionGroups, groupCollectionCards, type CollectionSortDirection, type CollectionSortField } from "@/lib/collection/listCards";
 import { useClientPagedWindow } from "@/lib/hooks/useClientPagedWindow";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { getCardAppearProps } from "@/lib/ui/cardAppear";
-import { useImagePreloader } from "@/lib/hooks/useImagePreloader";
 import { buildThemeCssVars } from "@/lib/profile/username";
 import { BinderStatusFilter, CardLanguage, UserCard, type CardShineMode } from "@/types/binder";
 import { ArrowLeft, ArrowUpDown, BookOpen, Globe, Layers, Layers2, Search, Sparkles, X } from "lucide-react";
 
-interface PublicCollectionPayload {
+export interface PublicCollectionPayload {
     owner: {
         id: string;
         username: string;
@@ -65,25 +65,31 @@ const fetcher = async (url: string): Promise<PublicCollectionPayload> => {
     return res.json();
 };
 
-export function PublicCollectionView({ username }: { username: string }) {
-    const { data, error, isLoading } = useSWR<PublicCollectionPayload>(`/api/profile/${encodeURIComponent(username)}/collection`, fetcher);
+export function PublicCollectionView({ username, fallbackData }: { username: string; fallbackData?: PublicCollectionPayload }) {
+    const { data, error, isLoading } = useSWR<PublicCollectionPayload>(username ? `/api/profile/${encodeURIComponent(username)}/collection` : null, fetcher, {
+        fallbackData,
+        revalidateOnFocus: false,
+        revalidateOnReconnect: false,
+        shouldRetryOnError: false,
+        dedupingInterval: 10000,
+    });
     const [avatarError, setAvatarError] = useState(false);
-    const [contentReady, setContentReady] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<BinderStatusFilter>("all");
     const [languageFilter, setLanguageFilter] = useState("all");
     const [rarityFilter, setRarityFilter] = useState("all");
+    const [expansionFilter, setExpansionFilter] = useState(ALL_EXPANSIONS_FILTER);
     const [sortField, setSortField] = useState<SortField>("dex");
     const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
     const [lightbox, setLightbox] = useState<{ src: string; alt: string; shineMode: CardShineMode } | null>(null);
 
     useEffect(() => {
-        setContentReady(false);
         setAvatarError(false);
         setSearchTerm("");
         setStatusFilter("all");
         setLanguageFilter("all");
         setRarityFilter("all");
+        setExpansionFilter(ALL_EXPANSIONS_FILTER);
         setSortField("dex");
         setSortDirection("asc");
     }, [username]);
@@ -105,11 +111,14 @@ export function PublicCollectionView({ username }: { username: string }) {
                 statusFilter,
                 languageFilter,
                 rarityFilter,
+                expansionFilter,
                 sortField,
                 sortDirection,
             }),
-        [groupedCards, searchTerm, statusFilter, languageFilter, rarityFilter, sortField, sortDirection],
+        [groupedCards, searchTerm, statusFilter, languageFilter, rarityFilter, expansionFilter, sortField, sortDirection],
     );
+
+    const expansionOptions = useMemo(() => buildExpansionFilterOptions((data?.cards ?? []).map((card) => card.card_set_name)), [data?.cards]);
 
     const filterResetKey = useMemo(
         () =>
@@ -118,10 +127,11 @@ export function PublicCollectionView({ username }: { username: string }) {
                 statusFilter,
                 languageFilter,
                 rarityFilter,
+                expansionFilter,
                 sortField,
                 sortDirection,
             }),
-        [searchTerm, statusFilter, languageFilter, rarityFilter, sortField, sortDirection],
+        [searchTerm, statusFilter, languageFilter, rarityFilter, expansionFilter, sortField, sortDirection],
     );
 
     const { visibleItems, hasMore, loadMore } = useClientPagedWindow(filteredAndSortedGroups, {
@@ -130,49 +140,18 @@ export function PublicCollectionView({ username }: { username: string }) {
     const sentinelRef = useInfiniteScroll({
         hasMore,
         onLoadMore: loadMore,
-        enabled: Boolean(data) && contentReady && filteredAndSortedGroups.length > 0,
+        enabled: Boolean(data) && filteredAndSortedGroups.length > 0,
     });
 
-    const collectionImageUrls = useMemo(() => {
-        if (!data) return [];
-        const urls: string[] = [];
-        if (data.owner.avatarUrl) urls.push(data.owner.avatarUrl);
-        for (const group of visibleItems) {
-            urls.push(formatTcgdexImageUrl(group.card.card_image_url));
+    if (error) {
+        if (error.message === "not_found") {
+            return <TrainerNotFound username={username} type="collection" />;
         }
-        return urls;
-    }, [data, visibleItems]);
-
-    const { allLoaded: imagesReady } = useImagePreloader(collectionImageUrls, {
-        enabled: Boolean(data) && !contentReady,
-        timeoutMs: 10000,
-    });
-
-    useEffect(() => {
-        if (data && imagesReady) {
-            setContentReady(true);
-        }
-    }, [data, imagesReady]);
-
-    if (isLoading || (data && !contentReady)) {
         return (
             <div className="flex min-h-screen flex-col bg-[#0a0c10]">
-                <Header />
-                <main className="flex flex-1 items-center justify-center">
-                    <PokeballLoader message="Carregando coleção..." size="lg" />
-                </main>
-            </div>
-        );
-    }
-
-    if (error || !data) {
-        const isNotFound = error?.message === "not_found";
-        return (
-            <div className="flex min-h-screen flex-col bg-[#0a0c10]">
-                <Header />
                 <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center p-6 text-center">
                     <div className="rounded-2xl border border-white/10 bg-[#12151d] p-8 shadow-xl">
-                        <p className="text-base font-bold text-white">{isNotFound ? "Coleção não encontrada." : "Não foi possível carregar a coleção."}</p>
+                        <p className="text-base font-bold text-white">Não foi possível carregar a coleção.</p>
                         <NextLink href="/" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-poke-blue px-4 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90">
                             <BookOpen size={14} />
                             <span>Voltar ao Binder</span>
@@ -183,17 +162,30 @@ export function PublicCollectionView({ username }: { username: string }) {
         );
     }
 
+    if (isLoading && !data) {
+        return (
+            <div className="flex min-h-screen flex-col bg-[#0a0c10]">
+                <main className="flex flex-1 items-center justify-center">
+                    <PokeballLoader message="Carregando coleção..." size="lg" />
+                </main>
+            </div>
+        );
+    }
+
+    if (!data) {
+        return <TrainerNotFound username={username} type="collection" />;
+    }
+
     const { owner, isOwner } = data;
     const themeStyle = buildThemeCssVars(owner.themeColor || "#ef4444");
-    const hasActiveFilters = Boolean(searchTerm.trim()) || statusFilter !== "all" || languageFilter !== "all" || rarityFilter !== "all";
+    const hasActiveFilters = Boolean(searchTerm.trim()) || statusFilter !== "all" || languageFilter !== "all" || rarityFilter !== "all" || expansionFilter !== ALL_EXPANSIONS_FILTER;
     const displayName = owner.name || `@${owner.username}`;
 
     return (
         <div className="flex min-h-screen flex-col bg-[#0a0c10]">
-            <Header />
             <div style={themeStyle}>
-                <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8 pb-28 md:pb-16">
-                    <header className="flex flex-col gap-4">
+                <main key={username} className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8 pb-28 md:pb-16">
+                    <header className="profile-enter flex flex-col gap-4">
                         <NextLink href={`/perfil/${owner.username}`} className="inline-flex w-fit items-center gap-1.5 text-xs font-semibold text-slate-400 transition-colors hover:text-white">
                             <ArrowLeft size={14} />
                             <span>Perfil</span>
@@ -201,7 +193,7 @@ export function PublicCollectionView({ username }: { username: string }) {
 
                         <div className="flex items-center gap-3.5 sm:gap-4">
                             {owner.avatarUrl && !avatarError ? (
-                                <Image src={owner.avatarUrl} alt={owner.username} width={56} height={56} className="h-12 w-12 shrink-0 rounded-full border border-white/20 object-cover sm:h-14 sm:w-14" referrerPolicy="no-referrer" onError={() => setAvatarError(true)} unoptimized priority />
+                                <Image src={owner.avatarUrl} alt={owner.username} width={56} height={56} className="h-12 w-12 shrink-0 rounded-full border border-white/20 object-cover sm:h-14 sm:w-14" referrerPolicy="no-referrer" onError={() => setAvatarError(true)} unoptimized />
                             ) : (
                                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 text-base font-bold text-white sm:h-14 sm:w-14">{(owner.username[0] || "T").toUpperCase()}</div>
                             )}
@@ -223,10 +215,10 @@ export function PublicCollectionView({ username }: { username: string }) {
                         </div>
                     </header>
 
-                    <div className="relative z-30 flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#121520]/80 p-3.5 shadow-xl backdrop-blur-md sm:p-4">
+                    <div className="profile-enter profile-enter-d1 relative z-30 flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#121520]/80 p-3.5 shadow-xl backdrop-blur-md sm:p-4">
                         <div className="relative w-full">
                             <Search size={16} className="absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-500" />
-                            <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Buscar por nome, número ou coleção..." className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pr-9 pl-10 text-xs text-white placeholder-slate-500 transition-colors focus:border-poke-blue/60 focus:bg-white/[0.08] focus:outline-none sm:text-sm" />
+                            <SearchInput type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Buscar por pokémon, número, coleção ou pokédex..." placeholderClassName="left-10 right-9" className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pr-9 pl-10 text-xs text-white transition-colors focus:border-poke-blue/60 focus:bg-white/[0.08] focus:outline-none sm:text-sm" />
                             {searchTerm ? (
                                 <button type="button" onClick={() => setSearchTerm("")} aria-label="Limpar busca" className="absolute top-1/2 right-3 -translate-y-1/2 text-slate-500 hover:text-white">
                                     <X size={15} />
@@ -239,6 +231,7 @@ export function PublicCollectionView({ username }: { username: string }) {
                                 <Select<BinderStatusFilter> value={statusFilter} onChange={setStatusFilter} options={STATUS_FILTER_OPTIONS} icon={<BookOpen size={13} />} ariaLabel="Filtrar por status no binder" className="w-full sm:w-[170px]" />
                                 <Select<string> value={languageFilter} onChange={setLanguageFilter} options={LANGUAGE_FILTER_OPTIONS} icon={<Globe size={13} />} ariaLabel="Filtrar por idioma" className="w-full sm:w-[180px]" menuClassName="sm:left-0 sm:right-auto" align="right" />
                                 <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar por raridade" className="w-full sm:w-[195px]" />
+                                <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar por expansão" className="w-full sm:w-[210px]" />
                             </div>
 
                             <div className="flex w-full min-w-0 items-center gap-1.5 sm:w-auto lg:ml-auto">
@@ -251,13 +244,13 @@ export function PublicCollectionView({ username }: { username: string }) {
                     </div>
 
                     {data.cards.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#12151d] p-10 text-center">
+                        <div className="profile-enter profile-enter-d2 flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#12151d] p-10 text-center">
                             <Layers2 size={32} className="text-slate-600" />
                             <p className="mt-2 text-sm font-bold text-white">Coleção vazia</p>
                             <p className="mt-0.5 text-xs text-slate-400">{isOwner ? "Adicione cartas na sua Coleção para exibi-las aqui." : "Este treinador ainda não cadastrou cartas."}</p>
                         </div>
                     ) : filteredAndSortedGroups.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#12151d] p-10 text-center">
+                        <div className="profile-enter profile-enter-d2 flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#12151d] p-10 text-center">
                             <Search size={28} className="text-slate-600" />
                             <p className="mt-2 text-sm font-bold text-white">Nenhuma carta encontrada</p>
                             <p className="mt-0.5 text-xs text-slate-400">Tente ajustar a busca ou os filtros.</p>
@@ -269,6 +262,7 @@ export function PublicCollectionView({ username }: { username: string }) {
                                         setStatusFilter("all");
                                         setLanguageFilter("all");
                                         setRarityFilter("all");
+                                        setExpansionFilter(ALL_EXPANSIONS_FILTER);
                                     }}
                                     className="mt-3 rounded-xl border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-semibold text-slate-300 hover:bg-white/10"
                                 >
@@ -277,8 +271,8 @@ export function PublicCollectionView({ username }: { username: string }) {
                             ) : null}
                         </div>
                     ) : (
-                        <div className="flex flex-col gap-4">
-                            <div className="relative z-0 isolate grid auto-rows-fr grid-cols-3 gap-2 sm:grid-cols-3 sm:gap-3.5 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                        <div className="profile-enter profile-enter-d2 flex flex-col gap-4">
+                            <div key={filterResetKey} className="relative z-0 isolate grid auto-rows-fr grid-cols-3 gap-2 sm:grid-cols-3 sm:gap-3.5 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                                 {visibleItems.map((group, index) => {
                                     const card = group.card;
                                     const appear = getCardAppearProps(index);
@@ -287,7 +281,7 @@ export function PublicCollectionView({ username }: { username: string }) {
                                     const shineMode = resolveCardShine(card.card_variant, card.card_rarity);
 
                                     return (
-                                        <button key={group.key} type="button" onClick={() => openLightbox(imageSrc, card.card_name, shineMode)} className={`group relative flex cursor-zoom-in flex-col justify-between rounded-xl border border-white/10 bg-white/[0.03] p-1.5 text-left transition-all duration-200 hover:border-poke-blue/50 hover:bg-white/[0.06] sm:p-2.5 ${appear.className}`} style={appear.style} aria-label={`Ampliar ${card.card_name}`}>
+                                        <button key={`${filterResetKey}-${group.key}`} type="button" onClick={() => openLightbox(imageSrc, card.card_name, shineMode)} className={`group relative flex cursor-zoom-in flex-col justify-between rounded-xl border border-white/10 bg-white/[0.03] p-1.5 text-left transition-all duration-200 hover:border-poke-blue/50 hover:bg-white/[0.06] sm:p-2.5 ${appear.className}`} style={appear.style} aria-label={`Ampliar ${card.card_name}`}>
                                             <div className="z-10 flex min-h-[20px] items-center justify-between sm:min-h-[26px]">
                                                 <span className="rounded bg-black/60 px-1 py-0.5 text-[9px] font-bold text-slate-300 backdrop-blur-sm sm:px-1.5 sm:text-[10px]">#{String(card.pokemon_dex_id).padStart(3, "0")}</span>
                                                 <div className="flex items-center gap-0.5 sm:gap-1">
@@ -301,7 +295,7 @@ export function PublicCollectionView({ username }: { username: string }) {
                                             </div>
                                             <div className="relative my-1 aspect-[2.5/3.5] w-full sm:my-2">
                                                 <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={shineMode}>
-                                                    <Image src={imageSrc} alt={card.card_name} fill unoptimized sizes="(max-width: 640px) 30vw, (max-width: 768px) 33vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" />
+                                                    <Image src={imageSrc} alt={card.card_name} fill unoptimized sizes="(max-width: 640px) 30vw, (max-width: 768px) 33vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" priority={index === 0} />
                                                 </Card3DTilt>
                                             </div>
                                             <div className="flex min-h-[30px] flex-col justify-center gap-0.5 sm:min-h-[38px] sm:gap-1">

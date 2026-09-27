@@ -82,6 +82,66 @@ describe("Cards API Validation", () => {
         expect(json.error).toBe("Campos obrigatórios ausentes ou inválidos");
     });
 
+    it("should return 400 for POST with card_set_name or card_rarity exceeding 100 characters", async () => {
+        const requestTooLongSet = new NextRequest("http://localhost:3000/api/cards", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-test-user-id": "test-user-id",
+            },
+            body: JSON.stringify({
+                tcgdex_card_id: "base1-44",
+                pokemon_dex_id: 1,
+                card_name: "Bulbasaur",
+                card_image_url: "https://assets.tcgdex.net/en/base/base1/44/high.webp",
+                card_language: "en",
+                card_set_name: "A".repeat(101),
+            }),
+        });
+        const resSet = await postCard(requestTooLongSet);
+        expect(resSet.status).toBe(400);
+
+        const requestTooLongRarity = new NextRequest("http://localhost:3000/api/cards", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-test-user-id": "test-user-id",
+            },
+            body: JSON.stringify({
+                tcgdex_card_id: "base1-44",
+                pokemon_dex_id: 1,
+                card_name: "Bulbasaur",
+                card_image_url: "https://assets.tcgdex.net/en/base/base1/44/high.webp",
+                card_language: "en",
+                card_rarity: "B".repeat(101),
+            }),
+        });
+        const resRarity = await postCard(requestTooLongRarity);
+        expect(resRarity.status).toBe(400);
+    });
+
+    it("should return 400 when card_name does not match pokemon_dex_id", async () => {
+        const req = new NextRequest("http://localhost:3000/api/cards", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-test-user-id": "test-user-id",
+            },
+            body: JSON.stringify({
+                tcgdex_card_id: "basep-3",
+                pokemon_dex_id: 151,
+                card_name: "Mewtwo",
+                card_image_url: "https://assets.tcgdex.net/en/base/basep/3/high.webp",
+                card_language: "en",
+            }),
+        });
+        const res = await postCard(req);
+        expect(res.status).toBe(400);
+
+        const json = await res.json();
+        expect(json.error).toBe("A carta selecionada não corresponde ao Pokémon indicado");
+    });
+
     it("should return 400 for GET with invalid UUID", async () => {
         const request = new Request("http://localhost:3000/api/cards/not-a-uuid");
         const response = await getCard(request, { params: Promise.resolve({ id: "not-a-uuid" }) });

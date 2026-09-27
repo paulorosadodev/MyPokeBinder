@@ -26,9 +26,9 @@ describe("Card variant helpers", () => {
         expect(CARD_VARIANT_OPTIONS).toHaveLength(3);
     });
 
-    it("resolves shine modes with Full Art precedence over foil", () => {
+    it("resolves shine modes with Full Art rarity precedence in first place", () => {
         expect(resolveCardShine("normal", "Common")).toBe("none");
-        expect(resolveCardShine("holo", "Rare")).toBe("foil");
+        expect(resolveCardShine("holo", "Rare")).toBe("holo");
         expect(resolveCardShine("reverse", "Uncommon")).toBe("foil");
         expect(resolveCardShine("normal", "Illustration rare")).toBe("prismatic");
         expect(resolveCardShine("holo", "Special illustration rare")).toBe("prismatic");

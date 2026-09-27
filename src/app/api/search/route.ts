@@ -3,6 +3,8 @@ import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { formatTcgdexImageUrl, isPocketCard } from "@/lib/pokemon/tcgdex";
 import { coalesceRequest, getFromMemoryCache, setToMemoryCache } from "@/lib/pokemon/coalesce";
 import { normalizeVariantsFlags } from "@/lib/pokemon/variant";
+import { POKEMON_151 } from "@/lib/pokemon/constants";
+import { isCardMatchingPokemon } from "@/lib/pokemon/match";
 import type { CardVariantsFlags } from "@/types/binder";
 
 interface TcgDexCardSummary {
@@ -37,11 +39,27 @@ export async function GET(request: NextRequest) {
     }
 
     const name = request.nextUrl.searchParams.get("name");
+    const dexIdParam = request.nextUrl.searchParams.get("dexId");
     const pageParam = request.nextUrl.searchParams.get("page");
     const pageSizeParam = request.nextUrl.searchParams.get("pageSize");
 
     if (!name || typeof name !== "string" || name.trim().length === 0 || name.trim().length > 50) {
         return NextResponse.json({ error: "O parâmetro name é obrigatório e deve ter no máximo 50 caracteres" }, { status: 400 });
+    }
+
+    let targetDexId: number | undefined;
+    if (dexIdParam) {
+        const parsed = parseInt(dexIdParam, 10);
+        if (isNaN(parsed) || parsed < 1 || parsed > 1025) {
+            return NextResponse.json({ error: "O parâmetro dexId deve ser um número entre 1 e 1025" }, { status: 400 });
+        }
+        targetDexId = parsed;
+    } else {
+        const cleanName = name.replace(/[♀♂]/g, "").trim().toLowerCase();
+        const matched = POKEMON_151.find((p) => p.name.toLowerCase().replace(/[♀♂]/g, "").trim() === cleanName);
+        if (matched) {
+            targetDexId = matched.dexId;
+        }
     }
 
     const parsedPage = parseInt(pageParam || "1", 10);
@@ -51,10 +69,10 @@ export async function GET(request: NextRequest) {
 
     try {
         const encodedName = encodeURIComponent(name.trim());
-        const searchCacheKey = `search_${encodedName}`;
+        const searchCacheKey = targetDexId ? `search_dex_${targetDexId}_${encodedName}` : `search_${encodedName}`;
 
         const data = await coalesceRequest<unknown>(searchCacheKey, async () => {
-            const apiUrl = `https://api.tcgdex.net/v2/en/cards?name=${encodedName}`;
+            const apiUrl = targetDexId ? `https://api.tcgdex.net/v2/en/cards?dexId=eq:${targetDexId}` : `https://api.tcgdex.net/v2/en/cards?name=${encodedName}`;
             const response = await fetch(apiUrl, {
                 headers: { Accept: "application/json" },
                 next: { revalidate: 3600 },
@@ -82,7 +100,7 @@ export async function GET(request: NextRequest) {
         const seenIds = new Set<string>();
 
         for (const card of data as TcgDexCardSummary[]) {
-            if (typeof card.image === "string" && card.image.trim().length > 0 && !isPocketCard(card) && !seenIds.has(card.id)) {
+            if (typeof card.image === "string" && card.image.trim().length > 0 && !isPocketCard(card) && !seenIds.has(card.id) && (!targetDexId || isCardMatchingPokemon(card.name, targetDexId))) {
                 seenIds.add(card.id);
                 validCards.push(card);
             }

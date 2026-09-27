@@ -268,15 +268,23 @@ export function UserSettingsProvider({ children, initialTheme }: { children: Rea
         window.addEventListener("focus", handleVisibilityOrFocus);
         document.addEventListener("visibilitychange", handleVisibilityOrFocus);
 
+        let isCancelled = false;
         let channel: ReturnType<typeof supabase.channel> | null = null;
         const supabase = createClient();
 
         async function setupRealtime() {
             const { data } = await supabase.auth.getUser();
-            if (!data.user) return;
+            if (isCancelled || !data?.user) return;
+
+            const channelName = `user_settings:${data.user.id}`;
+            const existingChannel = supabase.getChannels().find((c) => c.topic === channelName || c.topic === `realtime:${channelName}`);
+            if (existingChannel) {
+                await supabase.removeChannel(existingChannel);
+            }
+            if (isCancelled) return;
 
             channel = supabase
-                .channel(`realtime:user_settings:${data.user.id}`)
+                .channel(channelName)
                 .on(
                     "postgres_changes",
                     {
@@ -298,6 +306,7 @@ export function UserSettingsProvider({ children, initialTheme }: { children: Rea
         setupRealtime();
 
         return () => {
+            isCancelled = true;
             window.removeEventListener("focus", handleVisibilityOrFocus);
             document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
             if (channel) {

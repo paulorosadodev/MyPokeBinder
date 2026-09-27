@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { ALL_CARD_VARIANTS, isCardVariant } from "@/lib/pokemon/variant";
+import { revalidatePublicProfileForUserId } from "@/lib/profile/publicCache";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -106,6 +107,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
                     return NextResponse.json({ error: updateError.message }, { status: 500 });
                 }
 
+                await revalidatePublicProfileForUserId(supabase, user.id);
                 return NextResponse.json({ card: updatedCard });
             }
 
@@ -115,6 +117,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
                 return NextResponse.json({ error: selectError.message }, { status: 500 });
             }
 
+            await revalidatePublicProfileForUserId(supabase, user.id);
             return NextResponse.json({ card: updatedCard });
         }
 
@@ -128,6 +131,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
             return NextResponse.json({ error: "Carta não encontrada" }, { status: 404 });
         }
 
+        await revalidatePublicProfileForUserId(supabase, user.id);
         return NextResponse.json({ card: updatedCard });
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Erro interno";
@@ -154,5 +158,6 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    await revalidatePublicProfileForUserId(supabase, user.id);
     return NextResponse.json({ success: true });
 }

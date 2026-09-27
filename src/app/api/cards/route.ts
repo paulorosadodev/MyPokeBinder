@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { formatTcgdexImageUrl, isPocketCard } from "@/lib/pokemon/tcgdex";
+import { revalidatePublicProfileForUserId } from "@/lib/profile/publicCache";
 import { isCardVariant } from "@/lib/pokemon/variant";
+import { isCardMatchingPokemon } from "@/lib/pokemon/match";
 
 export async function GET(request: NextRequest) {
     const auth = await getAuthenticatedUser(request);
@@ -41,7 +43,25 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const { tcgdex_card_id, pokemon_dex_id, card_name, card_image_url, card_set_name = "", card_rarity = "", card_language = "pt-br", card_variant = "normal" } = body;
 
-        if (typeof tcgdex_card_id !== "string" || tcgdex_card_id.trim().length === 0 || tcgdex_card_id.length > 100 || typeof pokemon_dex_id !== "number" || !Number.isInteger(pokemon_dex_id) || pokemon_dex_id < 1 || pokemon_dex_id > 151 || typeof card_name !== "string" || card_name.trim().length === 0 || card_name.length > 100 || typeof card_image_url !== "string" || !card_image_url.startsWith("https://") || card_image_url.length > 1000) {
+        if (
+            typeof tcgdex_card_id !== "string" ||
+            tcgdex_card_id.trim().length === 0 ||
+            tcgdex_card_id.length > 100 ||
+            typeof pokemon_dex_id !== "number" ||
+            !Number.isInteger(pokemon_dex_id) ||
+            pokemon_dex_id < 1 ||
+            pokemon_dex_id > 151 ||
+            typeof card_name !== "string" ||
+            card_name.trim().length === 0 ||
+            card_name.length > 100 ||
+            typeof card_image_url !== "string" ||
+            !card_image_url.startsWith("https://") ||
+            card_image_url.length > 1000 ||
+            typeof card_set_name !== "string" ||
+            card_set_name.length > 100 ||
+            typeof card_rarity !== "string" ||
+            card_rarity.length > 100
+        ) {
             return NextResponse.json({ error: "Campos obrigatórios ausentes ou inválidos" }, { status: 400 });
         }
 
@@ -57,6 +77,10 @@ export async function POST(request: NextRequest) {
 
         if (isPocketCard({ id: tcgdex_card_id, image: card_image_url })) {
             return NextResponse.json({ error: "Cartas do Pokémon TCG Pocket não são permitidas" }, { status: 400 });
+        }
+
+        if (!isCardMatchingPokemon(card_name, pokemon_dex_id)) {
+            return NextResponse.json({ error: "A carta selecionada não corresponde ao Pokémon indicado" }, { status: 400 });
         }
 
         const { data: newCard, error: insertError } = await supabase
@@ -79,6 +103,8 @@ export async function POST(request: NextRequest) {
         if (insertError) {
             return NextResponse.json({ error: insertError.message }, { status: 500 });
         }
+
+        await revalidatePublicProfileForUserId(supabase as any, user.id);
 
         return NextResponse.json({ card: newCard }, { status: 201 });
     } catch (err: unknown) {

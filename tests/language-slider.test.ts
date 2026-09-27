@@ -72,4 +72,60 @@ describe("Language Slider Component Logic", () => {
         expect(filterCards("en")).toHaveLength(2);
         expect(filterCards("ja")).toHaveLength(1);
     });
+
+    it("should support card variant slider options with full labels", () => {
+        const VARIANT_OPTIONS = [
+            { value: "normal", label: "Normal" },
+            { value: "holo", label: "Holo" },
+            { value: "reverse", label: "Reverse" },
+        ];
+
+        const getActiveIndex = (val: string, options: { value: string }[]) => {
+            return Math.max(
+                0,
+                options.findIndex((opt) => opt.value === val),
+            );
+        };
+
+        expect(VARIANT_OPTIONS).toHaveLength(3);
+        expect(getActiveIndex("normal", VARIANT_OPTIONS)).toBe(0);
+        expect(getActiveIndex("holo", VARIANT_OPTIONS)).toBe(1);
+        expect(getActiveIndex("reverse", VARIANT_OPTIONS)).toBe(2);
+        expect(VARIANT_OPTIONS[0].label).toBe("Normal");
+        expect(VARIANT_OPTIONS[1].label).toBe("Holo");
+        expect(VARIANT_OPTIONS[2].label).toBe("Reverse");
+    });
+
+    it("should support card variant slider options with short labels for compact screens", () => {
+        const COMPACT_VARIANT_OPTIONS = [
+            { value: "normal", label: "Normal", shortLabel: "Norm" },
+            { value: "holo", label: "Holo", shortLabel: "Holo" },
+            { value: "reverse", label: "Reverse", shortLabel: "Rev" },
+        ];
+
+        expect(COMPACT_VARIANT_OPTIONS[0].shortLabel).toBe("Norm");
+        expect(COMPACT_VARIANT_OPTIONS[1].shortLabel).toBe("Holo");
+        expect(COMPACT_VARIANT_OPTIONS[2].shortLabel).toBe("Rev");
+    });
+
+    it("should clamp indicator position within container bounds", () => {
+        const clampIndicator = (itemLeft: number, itemWidth: number, containerLeft: number, containerWidth: number) => {
+            const rawLeft = itemLeft - containerLeft;
+            const left = Math.max(0, rawLeft);
+            const width = Math.min(itemWidth, Math.max(0, containerWidth - left));
+            return { left, width };
+        };
+
+        const resultNormal = clampIndicator(10, 40, 10, 150);
+        expect(resultNormal.left).toBe(0);
+        expect(resultNormal.width).toBe(40);
+
+        const resultOver = clampIndicator(130, 50, 10, 150);
+        expect(resultOver.left).toBe(120);
+        expect(resultOver.width).toBe(30);
+
+        const resultNegative = clampIndicator(5, 50, 10, 150);
+        expect(resultNegative.left).toBe(0);
+        expect(resultNegative.width).toBe(50);
+    });
 });

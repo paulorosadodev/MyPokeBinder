@@ -1,21 +1,25 @@
-import { catalogPageToPhysicalIndex, getSpreadLeftIndex, physicalIndexToCatalogPage } from "@/lib/pokemon/constants";
+import { TOTAL_PAGES, catalogPageToPhysicalIndex, getPageForDexId, getSpreadLeftIndex, physicalIndexToCatalogPage } from "@/lib/pokemon/constants";
 
 export const BINDER_FRONT_COVER_PHYSICAL = 0;
-export const BINDER_OPEN_HOLD_MS = 0;
-export const BINDER_FLIP_MS = 320;
+export const BINDER_ENTRANCE_MS = 720;
+export const BINDER_OPEN_HOLD_MS = 100;
+export const BINDER_FLIP_MS = 650;
 export const BINDER_MOBILE_MAX_SHADOW_OPACITY = 0.35;
 export const BINDER_DESKTOP_MAX_SHADOW_OPACITY = 0.65;
-export const BINDER_MULTI_FLIP_STEP_MS = 160;
+export const BINDER_MULTI_FLIP_STEP_MS = 320;
 export const BINDER_MULTI_FLIP_MIN_DELTA = 3;
 export const BINDER_PAGE_MIN_WIDTH = 384;
+export const BINDER_PAGE_MIN_WIDTH_MOBILE = 280;
+export const BINDER_PAGE_MIN_HEIGHT_MOBILE = 280;
 export const BINDER_PAGE_MAX_WIDTH = 560;
-// Proporção da folha: altura em que o cabeçalho mais a grade 3x3 de cartas 2.5/3.5 consomem a
-// página inteira, sem sobra entre a última linha de cartas e a borda inferior.
 export const BINDER_PAGE_WIDTH = 480;
 export const BINDER_PAGE_HEIGHT = 676;
 export const BINDER_MOBILE_STAGE_MAX_WIDTH = 420;
 export const BINDER_PORTRAIT_MAX_VIEWPORT = 767;
 export const BINDER_MIN_STAGE_WIDTH_TO_MOUNT = 160;
+export const BINDER_SWIPE_THRESHOLD_PX = 56;
+export const BINDER_LIB_SWIPE_DISTANCE = 999999;
+export const BINDER_USE_MOUSE_EVENTS = false;
 
 export function shouldUsePortraitBinder(viewportWidth: number): boolean {
     return viewportWidth > 0 && viewportWidth <= BINDER_PORTRAIT_MAX_VIEWPORT;
@@ -29,10 +33,83 @@ export function canMountBinderEngine(stageWidth: number): boolean {
     return stageWidth >= BINDER_MIN_STAGE_WIDTH_TO_MOUNT;
 }
 
+export function binderPageFlipAutoSize(isPortrait: boolean): boolean {
+    return !isPortrait;
+}
+
+export type BinderPageNavigationPlan = { mode: "direct"; targetPhysical: number } | { mode: "sequence"; targetPhysical: number; intermediatePhysicalTargets: number[] };
+
+export function planBinderPageNavigation(currentPhysical: number, targetPhysical: number, isPortrait: boolean): BinderPageNavigationPlan {
+    if (isPortrait) {
+        return { mode: "direct", targetPhysical };
+    }
+
+    const currentSpread = getSpreadLeftIndex(currentPhysical);
+    const targetSpread = getSpreadLeftIndex(targetPhysical);
+    const spreadDelta = (targetSpread - currentSpread) / 2;
+    const distance = Math.abs(spreadDelta);
+    const intermediateSteps = distance >= 4 ? 2 : distance >= 2 ? 1 : 0;
+
+    if (intermediateSteps === 0) {
+        return { mode: "direct", targetPhysical };
+    }
+
+    const physicalStep = targetPhysical > currentPhysical ? 2 : -2;
+    const intermediatePhysicalTargets = Array.from({ length: intermediateSteps }, (_, index) => currentPhysical + physicalStep * (index + 1));
+
+    return {
+        mode: "sequence",
+        targetPhysical,
+        intermediatePhysicalTargets,
+    };
+}
+
+export function shouldRenderBinder(options: { viewportReady: boolean; isDataReady: boolean; hasMountedBinder: boolean }): boolean {
+    return options.viewportReady && (options.isDataReady || options.hasMountedBinder);
+}
+
+export function canHandleBinderEntry(options: { viewportReady: boolean; isDataReady: boolean; hasMountedBinder: boolean; isBookReady: boolean }): boolean {
+    return options.isBookReady && shouldRenderBinder(options);
+}
+
 export interface BinderOpenPlan {
     startPhysical: number;
     targetPhysical: number;
     animateFromCover: boolean;
+}
+
+export function resolveBinderEntryTargetPage(options: { pageParam: string | null; spreadParam: string | null; dexIdParam: string | null; openSelectParam: string | null }): number | null {
+    const pageFromParam = options.pageParam ? Number.parseInt(options.pageParam, 10) : null;
+    const spreadFromParam = options.spreadParam ? Number.parseInt(options.spreadParam, 10) : null;
+    const dexId = options.dexIdParam ? Number.parseInt(options.dexIdParam, 10) : null;
+
+    let page: number | null = null;
+    if (pageFromParam !== null && Number.isFinite(pageFromParam)) {
+        page = pageFromParam;
+    } else if (spreadFromParam !== null && Number.isFinite(spreadFromParam)) {
+        page = (spreadFromParam - 1) * 2 + 1;
+    } else if (dexId !== null && dexId >= 1 && dexId <= 151) {
+        page = getPageForDexId(dexId);
+    }
+
+    if (page === null) return null;
+    return Math.min(Math.max(1, page), TOTAL_PAGES);
+}
+
+export function resolveBinderInitialPage(options: { pageParam: string | null; spreadParam: string | null; dexIdParam: string | null; openSelectParam: string | null }): number {
+    if (options.pageParam !== null || options.spreadParam !== null) {
+        return 1;
+    }
+
+    const dexId = options.dexIdParam ? Number.parseInt(options.dexIdParam, 10) : null;
+    if (options.openSelectParam === "true" && dexId !== null && dexId >= 1 && dexId <= 151) {
+        return getPageForDexId(dexId);
+    }
+    return 1;
+}
+
+export function shouldSignalBinderReady(options: { animateFromCover: boolean; hasAutoOpened: boolean; isBusy: boolean }): boolean {
+    return !options.isBusy && (!options.animateFromCover || options.hasAutoOpened);
 }
 
 export function planBinderOpenAnimation(catalogPage: number, isPortrait: boolean, skipCoverAnimation = false): BinderOpenPlan {
@@ -49,6 +126,21 @@ export function shouldDeferBinderPageSync(hasOpened: boolean, isFlipping: boolea
     if (isFlipping) return true;
     if (animateFromCover && !hasOpened) return true;
     return false;
+}
+
+export function shouldApplyExternalBinderPageFlip(alreadyOnTarget: boolean, isFlipping: boolean): boolean {
+    return !alreadyOnTarget && !isFlipping;
+}
+
+export type BinderSwipeDirection = "prev" | "next";
+
+export function resolveBinderPageSwipe(params: { dx: number; dy: number; isBusy: boolean; threshold?: number }): BinderSwipeDirection | null {
+    if (params.isBusy) return null;
+    const threshold = params.threshold ?? BINDER_SWIPE_THRESHOLD_PX;
+    const absX = Math.abs(params.dx);
+    const absY = Math.abs(params.dy);
+    if (absX < threshold || absX <= absY) return null;
+    return params.dx < 0 ? "next" : "prev";
 }
 
 export function isBinderPageBusy(state: string): boolean {

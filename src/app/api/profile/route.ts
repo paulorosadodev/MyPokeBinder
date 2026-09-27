@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { buildProfileFromCards } from "@/lib/profile/buildProfile";
-import { usernameFromEmail, validateBio, validateDisplayName, validateUsername } from "@/lib/profile/username";
+import { revalidatePublicProfileTags } from "@/lib/profile/publicCache";
+import { RESERVED_USERNAMES, usernameFromEmail, validateBio, validateDisplayName, validateUsername } from "@/lib/profile/username";
 import type { UserCard } from "@/types/binder";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -17,6 +18,10 @@ async function ensureOwnProfile(supabase: Awaited<ReturnType<typeof getAuthentic
         let n = 0;
         while (true) {
             const candidate = n === 0 ? username : `${username.slice(0, Math.max(1, 20 - String(n).length))}${n}`;
+            if (RESERVED_USERNAMES.has(candidate)) {
+                n += 1;
+                continue;
+            }
             const { data: clash } = await supabase.from("profiles").select("id").eq("username", candidate).maybeSingle();
             if (!clash) {
                 username = candidate;
@@ -63,6 +68,26 @@ export async function GET(request: NextRequest) {
     const profileRow = await ensureOwnProfile(supabase, user);
     if (!profileRow) {
         return NextResponse.json({ error: "Perfil não encontrado" }, { status: 500 });
+    }
+
+    const isBasic = request.nextUrl.searchParams.get("basic") === "true";
+    if (isBasic) {
+        return NextResponse.json({
+            profile: {
+                user: {
+                    id: user.id,
+                    username: profileRow.username,
+                    name: profileRow.display_name || profileRow.username,
+                    email: user.email,
+                    avatarUrl: profileRow.avatar_url,
+                    createdAt: profileRow.created_at || user.created_at,
+                    bio: profileRow.bio ?? "",
+                },
+                isOwner: true,
+                themeColor: profileRow.theme_color,
+                favoriteCardIds: profileRow.favorite_card_ids ?? [],
+            },
+        });
     }
 
     const { data: cardsData, error } = await supabase.from("user_cards").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
@@ -161,6 +186,8 @@ export async function PATCH(request: NextRequest) {
             return NextResponse.json({ error: "Nenhuma alteração enviada." }, { status: 400 });
         }
 
+        const { data: previous } = await supabase.from("profiles").select("username").eq("id", user.id).maybeSingle();
+
         const { data, error } = await supabase.from("profiles").update(updates).eq("id", user.id).select("id, username, display_name, avatar_url, theme_color, bio, favorite_card_ids").single();
 
         if (error) {
@@ -169,6 +196,8 @@ export async function PATCH(request: NextRequest) {
             }
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
+
+        revalidatePublicProfileTags(previous?.username, data.username);
 
         return NextResponse.json({
             profile: {

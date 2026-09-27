@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { revalidatePublicProfileForUserId } from "@/lib/profile/publicCache";
 
 const CONFIRMATION_PHRASE = "EXCLUIR";
 
@@ -10,7 +11,7 @@ export async function DELETE(request: NextRequest) {
         return auth.response;
     }
 
-    const { user } = auth;
+    const { user, supabase } = auth;
 
     let body: { confirm?: unknown } = {};
     try {
@@ -24,6 +25,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     try {
+        await revalidatePublicProfileForUserId(supabase, user.id);
         const admin = createAdminClient();
         const { error } = await admin.auth.admin.deleteUser(user.id);
 

@@ -60,11 +60,11 @@ export function BinderPageNav({ activePages, cardsMap, onSelectPage, isMobile }:
                 onMouseLeave={() => setHoveredPage(null)}
                 aria-label={`Ir para Página ${item.pageNum}, ${item.filledCount} de ${item.totalSlots} cartas`}
                 aria-current={isActive ? "page" : undefined}
-                className={`group relative flex flex-1 min-w-0 flex-col items-center justify-center rounded-lg transition-colors duration-150 outline-none overflow-hidden select-none ${isMobile ? "h-11 px-0.5 pt-1 pb-2" : "h-12 md:h-13 px-1 pt-1.5 pb-2.5"} ${isActive ? "bg-[var(--theme-primary)]/20 border border-[var(--theme-primary)]/40 text-white shadow-[0_0_12px_var(--theme-primary-glow)] z-10" : isHovered ? "bg-white/[0.08] text-slate-100" : "bg-white/[0.02] text-slate-400 hover:bg-white/[0.05] hover:text-slate-200"}`}
+                className={`group relative flex flex-1 min-w-0 flex-col items-center justify-center rounded-lg transition-colors duration-150 outline-none overflow-hidden select-none ${isMobile ? "h-8.5 px-0.5 pt-0.5 pb-1.5" : "h-12 md:h-13 px-1 pt-1.5 pb-2.5"} ${isActive ? "bg-[var(--theme-primary)]/20 border border-[var(--theme-primary)]/40 text-white shadow-[0_0_12px_var(--theme-primary-glow)] z-10" : isHovered ? "bg-white/[0.08] text-slate-100" : "bg-white/[0.02] text-slate-400 hover:bg-white/[0.05] hover:text-slate-200"}`}
             >
-                <span className={`leading-none font-bold transition-colors duration-150 ${isMobile ? "text-xs" : "text-xs md:text-sm lg:text-base"} ${isActive ? "text-[var(--theme-primary)] font-bold" : isHovered ? "text-slate-100" : "text-slate-300"}`}>{item.pageNum}</span>
+                <span className={`leading-none font-bold transition-colors duration-150 ${isMobile ? "text-[11px]" : "text-xs md:text-sm lg:text-base"} ${isActive ? "text-[var(--theme-primary)] font-bold" : isHovered ? "text-slate-100" : "text-slate-300"}`}>{item.pageNum}</span>
 
-                <span className={`font-mono leading-none whitespace-nowrap tracking-tight transition-colors duration-150 mt-1 ${isMobile ? "text-[9px]" : "text-[10px] md:text-[11px]"} ${item.isFull ? "text-emerald-400 font-semibold" : isActive ? "text-[var(--theme-primary)] font-medium" : "text-slate-500 group-hover:text-slate-300"}`}>
+                <span className={`font-mono leading-none whitespace-nowrap tracking-tight transition-colors duration-150 ${isMobile ? "text-[8px] mt-0.5" : "text-[10px] md:text-[11px] mt-1"} ${item.isFull ? "text-emerald-400 font-semibold" : isActive ? "text-[var(--theme-primary)] font-medium" : "text-slate-500 group-hover:text-slate-300"}`}>
                     {item.filledCount}/{item.totalSlots}
                 </span>
 
@@ -77,9 +77,9 @@ export function BinderPageNav({ activePages, cardsMap, onSelectPage, isMobile }:
 
     return (
         <nav aria-label="Navegação rápida de páginas" className="w-full px-1 sm:px-2 lg:px-0">
-            <div className="rounded-2xl border border-white/10 bg-[#10131b]/90 p-1.5 sm:p-2.5 shadow-2xl backdrop-blur-xl">
+            <div className="rounded-2xl border border-white/10 bg-[#10131b]/90 p-1 sm:p-2.5 shadow-2xl backdrop-blur-xl">
                 {isMobile ? (
-                    <div className="flex flex-col gap-1.5 w-full">
+                    <div className="flex flex-col gap-1 w-full">
                         <div className="grid grid-cols-9 gap-1 w-full">{pageStats.slice(0, 9).map(renderPageButton)}</div>
                         <div className="grid grid-cols-8 gap-1 w-full max-w-[89%] mx-auto">{pageStats.slice(9, 17).map(renderPageButton)}</div>
                     </div>

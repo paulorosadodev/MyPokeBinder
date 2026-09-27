@@ -109,7 +109,8 @@ describe("Binder Book Flip Integration and Pagination Logic", () => {
             disableFlipByClick: binderPageFlipDisableFlipByClick(true),
             usePortrait: true,
             showCover: true,
-            swipeDistance: 30,
+            swipeDistance: 999999,
+            useMouseEvents: false,
         };
         const landscapeSettings = {
             ...portraitSettings,
@@ -121,6 +122,8 @@ describe("Binder Book Flip Integration and Pagination Logic", () => {
         expect(portraitSettings.disableFlipByClick).toBe(false);
         expect(portraitSettings.usePortrait).toBe(true);
         expect(portraitSettings.showCover).toBe(true);
+        expect(portraitSettings.swipeDistance).toBeGreaterThan(1000);
+        expect(portraitSettings.useMouseEvents).toBe(false);
         expect(landscapeSettings.disableFlipByClick).toBe(true);
     });
 

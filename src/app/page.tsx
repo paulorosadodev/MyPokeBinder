@@ -19,7 +19,12 @@ export default async function Page() {
         return <LandingPage />;
     }
 
-    const { data: binderCards } = await supabase.from("user_cards").select("*").eq("user_id", user.id).eq("is_in_binder", true).order("pokemon_dex_id", { ascending: true });
+    const [binderCardsRes, storedCardsRes] = await Promise.all([supabase.from("user_cards").select("*").eq("user_id", user.id).eq("is_in_binder", true).order("pokemon_dex_id", { ascending: true }), supabase.from("user_cards").select("pokemon_dex_id").eq("user_id", user.id).eq("is_in_binder", false)]);
+
+    const initialAvailableCounts: Record<number, number> = {};
+    for (const item of storedCardsRes.data ?? []) {
+        initialAvailableCounts[item.pokemon_dex_id] = (initialAvailableCounts[item.pokemon_dex_id] || 0) + 1;
+    }
 
     return (
         <BinderClientPage
@@ -27,7 +32,8 @@ export default async function Page() {
                 email: user.email,
                 avatarUrl: user.user_metadata?.avatar_url || user.user_metadata?.picture,
             }}
-            initialCards={(binderCards as UserCard[] | null) ?? []}
+            initialCards={(binderCardsRes.data as UserCard[] | null) ?? []}
+            initialAvailableCounts={initialAvailableCounts}
         />
     );
 }

@@ -66,14 +66,27 @@ export function useImagePreloader(urls: string[], options: UseImagePreloaderOpti
 }
 
 const preloadedUrlCache = new Set<string>();
+const pendingImagePreloads = new Map<string, HTMLImageElement>();
 
 export function preloadImages(urls: string[]) {
     if (typeof window === "undefined") return;
     const validUrls = Array.from(new Set(urls.filter(Boolean)));
     validUrls.forEach((url) => {
-        if (preloadedUrlCache.has(url)) return;
-        preloadedUrlCache.add(url);
+        if (preloadedUrlCache.has(url) || pendingImagePreloads.has(url)) return;
         const img = new window.Image();
+        const handleLoad = () => {
+            pendingImagePreloads.delete(url);
+            preloadedUrlCache.add(url);
+        };
+        const handleError = () => {
+            pendingImagePreloads.delete(url);
+        };
+        pendingImagePreloads.set(url, img);
+        img.onload = handleLoad;
+        img.onerror = handleError;
         img.src = url;
+        if (img.complete && img.naturalWidth > 0) {
+            handleLoad();
+        }
     });
 }

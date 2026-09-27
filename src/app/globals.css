@@ -198,6 +198,51 @@ body {
     }
 }
 
+/* Profile / public collection: section entrance after route loader */
+@keyframes profile-enter {
+    from {
+        opacity: 0;
+        transform: translateY(0.75rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.profile-enter {
+    animation: profile-enter 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.profile-enter-d1 {
+    animation-delay: 0.05s;
+}
+.profile-enter-d2 {
+    animation-delay: 0.1s;
+}
+.profile-enter-d3 {
+    animation-delay: 0.16s;
+}
+.profile-enter-d4 {
+    animation-delay: 0.22s;
+}
+.profile-enter-d5 {
+    animation-delay: 0.28s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .profile-enter,
+    .profile-enter-d1,
+    .profile-enter-d2,
+    .profile-enter-d3,
+    .profile-enter-d4,
+    .profile-enter-d5 {
+        animation: none;
+        opacity: 1;
+        transform: none;
+    }
+}
+
 /* Tilt-driven foil: position/opacity come from --card-* vars set by Card3DTilt. */
 .holo-sheen,
 .foil-sheen {
@@ -205,10 +250,10 @@ body {
     inset: 0;
     border-radius: inherit;
     pointer-events: none;
-    z-index: 15;
+    z-index: 25;
     opacity: var(--card-shine-opacity, 0);
     will-change: opacity, background-position, filter;
-    transition: opacity 60ms linear;
+    transition: opacity var(--card-return-duration, 500ms) cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .holo-sheen {
@@ -224,15 +269,19 @@ body {
 }
 
 .foil-sheen {
-    background-image: repeating-linear-gradient(118deg, transparent 0%, hsl(200 90% 85% / 0.15) 6%, hsl(0 0% 100% / 0.45) 12%, hsl(195 80% 70% / 0.25) 18%, transparent 28%), radial-gradient(farthest-corner circle at calc(var(--card-pointer-x, 50) * 1%) calc(var(--card-pointer-y, 50) * 1%), hsl(0 0% 100% / 0.5) 0%, hsl(200 90% 80% / 0.22) 22%, transparent 52%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 11.2%, transparent 11.8%, transparent 53.6%, #000 54.2%), linear-gradient(to right, #000 7.2%, transparent 7.8%, transparent 92.2%, #000 92.8%);
+    -webkit-mask-composite: source-over;
+    mask-image: linear-gradient(to bottom, #000 11.2%, transparent 11.8%, transparent 53.6%, #000 54.2%), linear-gradient(to right, #000 7.2%, transparent 7.8%, transparent 92.2%, #000 92.8%);
+    mask-composite: add;
+    background-image: radial-gradient(farthest-corner circle at calc(var(--card-pointer-x, 50) * 1%) calc(var(--card-pointer-y, 50) * 1%), hsl(0 0% 100% / 0.5) 0%, hsl(210 100% 90% / 0.25) 20%, hsl(220 80% 80% / 0.1) 40%, transparent 65%), linear-gradient(125deg, transparent 0%, rgba(255, 255, 255, 0.05) 30%, rgba(255, 255, 255, 0.25) 48%, rgba(220, 240, 255, 0.35) 50%, rgba(255, 255, 255, 0.25) 52%, rgba(255, 255, 255, 0.05) 70%, transparent 100%);
     background-size:
-        220% 220%,
-        150% 150%;
+        140% 140%,
+        200% 200%;
     background-position:
-        calc(var(--card-pointer-x, 50) * 1.6%) calc(var(--card-pointer-y, 50) * 1.1%),
-        calc(var(--card-pointer-x, 50) * 1%) calc(var(--card-pointer-y, 50) * 1%);
-    mix-blend-mode: soft-light;
-    filter: brightness(calc(0.85 + var(--card-tilt, 0) * 0.55)) contrast(1.15);
+        calc(var(--card-pointer-x, 50) * 1%) calc(var(--card-pointer-y, 50) * 1%),
+        calc(var(--card-pointer-x, 50) * 1.5%) calc(var(--card-pointer-y, 50) * 1.5%);
+    mix-blend-mode: color-dodge;
+    filter: brightness(calc(0.85 + var(--card-tilt, 0) * 0.7)) contrast(1.2) saturate(0.85);
 }
 
 .card-glare {
@@ -240,23 +289,144 @@ body {
     inset: 0;
     border-radius: inherit;
     pointer-events: none;
-    z-index: 20;
+    z-index: 30;
     opacity: var(--card-shine-opacity, 0);
     mix-blend-mode: overlay;
-    transition: opacity 60ms linear;
+    transition: opacity var(--card-return-duration, 500ms) cubic-bezier(0.23, 1, 0.32, 1);
     will-change: opacity, background;
+}
+
+.card-3d-tilt[data-hovering="true"] .holo-sheen,
+.card-3d-tilt[data-hovering="true"] .foil-sheen,
+.card-3d-tilt[data-hovering="true"] .card-glare {
+    transition: opacity 60ms linear;
 }
 
 .card-glare--prismatic {
     background: radial-gradient(farthest-corner circle at var(--card-glare-x, 50%) var(--card-glare-y, 50%), hsl(0 0% 100% / 0.9) 0%, hsl(48 100% 70% / 0.35) 14%, hsl(280 90% 70% / 0.28) 28%, hsl(190 90% 60% / 0.18) 42%, transparent 62%), linear-gradient(var(--card-glare-angle, 135deg), hsl(0 0% 100% / 0.35) 0%, hsl(48 95% 60% / 0.22) 18%, hsl(280 85% 65% / 0.2) 36%, hsl(190 90% 55% / 0.15) 52%, transparent 70%);
 }
 
+.card-glare--holo {
+    background: radial-gradient(farthest-corner circle at var(--card-glare-x, 50%) var(--card-glare-y, 50%), hsl(0 0% 100% / 0.95) 0%, hsl(48 100% 72% / 0.45) 14%, hsl(160 80% 60% / 0.35) 28%, hsl(280 90% 70% / 0.3) 44%, transparent 65%), linear-gradient(var(--card-glare-angle, 135deg), hsl(0 0% 100% / 0.45) 0%, hsl(48 95% 60% / 0.3) 18%, hsl(160 85% 55% / 0.25) 36%, hsl(280 85% 65% / 0.22) 54%, transparent 72%);
+}
+
 .card-glare--foil {
-    background: radial-gradient(farthest-corner circle at var(--card-glare-x, 50%) var(--card-glare-y, 50%), hsl(0 0% 100% / 0.85) 0%, hsl(200 90% 80% / 0.35) 18%, hsl(210 80% 70% / 0.15) 36%, transparent 58%), linear-gradient(var(--card-glare-angle, 135deg), hsl(0 0% 100% / 0.4) 0%, hsl(200 85% 75% / 0.28) 24%, hsl(210 70% 65% / 0.12) 44%, transparent 68%);
+    background: radial-gradient(farthest-corner circle at var(--card-glare-x, 50%) var(--card-glare-y, 50%), hsl(0 0% 100% / 0.75) 0%, hsl(210 100% 88% / 0.25) 20%, hsl(220 80% 75% / 0.1) 40%, transparent 60%), linear-gradient(var(--card-glare-angle, 135deg), hsl(0 0% 100% / 0.35) 0%, hsl(210 90% 85% / 0.18) 25%, hsl(220 70% 70% / 0.06) 50%, transparent 70%);
 }
 
 .card-glare--soft {
     background: radial-gradient(farthest-corner circle at var(--card-glare-x, 50%) var(--card-glare-y, 50%), hsl(0 0% 100% / 0.65) 0%, hsl(0 0% 100% / 0.2) 28%, transparent 58%);
+}
+
+@keyframes card-idle-sweep {
+    0% {
+        transform: translate3d(-140%, -140%, 0) rotate(25deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    48% {
+        transform: translate3d(140%, 140%, 0) rotate(25deg);
+        opacity: 1;
+    }
+    49%,
+    100% {
+        transform: translate3d(140%, 140%, 0) rotate(25deg);
+        opacity: 0;
+    }
+}
+
+.card-idle-prismatic,
+.card-idle-holo,
+.card-idle-foil {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 20;
+}
+
+.card-idle-prismatic {
+    background: radial-gradient(circle at 50% 50%, hsl(48 100% 70% / 0.12) 0%, hsl(280 90% 70% / 0.14) 40%, hsl(190 90% 60% / 0.12) 70%, transparent 100%);
+    box-shadow:
+        inset 0 0 16px 2px rgba(236, 72, 153, 0.3),
+        inset 0 0 6px 1px rgba(0, 240, 255, 0.35);
+    mix-blend-mode: color-dodge;
+}
+
+.card-idle-prismatic::after {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(90deg, transparent 0%, hsl(0 90% 70% / 0.3) 20%, hsl(48 95% 65% / 0.45) 35%, hsl(0 0% 100% / 0.8) 50%, hsl(190 85% 60% / 0.45) 65%, hsl(280 80% 70% / 0.3) 80%, transparent 100%);
+    mix-blend-mode: color-dodge;
+    animation: card-idle-sweep 4.5s ease-in-out infinite;
+    pointer-events: none;
+    will-change: transform, opacity;
+}
+
+.card-idle-holo {
+    background: linear-gradient(135deg, hsl(0 90% 70% / 0.1) 0%, hsl(48 95% 65% / 0.12) 25%, hsl(160 80% 55% / 0.1) 50%, hsl(260 80% 70% / 0.12) 75%, hsl(320 85% 68% / 0.1) 100%);
+    box-shadow:
+        inset 0 0 14px 1px rgba(255, 215, 0, 0.22),
+        inset 0 0 4px 1px rgba(168, 85, 247, 0.28);
+    mix-blend-mode: color-dodge;
+}
+
+.card-idle-holo::after {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(90deg, transparent 0%, hsl(280 90% 70% / 0.25) 25%, hsl(190 90% 60% / 0.4) 40%, hsl(0 0% 100% / 0.65) 50%, hsl(48 95% 60% / 0.45) 60%, hsl(320 85% 68% / 0.25) 75%, transparent 100%);
+    mix-blend-mode: color-dodge;
+    animation: card-idle-sweep 5s ease-in-out infinite;
+    pointer-events: none;
+    will-change: transform, opacity;
+}
+
+.card-idle-foil {
+    -webkit-mask-image: linear-gradient(to bottom, #000 11.2%, transparent 11.8%, transparent 53.6%, #000 54.2%), linear-gradient(to right, #000 7.2%, transparent 7.8%, transparent 92.2%, #000 92.8%);
+    -webkit-mask-composite: source-over;
+    mask-image: linear-gradient(to bottom, #000 11.2%, transparent 11.8%, transparent 53.6%, #000 54.2%), linear-gradient(to right, #000 7.2%, transparent 7.8%, transparent 92.2%, #000 92.8%);
+    mask-composite: add;
+    background-image:
+        radial-gradient(circle at 13px 13px, rgba(255, 255, 255, 0.28) 0px, rgba(255, 255, 255, 0.2) 1.5px, rgba(200, 225, 255, 0.1) 2.5px, transparent 3.5px, transparent 5.5px, rgba(255, 255, 255, 0.18) 6.5px, rgba(190, 220, 255, 0.1) 8px, transparent 9.5px),
+        radial-gradient(circle at 0px 0px, rgba(255, 255, 255, 0.24) 0px, rgba(255, 255, 255, 0.16) 1.5px, rgba(200, 225, 255, 0.08) 2.5px, transparent 3.5px, transparent 5.5px, rgba(255, 255, 255, 0.16) 6.5px, rgba(190, 220, 255, 0.08) 8px, transparent 9.5px), linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(200, 225, 255, 0.02) 50%, rgba(255, 255, 255, 0.06) 100%);
+    background-size:
+        26px 26px,
+        26px 26px,
+        100% 100%;
+    box-shadow:
+        inset 0 0 10px 1px rgba(220, 235, 255, 0.22),
+        inset 0 0 2px 1px rgba(255, 255, 255, 0.28);
+    mix-blend-mode: screen;
+}
+
+.card-idle-foil::after {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(90deg, transparent 0%, rgba(210, 230, 255, 0.1) 30%, rgba(255, 255, 255, 0.45) 48%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0.45) 52%, rgba(210, 230, 255, 0.1) 70%, transparent 100%);
+    mix-blend-mode: screen;
+    animation: card-idle-sweep 5s ease-in-out infinite;
+    pointer-events: none;
+    will-change: transform, opacity;
+}
+
+.card-idle--no-anim::after {
+    animation: none !important;
+    display: none !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -266,6 +436,13 @@ body {
         transition: none;
         filter: none;
     }
+
+    .card-idle-prismatic::after,
+    .card-idle-holo::after,
+    .card-idle-foil::after {
+        animation: none;
+        display: none;
+    }
 }
 
 .silhouette-img {
@@ -274,8 +451,11 @@ body {
 }
 
 .binder-empty-slot {
-    /* Isola o slot como uma unidade de paint — filhos não reassentam um a um. */
     contain: layout paint;
+}
+
+.binder-filled-slot {
+    contain: layout;
 }
 
 .binder-slot-name span {
@@ -287,18 +467,14 @@ body {
     white-space: nowrap;
 }
 
-.binder-book-stage--busy .binder-empty-slot,
-.binder-book-stage--busy .binder-empty-slot * {
+.binder-book-stage--busy,
+.binder-book-stage--busy * {
     transition: none !important;
 }
 
 .binder-book-stage--busy .stf__item,
-.binder-book-stage--busy .stf__block,
-.binder-book-stage--busy .binder-book-page {
+.binder-book-stage--busy .stf__block {
     will-change: transform;
-    transform: translateZ(0);
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
 }
 
 ::-webkit-scrollbar {
@@ -346,26 +522,81 @@ body {
     animation: pokeball-pulse 2s ease-in-out infinite;
 }
 
-@keyframes slot-glow {
+@keyframes slot-glow-selection {
+    0% {
+        box-shadow:
+            0 0 4px var(--glow-bright, rgba(251, 191, 36, 0.42)),
+            0 0 8px var(--glow-soft, rgba(251, 191, 36, 0.2));
+        opacity: 0.55;
+    }
+    14% {
+        box-shadow:
+            0 0 10px var(--glow-bright, rgba(251, 191, 36, 0.8)),
+            0 0 20px var(--glow-soft, rgba(251, 191, 36, 0.4));
+        opacity: 1;
+    }
+    38% {
+        box-shadow:
+            0 0 6px var(--glow-bright, rgba(251, 191, 36, 0.5)),
+            0 0 12px var(--glow-soft, rgba(251, 191, 36, 0.25));
+        opacity: 0.44;
+    }
+    62% {
+        box-shadow:
+            0 0 9px var(--glow-bright, rgba(251, 191, 36, 0.72)),
+            0 0 18px var(--glow-soft, rgba(251, 191, 36, 0.34));
+        opacity: 0.94;
+    }
+    84% {
+        box-shadow:
+            0 0 5px var(--glow-bright, rgba(251, 191, 36, 0.34)),
+            0 0 10px var(--glow-soft, rgba(251, 191, 36, 0.16));
+        opacity: 0.4;
+    }
+    100% {
+        box-shadow: 0 0 0 transparent;
+        opacity: 0;
+    }
+}
+
+@keyframes slot-glow-scale {
     0%,
     100% {
-        box-shadow: 0 0 0 0 var(--glow-soft, rgba(251, 191, 36, 0));
-        border-color: transparent;
+        transform: scale(1);
     }
-    25%,
-    75% {
-        box-shadow: 0 0 25px 6px var(--glow-bright, rgba(251, 191, 36, 0.7));
-        border-color: var(--glow-ring, rgba(251, 191, 36, 0.9));
+    14% {
+        transform: scale(1.035);
     }
-    50% {
-        box-shadow: 0 0 10px 2px var(--glow-soft, rgba(251, 191, 36, 0.3));
-        border-color: var(--glow-soft, rgba(251, 191, 36, 0.5));
+    38% {
+        transform: scale(1.012);
+    }
+    62% {
+        transform: scale(1.03);
+    }
+    84% {
+        transform: scale(1.01);
     }
 }
 
 .slot-glow {
-    animation: slot-glow 1.2s ease-in-out 3;
-    border-color: var(--glow-ring, rgba(251, 191, 36, 0.8)) !important;
+    position: relative;
+    border-radius: 0.5rem;
+    transform-origin: center;
+    animation: slot-glow-scale 3.4s cubic-bezier(0.22, 0.7, 0.24, 1) both;
+    will-change: transform;
+}
+
+.slot-glow::after {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    box-sizing: border-box;
+    border: 1px solid var(--glow-ring, rgba(251, 191, 36, 0.95));
+    border-radius: inherit;
+    box-shadow: 0 0 0 0 transparent;
+    content: "";
+    pointer-events: none;
+    animation: slot-glow-selection 3.4s cubic-bezier(0.22, 0.7, 0.24, 1) both;
 }
 
 @keyframes card-drop {
@@ -830,22 +1061,71 @@ body {
     .binder-book-stage--portrait {
         aspect-ratio: 480 / 676;
         width: 100%;
+        height: auto;
         max-width: 100%;
-        max-height: calc(100dvh - 13.5rem);
+        max-height: none;
+        flex: none;
         margin-inline: auto;
         overflow: hidden;
+    }
+}
+
+@keyframes binder-stage-entrance {
+    0% {
+        opacity: 0;
+        transform: translateY(10px) scale(0.992);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.binder-stage-entrance {
+    transform-origin: center;
+    animation: binder-stage-entrance var(--binder-entrance-duration, 720ms) cubic-bezier(0.16, 1, 0.3, 1) both;
+    will-change: transform, opacity;
+}
+
+.binder-opening-loader {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition:
+        opacity 300ms cubic-bezier(0.16, 1, 0.3, 1),
+        visibility 300ms;
+}
+
+.binder-opening-loader--visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .binder-opening-loader {
+        transition: none;
+    }
+
+    .binder-stage-entrance {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
     }
 }
 
 .binder-flipbook-root {
     position: relative;
     width: 100%;
+    height: 100%;
     margin: 0 auto;
     overflow: hidden;
     contain: none;
     overflow-anchor: none;
-    /* React reescreve className no rerender e apaga a classe stf__parent do StPageFlip,
-       então as neutralizações do motor precisam morar nesta classe. */
     min-width: 0 !important;
     max-width: 100% !important;
 }
@@ -898,8 +1178,9 @@ body {
     .sft__wrapper,
     .stf__wrapper,
     .stf__wrapper.--portrait {
-        padding-bottom: 140.8333% !important;
-        max-height: calc(100dvh - 13.5rem);
+        padding-bottom: 0 !important;
+        height: 100% !important;
+        max-height: 100%;
     }
 }
 
@@ -945,10 +1226,16 @@ body {
     border-radius: 12px;
 }
 
+.binder-book-stage--portrait .stf__item,
+.binder-book-stage--portrait .stf__block {
+    will-change: transform;
+}
+
 .binder-book-page {
     border-radius: 12px;
     box-sizing: border-box;
-    overflow: hidden;
+    overflow: clip;
+    overflow-clip-margin: 6px;
     height: 100%;
     width: 100%;
     border: none !important;
