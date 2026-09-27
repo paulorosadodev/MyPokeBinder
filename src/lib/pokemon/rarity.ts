@@ -27,16 +27,36 @@ export function isFullArtRarity(rarity?: string | null): boolean {
         lower.includes("ilustração rara") ||
         lower.includes("ultra rare") ||
         lower.includes("rara ultra") ||
+        lower.includes("rare ultra") ||
+        lower.includes("double rare") ||
+        lower.includes("rara dupla") ||
         lower.includes("hyper rare") ||
         lower.includes("hiper-rara") ||
         lower.includes("rara hiper") ||
         lower.includes("secret rare") ||
         lower.includes("rara secreta") ||
-        lower.includes("full art trainer") ||
+        lower.includes("rare secret") ||
+        lower.includes("rainbow") ||
+        lower.includes("arco-íris") ||
+        lower.includes("full art") ||
+        lower.includes("arte expandida") ||
+        lower.includes("arte completa") ||
         lower.includes("shiny ultra rare") ||
         lower.includes("rara ultra brilhante") ||
         lower.includes("brilhante rara ultra") ||
-        lower.includes("shiny rare vmax")
+        lower.includes("shiny rare vmax") ||
+        lower.includes("vmax") ||
+        lower.includes("vstar") ||
+        lower.includes("holo v") ||
+        lower.includes("holo ex") ||
+        lower.includes("rare holo v") ||
+        lower.includes("rare holo ex") ||
+        lower.includes("radiant") ||
+        lower.includes("radiante") ||
+        lower.includes("amazing") ||
+        lower.includes("incrível") ||
+        lower.includes("incrivel") ||
+        lower.includes("ace spec")
     );
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { PokemonType } from "@/lib/pokemon/constants";
 import { playCardDropSound } from "@/lib/audio/cardSounds";
 import { getRarityImpactTier, RarityImpactTier } from "@/lib/pokemon/rarity";
@@ -225,13 +225,15 @@ function renderParticleShape(shape: ParticleConfig["shape"], color: string, isSp
 export function CardImpactBurst({ pokemonType, rarity, tier }: CardImpactBurstProps) {
     const config = TYPE_CONFIGS[pokemonType] || TYPE_CONFIGS.normal;
     const resolvedTier: RarityImpactTier = tier !== undefined ? tier : getRarityImpactTier(rarity);
+    const tierRef = useRef(resolvedTier);
+    tierRef.current = resolvedTier;
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            playCardDropSound(resolvedTier);
+            playCardDropSound(tierRef.current);
         }, 360);
         return () => clearTimeout(timer);
-    }, [resolvedTier]);
+    }, []);
 
     const particleCount = resolvedTier === 3 ? 32 : resolvedTier === 2 ? 24 : resolvedTier === 1 ? 20 : 16;
     const isSparkle = resolvedTier >= 2;

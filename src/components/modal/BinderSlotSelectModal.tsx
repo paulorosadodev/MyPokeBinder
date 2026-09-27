@@ -10,7 +10,7 @@ import { getPokemonSilhouetteUrl, markSilhouetteLoaded } from "@/lib/pokemon/con
 import { useCollectionCards } from "@/lib/swr";
 import { PokeballLoader } from "@/components/loading/PokeballLoader";
 import { FlagIcon } from "@/components/ui/FlagIcon";
-import { SearchInput } from "@/components/ui/SearchInput";
+import { ModalSearchFilters } from "@/components/ui/ModalSearchFilters";
 import { Card3DTilt } from "@/components/ui/Card3DTilt";
 import { Select, type SelectOption } from "@/components/ui/Select";
 import { getCardAppearProps } from "@/lib/ui/cardAppear";
@@ -60,6 +60,7 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
     const [languageFilter, setLanguageFilter] = useState("all");
     const [rarityFilter, setRarityFilter] = useState("all");
     const [expansionFilter, setExpansionFilter] = useState(ALL_EXPANSIONS_FILTER);
+    const [showFilters, setShowFilters] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -71,12 +72,14 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
             setLanguageFilter("all");
             setRarityFilter("all");
             setExpansionFilter(ALL_EXPANSIONS_FILTER);
+            setShowFilters(false);
             return;
         }
         setSelectedCardId(undefined);
         setPreviewCard(undefined);
         setUserDeselected(false);
         setEditingCardId(null);
+        setShowFilters(false);
     }, [isOpen, activeCardId, activeCard]);
 
     useEffect(() => {
@@ -171,6 +174,7 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
     }, [groupedCards, searchTerm, languageFilter, rarityFilter, expansionFilter]);
 
     const hasActiveFilters = Boolean(searchTerm.trim()) || languageFilter !== "all" || rarityFilter !== "all" || expansionFilter !== ALL_EXPANSIONS_FILTER;
+    const activeFilterCount = (languageFilter !== "all" ? 1 : 0) + (rarityFilter !== "all" ? 1 : 0) + (expansionFilter !== ALL_EXPANSIONS_FILTER ? 1 : 0);
 
     const handleSelectCard = (card: UserCard) => {
         if (card.id === selectedCardId) return;
@@ -276,21 +280,14 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
                     </div>
 
                     {groupedCards.length > 0 ? (
-                        <div className="flex shrink-0 flex-col gap-2.5 border-b border-white/5 bg-black/20 px-4 py-3 sm:px-6">
-                            <div className="relative w-full">
-                                <Search size={16} className="absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-500" />
-                                <SearchInput type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Buscar por pokémon, número, coleção ou pokédex..." placeholderClassName="left-10 right-9" className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pr-9 pl-10 text-xs text-white transition-colors focus:border-poke-blue/60 focus:bg-white/[0.08] focus:outline-none" />
-                                {searchTerm ? (
-                                    <button type="button" onClick={() => setSearchTerm("")} aria-label="Limpar busca" className="absolute top-1/2 right-3 -translate-y-1/2 text-slate-500 hover:text-white">
-                                        <X size={15} />
-                                    </button>
-                                ) : null}
-                            </div>
-                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                                <Select<string> value={languageFilter} onChange={setLanguageFilter} options={LANGUAGE_FILTER_OPTIONS} icon={<Globe size={13} />} ariaLabel="Filtrar por idioma da carta" className="w-full" size="sm" />
-                                <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar por raridade" className="w-full" size="sm" />
-                                <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar por expansão" className="w-full col-span-2 sm:col-span-1" size="sm" align="right" />
-                            </div>
+                        <div className="flex shrink-0 flex-col border-b border-white/5 bg-black/20 px-3 py-2.5 sm:px-6 sm:py-3">
+                            <ModalSearchFilters searchTerm={searchTerm} onSearchChange={setSearchTerm} showFilters={showFilters} onToggleFilters={() => setShowFilters((prev) => !prev)} activeFilterCount={activeFilterCount} filterButtonAriaLabel="Alternar filtros de idioma, raridade e expansão">
+                                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5 pt-0.5">
+                                    <Select<string> value={languageFilter} onChange={setLanguageFilter} options={LANGUAGE_FILTER_OPTIONS} icon={<Globe size={13} />} ariaLabel="Filtrar por idioma da carta" className="w-full sm:w-36" size="sm" />
+                                    <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar por raridade" className="w-full sm:w-44" size="sm" />
+                                    <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar por expansão" className="w-full col-span-2 sm:col-span-1 sm:w-52" size="sm" align="right" />
+                                </div>
+                            </ModalSearchFilters>
                         </div>
                     ) : null}
 
@@ -400,7 +397,7 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
                                                     <div className="flex shrink-0 items-center gap-1 whitespace-nowrap">
                                                         <span className="rounded border border-white/10 bg-white/5 px-1 py-0.5 text-[9px] font-bold text-slate-300">{formatVariantLabel(card.card_variant)}</span>
                                                         <FlagIcon country={card.card_language} />
-                                                        <span className="uppercase text-[9px] sm:text-[10px] font-bold whitespace-nowrap">{card.card_language}</span>
+                                                        <span className="hidden uppercase text-[9px] font-bold whitespace-nowrap sm:inline sm:text-[10px]">{card.card_language}</span>
                                                     </div>
                                                 </div>
                                             </div>

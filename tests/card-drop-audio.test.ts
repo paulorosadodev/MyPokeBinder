@@ -1,8 +1,73 @@
-import { describe, it, expect } from "bun:test";
-import { playCardDropSound } from "@/lib/audio/cardSounds";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { playCardDropSound, resetCardDropSoundCooldown } from "@/lib/audio/cardSounds";
 import { PokemonType } from "@/lib/pokemon/constants";
 
 describe("Card Drop Audio Synthesizer Logic", () => {
+    let mockContextInstance: any = null;
+
+    class MockAudioContext {
+        currentTime = 0;
+        state = "running";
+        sampleRate = 44100;
+        oscillatorCount = 0;
+        destination = {};
+
+        constructor() {
+            mockContextInstance = this;
+        }
+
+        createOscillator() {
+            this.oscillatorCount++;
+            return {
+                type: "sine",
+                frequency: { setValueAtTime: () => {}, exponentialRampToValueAtTime: () => {} },
+                connect: () => {},
+                start: () => {},
+                stop: () => {},
+            };
+        }
+
+        createGain() {
+            return {
+                gain: { setValueAtTime: () => {}, exponentialRampToValueAtTime: () => {} },
+                connect: () => {},
+            };
+        }
+
+        createBuffer(_channels: number, length: number, _sampleRate: number) {
+            return {
+                getChannelData: () => new Float32Array(length),
+            };
+        }
+
+        createBufferSource() {
+            return {
+                buffer: null,
+                connect: () => {},
+                start: () => {},
+                stop: () => {},
+            };
+        }
+
+        createBiquadFilter() {
+            return {
+                type: "bandpass",
+                frequency: { setValueAtTime: () => {} },
+                Q: { setValueAtTime: () => {} },
+                connect: () => {},
+            };
+        }
+    }
+
+    beforeEach(() => {
+        resetCardDropSoundCooldown();
+    });
+
+    afterEach(() => {
+        delete (globalThis as any).window;
+        mockContextInstance = null;
+    });
+
     it("should safely handle invocation in non-browser environments without throwing", () => {
         expect(() => {
             playCardDropSound(0);
@@ -33,5 +98,21 @@ describe("Card Drop Audio Synthesizer Logic", () => {
         expect(() => playCardDropSound(1)).not.toThrow();
         expect(() => playCardDropSound(2)).not.toThrow();
         expect(() => playCardDropSound(3)).not.toThrow();
+    });
+
+    it("should ignore rapid duplicate invocations within cooldown window", () => {
+        (globalThis as any).window = { AudioContext: MockAudioContext };
+
+        playCardDropSound(0);
+        expect(mockContextInstance).not.toBeNull();
+        const initialOscCount = mockContextInstance.oscillatorCount;
+        expect(initialOscCount).toBeGreaterThan(0);
+
+        playCardDropSound(0);
+        expect(mockContextInstance.oscillatorCount).toBe(initialOscCount);
+
+        resetCardDropSoundCooldown();
+        playCardDropSound(0);
+        expect(mockContextInstance.oscillatorCount).toBeGreaterThan(initialOscCount);
     });
 });

@@ -381,6 +381,42 @@ describe("slicePagedWindow + reset key", () => {
         expect(collectionPage).toContain('const [sortDirection, setSortDirection] = useState<SortDirection>("asc");');
         expect(collectionPage).not.toContain('useState(() => {\n        if (typeof window !== "undefined")');
     });
+
+    it("defines clean and consistent labels for collection sort options", () => {
+        const collectionPage = readFileSync(join(import.meta.dir, "../src/app/collection/page.tsx"), "utf8");
+        const publicCollectionView = readFileSync(join(import.meta.dir, "../src/components/profile/PublicCollectionView.tsx"), "utf8");
+
+        const expectedSortOptions = `const SORT_FIELD_OPTIONS: SelectOption<SortField>[] = [
+    { value: "dex", label: "Pokédex" },
+    { value: "name", label: "Nome" },
+    { value: "recent", label: "Data de adição" },
+];`;
+
+        expect(collectionPage).toContain(expectedSortOptions);
+        expect(publicCollectionView).toContain(expectedSortOptions);
+    });
+
+    it("configures responsive mobile search placeholder and expandable filters toggle", () => {
+        const collectionPage = readFileSync(join(import.meta.dir, "../src/app/collection/page.tsx"), "utf8");
+        const publicCollectionView = readFileSync(join(import.meta.dir, "../src/components/profile/PublicCollectionView.tsx"), "utf8");
+
+        expect(collectionPage).toContain('placeholder={isMobile ? "Buscar cartas..." : "Buscar por pokémon, número, coleção ou pokédex..."}');
+        expect(collectionPage).toContain('aria-label="Alternar filtros"');
+        expect(collectionPage).toContain("showFilters || activeFilterCount > 0");
+        expect(collectionPage).toContain('span className="hidden text-[7px] font-bold uppercase sm:inline sm:text-[9px]"');
+
+        expect(publicCollectionView).toContain('placeholder={isMobile ? "Buscar cartas..." : "Buscar por pokémon, número, coleção ou pokédex..."}');
+        expect(publicCollectionView).toContain('aria-label="Alternar filtros"');
+        expect(publicCollectionView).toContain("showFilters || activeFilterCount > 0");
+    });
+
+    it("displays loader while collection is loading and prevents showing 0 cards prematurely in public collection", () => {
+        const publicCollectionView = readFileSync(join(import.meta.dir, "../src/components/profile/PublicCollectionView.tsx"), "utf8");
+
+        expect(publicCollectionView).toContain("Carregando total de cartas");
+        expect(publicCollectionView).toContain('<PokeballLoader message="Carregando coleção..." size="lg" />');
+        expect(publicCollectionView).toContain("{isLoading ? (");
+    });
 });
 
 describe("buildExpansionFilterOptions + filterCatalogCards", () => {

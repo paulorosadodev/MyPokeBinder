@@ -76,8 +76,8 @@ describe("Language Slider Component Logic", () => {
     it("should support card variant slider options with full labels", () => {
         const VARIANT_OPTIONS = [
             { value: "normal", label: "Normal" },
-            { value: "holo", label: "Holo" },
-            { value: "reverse", label: "Reverse" },
+            { value: "holo", label: "Foil" },
+            { value: "reverse", label: "Reverse Foil" },
         ];
 
         const getActiveIndex = (val: string, options: { value: string }[]) => {
@@ -92,19 +92,19 @@ describe("Language Slider Component Logic", () => {
         expect(getActiveIndex("holo", VARIANT_OPTIONS)).toBe(1);
         expect(getActiveIndex("reverse", VARIANT_OPTIONS)).toBe(2);
         expect(VARIANT_OPTIONS[0].label).toBe("Normal");
-        expect(VARIANT_OPTIONS[1].label).toBe("Holo");
-        expect(VARIANT_OPTIONS[2].label).toBe("Reverse");
+        expect(VARIANT_OPTIONS[1].label).toBe("Foil");
+        expect(VARIANT_OPTIONS[2].label).toBe("Reverse Foil");
     });
 
     it("should support card variant slider options with short labels for compact screens", () => {
         const COMPACT_VARIANT_OPTIONS = [
             { value: "normal", label: "Normal", shortLabel: "Norm" },
-            { value: "holo", label: "Holo", shortLabel: "Holo" },
-            { value: "reverse", label: "Reverse", shortLabel: "Rev" },
+            { value: "holo", label: "Foil", shortLabel: "Foil" },
+            { value: "reverse", label: "Reverse Foil", shortLabel: "Rev" },
         ];
 
         expect(COMPACT_VARIANT_OPTIONS[0].shortLabel).toBe("Norm");
-        expect(COMPACT_VARIANT_OPTIONS[1].shortLabel).toBe("Holo");
+        expect(COMPACT_VARIANT_OPTIONS[1].shortLabel).toBe("Foil");
         expect(COMPACT_VARIANT_OPTIONS[2].shortLabel).toBe("Rev");
     });
 

@@ -19,8 +19,8 @@ import { Select, type SelectOption } from "@/components/ui/Select";
 
 const VARIANT_SELECT_OPTIONS: SelectOption<CardVariant>[] = [
     { value: "normal", label: "Normal", icon: <Circle size={14} strokeWidth={2.25} />, description: "Sem holográfico" },
-    { value: "holo", label: "Holo", icon: <Sparkles size={14} strokeWidth={2.25} />, description: "Arte holográfica" },
-    { value: "reverse", label: "Reverse", icon: <RefreshCw size={14} strokeWidth={2.25} />, description: "Fundo holográfico" },
+    { value: "holo", label: "Foil", icon: <Sparkles size={14} strokeWidth={2.25} />, description: "Arte holográfica" },
+    { value: "reverse", label: "Reverse Foil", icon: <RefreshCw size={14} strokeWidth={2.25} />, description: "Fundo holográfico" },
 ];
 
 export default function CardDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -655,15 +655,30 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
 
                                 <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs text-slate-400">
                                     <span>{card.card_set_name || "Coleção Base"}</span>
-                                    {card.card_rarity && (
-                                        <>
-                                            <span className="text-slate-600">•</span>
-                                            <span className="font-medium text-amber-400/90">{card.card_rarity}</span>
-                                        </>
-                                    )}
                                 </div>
 
                                 <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
+                                    {card.card_rarity && <span className={`inline-flex items-center rounded-lg border px-2.5 py-1 text-xs font-bold ${getRarityBadgeStyle(card.card_rarity).badgeClasses}`}>{getRarityBadgeStyle(card.card_rarity).label}</span>}
+
+                                    {currentVariant === "holo" && (
+                                        <span className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/15 px-2.5 py-1 text-xs font-bold text-amber-200 shadow-sm">
+                                            <Sparkles size={13} className="text-amber-300" />
+                                            <span>Foil</span>
+                                        </span>
+                                    )}
+                                    {currentVariant === "reverse" && (
+                                        <span className="flex items-center gap-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/15 px-2.5 py-1 text-xs font-bold text-cyan-200 shadow-sm">
+                                            <RefreshCw size={13} className="text-cyan-300" />
+                                            <span>Reverse Foil</span>
+                                        </span>
+                                    )}
+                                    {currentVariant === "normal" && (
+                                        <span className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-bold text-slate-300 shadow-sm">
+                                            <Circle size={13} className="text-slate-400" />
+                                            <span>Normal</span>
+                                        </span>
+                                    )}
+
                                     {card.is_in_binder && (
                                         <span title="No Binder" aria-label="No Binder" className="flex items-center gap-1.5 rounded-lg border border-poke-blue/40 bg-poke-blue/15 px-2.5 py-1 text-xs font-bold text-poke-blue shadow-sm">
                                             <BookOpen size={13} />
@@ -725,18 +740,6 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
                                 <div className="flex flex-col gap-2">
                                     <label className="text-xs font-medium text-slate-400">Versão física (acabamento):</label>
                                     <Select<CardVariant> value={currentVariant} onChange={handleChangeVariant} options={VARIANT_SELECT_OPTIONS} disabled={updatingVariant !== null} className="w-full" ariaLabel="Versão física da carta" />
-                                </div>
-
-                                <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] p-3.5">
-                                    <div className="flex items-center gap-2.5">
-                                        <Sparkles size={18} className="text-poke-blue" />
-                                        <div>
-                                            <p className="text-xs font-semibold text-white">Classificação da Carta</p>
-                                            <p className="text-[11px] text-slate-400">Raridade detectada automaticamente pela API TCGdex.</p>
-                                        </div>
-                                    </div>
-
-                                    <span className={`inline-flex items-center rounded-lg border px-2.5 py-1 text-xs font-bold ${getRarityBadgeStyle(card.card_rarity).badgeClasses}`}>{getRarityBadgeStyle(card.card_rarity).label}</span>
                                 </div>
                             </div>
 

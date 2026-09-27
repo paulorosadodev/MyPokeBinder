@@ -62,8 +62,15 @@ export function BinderSlot({ dexId, pokemonName, card, availableCount = 0, isTra
     const divRef = useStopPageFlip<HTMLDivElement>();
     const buttonRef = useStopPageFlip<HTMLButtonElement>();
 
+    const hasPlayedDropSoundRef = useRef(false);
+
     useEffect(() => {
-        if (!isDropping || !animationsEnabled || !card) return;
+        if (!isDropping) {
+            hasPlayedDropSoundRef.current = false;
+            return;
+        }
+        if (animationsEnabled || !card || hasPlayedDropSoundRef.current) return;
+        hasPlayedDropSoundRef.current = true;
         playCardDropSound(getRarityImpactTier(card.card_rarity));
     }, [isDropping, animationsEnabled, card]);
 

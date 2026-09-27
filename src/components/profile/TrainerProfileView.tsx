@@ -69,9 +69,9 @@ function FeaturedCardTile({ card, onMaximize, priority = false }: { card: UserCa
 
     return (
         <FeaturedSlotFrame className="z-0">
-            <button type="button" onClick={() => onMaximize?.(imageSrc, card.card_name, shineMode)} aria-label={`Ampliar ${card.card_name}`} className="relative z-0 h-full w-full cursor-zoom-in overflow-hidden rounded-xl">
-                <Card3DTilt className="relative h-full w-full overflow-hidden rounded-xl" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.25} perspective={900} shineMode={shineMode}>
-                    <Image src={imageSrc} alt={card.card_name} fill sizes="(max-width: 640px) 45vw, 200px" className="object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.55)]" unoptimized priority={priority} />
+            <button type="button" onClick={() => onMaximize?.(imageSrc, card.card_name, shineMode)} aria-label={`Ampliar ${card.card_name}`} className="relative z-0 h-full w-full cursor-zoom-in">
+                <Card3DTilt className="relative h-full w-full" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.25} perspective={900} shineMode={shineMode}>
+                    <Image src={imageSrc} alt={card.card_name} fill sizes="(max-width: 640px) 45vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" unoptimized priority={priority} />
                 </Card3DTilt>
             </button>
         </FeaturedSlotFrame>
@@ -85,9 +85,9 @@ function SortableFeaturedCard({ id, index, card, onRemove, priority = false }: {
 
     return (
         <div ref={ref} className={`relative w-full touch-none select-none !cursor-grab active:!cursor-grabbing ${isDragging ? "z-30" : "z-0"}`} style={{ aspectRatio: "2.5 / 3.5" }} aria-label={`${card.card_name}, arraste para reordenar`}>
-            <div className={`absolute inset-0 overflow-hidden rounded-xl ${isDragging ? "opacity-90 ring-2 ring-poke-blue/60" : ""}`}>
-                <Card3DTilt className="relative h-full w-full overflow-hidden rounded-xl" maxTilt={0} maxMove={0} scale={1} glareOpacity={0} perspective={900} shineMode={shineMode} paused>
-                    <Image src={imageSrc} alt={card.card_name} fill sizes="(max-width: 640px) 45vw, 200px" className="pointer-events-none object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.55)]" unoptimized priority={priority} draggable={false} />
+            <div className={`absolute inset-0 ${isDragging ? "opacity-90 ring-2 ring-poke-blue/60 rounded-lg" : ""}`}>
+                <Card3DTilt className="relative h-full w-full" maxTilt={0} maxMove={0} scale={1} glareOpacity={0} perspective={900} shineMode={shineMode} paused>
+                    <Image src={imageSrc} alt={card.card_name} fill sizes="(max-width: 640px) 45vw, 200px" className="pointer-events-none object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" unoptimized priority={priority} draggable={false} />
                 </Card3DTilt>
                 <span className="pointer-events-none absolute bottom-1.5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-0.5 rounded-md bg-black/55 px-1.5 py-0.5 text-white/80 backdrop-blur-sm">
                     <GripVertical size={12} strokeWidth={2.5} />
@@ -103,7 +103,7 @@ function SortableFeaturedCard({ id, index, card, onRemove, priority = false }: {
 function FeaturedEmptySlot({ editing, onAdd }: { editing: boolean; onAdd: () => void }) {
     return (
         <FeaturedSlotFrame>
-            <button type="button" onClick={onAdd} className={`flex h-full w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed text-slate-500 transition-colors ${editing ? "border-white/25 bg-white/[0.03] hover:border-poke-blue/50 hover:bg-poke-blue/5 hover:text-poke-blue" : "border-white/10 bg-white/[0.015] hover:border-white/20 hover:text-slate-400"}`}>
+            <button type="button" onClick={onAdd} className={`flex h-full w-full flex-col items-center justify-center gap-1.5 rounded-lg sm:rounded-xl border border-dashed text-slate-500 transition-colors ${editing ? "border-white/25 bg-white/[0.03] hover:border-poke-blue/50 hover:bg-poke-blue/5 hover:text-poke-blue" : "border-white/10 bg-white/[0.015] hover:border-white/20 hover:text-slate-400"}`}>
                 <Plus size={editing ? 20 : 16} strokeWidth={2.25} />
                 <span className="hidden text-[10px] font-medium sm:inline">{editing ? "Adicionar" : "Vazio"}</span>
             </button>

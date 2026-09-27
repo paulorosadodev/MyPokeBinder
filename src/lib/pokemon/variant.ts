@@ -3,8 +3,8 @@ import type { CardShineMode, CardVariant, CardVariantsFlags } from "@/types/bind
 
 export const CARD_VARIANT_OPTIONS: Array<{ value: CardVariant; label: string }> = [
     { value: "normal", label: "Normal" },
-    { value: "holo", label: "Holo" },
-    { value: "reverse", label: "Reverse" },
+    { value: "holo", label: "Foil" },
+    { value: "reverse", label: "Reverse Foil" },
 ];
 
 /** Always offered in UI — TCGdex variants flags are incomplete for many sets. */
@@ -37,8 +37,8 @@ export function defaultVariant(flags?: Partial<CardVariantsFlags> | null): CardV
 }
 
 export function formatVariantLabel(variant?: CardVariant | string | null): string {
-    if (variant === "holo") return "Holo";
-    if (variant === "reverse") return "Reverse";
+    if (variant === "holo") return "Foil";
+    if (variant === "reverse") return "Reverse Foil";
     return "Normal";
 }
 

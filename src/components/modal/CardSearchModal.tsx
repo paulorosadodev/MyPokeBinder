@@ -13,10 +13,10 @@ import { LanguageSlider, type LanguageSliderOption } from "@/components/ui/Langu
 import { Select } from "@/components/ui/Select";
 import { Card3DTilt } from "@/components/ui/Card3DTilt";
 import { Spinner } from "@/components/ui/Spinner";
-import { SearchInput } from "@/components/ui/SearchInput";
+import { ModalSearchFilters } from "@/components/ui/ModalSearchFilters";
 import { getCardAppearProps } from "@/lib/ui/cardAppear";
 import { toast } from "sonner";
-import { X, Search, Plus, Circle, Sparkles, RefreshCw, Layers, SlidersHorizontal, Globe } from "lucide-react";
+import { X, Search, Plus, Circle, Sparkles, RefreshCw, Layers, Globe } from "lucide-react";
 
 interface CardSearchModalProps {
     isOpen: boolean;
@@ -29,15 +29,15 @@ interface CardSearchModalProps {
 const clientSearchCache = new Map<string, SearchResponse>();
 
 const LANGUAGE_OPTIONS: LanguageSliderOption<CardLanguage>[] = [
-    { value: "pt-br", label: "PT-BR", shortLabel: "PT", country: "pt-br" },
-    { value: "en", label: "EN", shortLabel: "EN", country: "en" },
-    { value: "ja", label: "JA", shortLabel: "JA", country: "ja" },
+    { value: "pt-br", label: "PT-BR", country: "pt-br" },
+    { value: "en", label: "EN", country: "en" },
+    { value: "ja", label: "JA", country: "ja" },
 ];
 
 const VARIANT_SLIDER_OPTIONS: LanguageSliderOption<CardVariant>[] = [
-    { value: "normal", label: "Normal", shortLabel: "Norm", icon: <Circle size={11} strokeWidth={2.25} /> },
-    { value: "holo", label: "Holo", shortLabel: "Holo", icon: <Sparkles size={11} strokeWidth={2.25} /> },
-    { value: "reverse", label: "Reverse", shortLabel: "Rev", icon: <RefreshCw size={11} strokeWidth={2.25} /> },
+    { value: "normal", label: "Normal", icon: <Circle size={11} strokeWidth={2.25} /> },
+    { value: "holo", label: "Foil", icon: <Sparkles size={11} strokeWidth={2.25} /> },
+    { value: "reverse", label: "Reverse Foil", icon: <RefreshCw size={11} strokeWidth={2.25} /> },
 ];
 
 export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdded }: CardSearchModalProps) {
@@ -262,43 +262,18 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                 </div>
 
                 <div className="flex shrink-0 flex-col gap-2.5 border-b border-white/5 bg-black/20 px-3 py-2.5 sm:px-6 sm:py-3">
-                    <div className="flex flex-col gap-2">
-                        <div className="flex items-center gap-2">
-                            <div className="relative min-w-0 flex-1">
-                                <Search size={15} className="absolute top-1/2 left-3 -translate-y-1/2 text-slate-500" />
-                                <SearchInput type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Buscar por pokémon, número, coleção ou pokédex..." placeholderClassName="left-8.5 right-8 text-xs sm:text-sm" className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pr-8 pl-8.5 text-xs text-white transition-colors focus:border-poke-blue/60 focus:bg-white/[0.08] focus:outline-none sm:text-sm" />
-                                {searchTerm ? (
-                                    <button type="button" onClick={() => setSearchTerm("")} aria-label="Limpar busca" className="absolute top-1/2 right-2.5 -translate-y-1/2 text-slate-500 hover:text-white">
-                                        <X size={14} />
-                                    </button>
-                                ) : null}
-                            </div>
-
-                            <button type="button" onClick={() => setShowFilters((prev) => !prev)} aria-label="Alternar filtros de raridade e expansão" aria-expanded={showFilters} className={`flex h-8.5 sm:h-9 shrink-0 items-center gap-1.5 rounded-xl border px-2.5 text-xs font-semibold transition-colors sm:hidden ${showFilters || activeFilterCount > 0 ? "border-poke-blue/60 bg-poke-blue/20 text-white" : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"}`}>
-                                <SlidersHorizontal size={13} className={activeFilterCount > 0 ? "text-poke-blue" : "text-slate-400"} />
-                                <span className="hidden min-[380px]:inline">Filtros</span>
-                                {activeFilterCount > 0 && <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-poke-blue px-1 text-[10px] font-bold text-white">{activeFilterCount}</span>}
-                            </button>
-
-                            <div className="hidden sm:flex sm:items-center sm:gap-2">
-                                <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar catálogo por raridade" className="w-40 md:w-44" size="sm" />
-                                <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar catálogo por expansão" className="w-44 md:w-52" size="sm" align="right" />
-                            </div>
+                    <ModalSearchFilters searchTerm={searchTerm} onSearchChange={setSearchTerm} showFilters={showFilters} onToggleFilters={() => setShowFilters((prev) => !prev)} activeFilterCount={activeFilterCount} filterButtonAriaLabel="Alternar filtros de raridade e expansão">
+                        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2.5 pt-0.5">
+                            <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar catálogo por raridade" className="w-full sm:w-44" size="sm" />
+                            <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar catálogo por expansão" className="w-full sm:w-56" size="sm" align="right" />
                         </div>
+                    </ModalSearchFilters>
 
-                        {showFilters && (
-                            <div className="grid grid-cols-2 gap-2 pt-0.5 sm:hidden">
-                                <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar catálogo por raridade" className="w-full" size="sm" />
-                                <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar catálogo por expansão" className="w-full" size="sm" align="right" />
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 border-t border-white/5 pt-2 sm:gap-3 sm:pt-2.5">
+                    <div className="grid grid-cols-1 gap-2.5 border-t border-white/5 pt-2.5 sm:grid-cols-2 sm:gap-4 sm:pt-3">
                         <div className="flex flex-col gap-1 min-w-0">
                             <div className="flex items-center gap-1.5 text-slate-400">
                                 <Globe size={11} className="text-poke-blue shrink-0" />
-                                <span className="text-[10px] sm:text-[11px] font-semibold tracking-wide text-slate-300 truncate">Idioma</span>
+                                <span className="text-[11px] sm:text-xs font-semibold tracking-wide text-slate-300">Idioma</span>
                             </div>
                             <LanguageSlider value={lang} onChange={setLang} options={LANGUAGE_OPTIONS} size="sm" fullWidth ariaLabel="Idioma da carta a ser adicionada" />
                         </div>
@@ -306,7 +281,7 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                         <div className="flex flex-col gap-1 min-w-0">
                             <div className="flex items-center gap-1.5 text-slate-400">
                                 <Sparkles size={11} className="text-poke-blue shrink-0" />
-                                <span className="text-[10px] sm:text-[11px] font-semibold tracking-wide text-slate-300 truncate">Versão</span>
+                                <span className="text-[11px] sm:text-xs font-semibold tracking-wide text-slate-300">Versão</span>
                             </div>
                             <LanguageSlider<CardVariant> value={variant} onChange={setVariant} options={VARIANT_SLIDER_OPTIONS} size="sm" fullWidth ariaLabel="Versão física da carta a ser adicionada" />
                         </div>
@@ -354,7 +329,7 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                                     return (
                                         <div key={card.id} className={`group relative flex h-full flex-col justify-between gap-1.5 sm:gap-2 rounded-xl border p-2 sm:p-2.5 transition-all duration-200 ${isSubmittingThis ? "border-poke-blue bg-poke-blue/15 ring-2 ring-poke-blue/40" : "border-white/10 bg-white/[0.03] hover:border-poke-blue/50 hover:bg-white/[0.07]"} ${appear.className}`} style={appear.style}>
                                             <div className="relative aspect-[2.5/3.5] w-full shrink-0 cursor-pointer" onClick={() => handleAddCard(card)}>
-                                                <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={shineMode}>
+                                                <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={shineMode} enableTouch>
                                                     <Image src={formatTcgdexImageUrl(card.image)} alt={card.name} fill sizes="(max-width: 768px) 50vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" unoptimized />
                                                 </Card3DTilt>
                                             </div>

@@ -152,8 +152,19 @@ function playMythicSparkleArpeggio(ctx: AudioContext, startTime: number) {
     });
 }
 
+const CARD_DROP_COOLDOWN_MS = 250;
+let lastCardDropSoundTime = -CARD_DROP_COOLDOWN_MS;
+
+export function resetCardDropSoundCooldown() {
+    lastCardDropSoundTime = -CARD_DROP_COOLDOWN_MS;
+}
+
 export function playCardDropSound(tierOrType: RarityImpactTier | PokemonType = 0, maybeTier?: RarityImpactTier) {
     if (isAudioMuted) return;
+    const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+    if (now - lastCardDropSoundTime < CARD_DROP_COOLDOWN_MS) return;
+    lastCardDropSoundTime = now;
+
     const ctx = getAudioContext();
     if (!ctx) return;
 
