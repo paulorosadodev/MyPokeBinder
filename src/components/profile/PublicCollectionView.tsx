@@ -12,7 +12,7 @@ import { SearchInput } from "@/components/ui/SearchInput";
 import { Select, type SelectOption } from "@/components/ui/Select";
 import { formatTcgdexImageUrl } from "@/lib/pokemon/tcgdex";
 import { getRarityBadgeStyle, RARITY_FILTER_OPTIONS } from "@/lib/pokemon/rarity";
-import { resolveCardShine } from "@/lib/pokemon/variant";
+import { resolveCardShine, VARIANT_FILTER_OPTIONS } from "@/lib/pokemon/variant";
 import { ALL_EXPANSIONS_FILTER, buildCollectionFilterResetKey, buildExpansionFilterOptions, type CollectionSortDirection, type CollectionSortField } from "@/lib/collection/listCards";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { getCardAppearProps } from "@/lib/ui/cardAppear";
@@ -65,6 +65,7 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
     const [statusFilter, setStatusFilter] = useState<BinderStatusFilter>("all");
     const [languageFilter, setLanguageFilter] = useState("all");
     const [rarityFilter, setRarityFilter] = useState("all");
+    const [variantFilter, setVariantFilter] = useState("all");
     const [expansionFilter, setExpansionFilter] = useState(ALL_EXPANSIONS_FILTER);
     const [sortField, setSortField] = useState<SortField>("dex");
     const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
@@ -96,6 +97,7 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
         setStatusFilter("all");
         setLanguageFilter("all");
         setRarityFilter("all");
+        setVariantFilter("all");
         setExpansionFilter(ALL_EXPANSIONS_FILTER);
         setSortField("dex");
         setSortDirection("asc");
@@ -107,10 +109,11 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
         if (statusFilter !== "all") count++;
         if (languageFilter !== "all") count++;
         if (rarityFilter !== "all") count++;
+        if (variantFilter !== "all") count++;
         if (expansionFilter !== ALL_EXPANSIONS_FILTER) count++;
         if (sortField !== "dex" || sortDirection !== "asc") count++;
         return count;
-    }, [statusFilter, languageFilter, rarityFilter, expansionFilter, sortField, sortDirection]);
+    }, [statusFilter, languageFilter, rarityFilter, variantFilter, expansionFilter, sortField, sortDirection]);
 
     const openLightbox = useCallback((src: string, alt: string, shineMode: CardShineMode = "none") => {
         setLightbox({ src, alt, shineMode });
@@ -139,6 +142,7 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
         languageFilter,
         rarityFilter,
         expansionFilter,
+        variantFilter,
         sortField,
         sortDirection,
     });
@@ -154,10 +158,11 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
                 languageFilter,
                 rarityFilter,
                 expansionFilter,
+                variantFilter,
                 sortField,
                 sortDirection,
             }),
-        [debouncedSearchTerm, statusFilter, languageFilter, rarityFilter, expansionFilter, sortField, sortDirection],
+        [debouncedSearchTerm, statusFilter, languageFilter, rarityFilter, expansionFilter, variantFilter, sortField, sortDirection],
     );
 
     const sentinelRef = useInfiniteScroll({
@@ -187,8 +192,8 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
 
     if (isLoading && !owner) {
         return (
-            <div className="flex min-h-screen flex-col bg-[#0a0c10]">
-                <main className="flex flex-1 items-center justify-center">
+            <div className="flex min-h-[calc(100dvh-4rem)] flex-col bg-[#0a0c10]">
+                <main className="flex flex-1 items-start justify-center pt-10 sm:pt-14 md:pt-18 pb-16">
                     <PokeballLoader message="Carregando coleção..." size="lg" />
                 </main>
             </div>
@@ -200,7 +205,7 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
     }
 
     const themeStyle = buildThemeCssVars(owner.themeColor || "#ef4444");
-    const hasActiveFilters = Boolean(searchTerm.trim()) || statusFilter !== "all" || languageFilter !== "all" || rarityFilter !== "all" || expansionFilter !== ALL_EXPANSIONS_FILTER;
+    const hasActiveFilters = Boolean(searchTerm.trim()) || statusFilter !== "all" || languageFilter !== "all" || rarityFilter !== "all" || variantFilter !== "all" || expansionFilter !== ALL_EXPANSIONS_FILTER;
     const displayName = owner.name || `@${owner.username}`;
 
     return (
@@ -255,7 +260,7 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     placeholder={isMobile ? "Buscar cartas..." : "Buscar por pokémon, número, coleção ou pokédex..."}
                                     placeholderClassName="left-8.5 right-8 text-xs sm:left-10 sm:right-9 sm:text-sm"
-                                    className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pr-8 pl-8.5 text-xs text-white transition-colors focus:border-poke-blue/60 focus:bg-white/[0.08] focus:outline-none sm:py-2.5 sm:pr-9 sm:pl-10 sm:text-sm"
+                                    className="w-full h-9 sm:h-10 rounded-xl border border-white/10 bg-white/5 py-2 sm:py-2.5 pr-8 sm:pr-9 pl-8.5 sm:pl-10 text-xs sm:text-sm text-white transition-colors focus:border-poke-blue/60 focus:bg-white/[0.08] focus:outline-none"
                                 />
                                 {searchTerm ? (
                                     <button type="button" onClick={() => setSearchTerm("")} aria-label="Limpar busca" className="absolute top-1/2 right-2.5 -translate-y-1/2 text-slate-500 hover:text-white z-20 sm:right-3">
@@ -264,25 +269,24 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
                                 ) : null}
                             </div>
 
-                            <button type="button" onClick={() => setShowFilters((prev) => !prev)} aria-label="Alternar filtros" aria-expanded={showFilters} className={`flex h-8.5 sm:h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border px-2.5 sm:px-3 text-xs font-semibold transition-colors ${showFilters || activeFilterCount > 0 ? "border-poke-blue/60 bg-poke-blue/20 text-white" : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"}`}>
+                            <button type="button" onClick={() => setShowFilters((prev) => !prev)} aria-label="Alternar filtros" aria-expanded={showFilters} className={`flex h-9 sm:h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border px-2.5 sm:px-3 text-xs font-semibold transition-colors ${showFilters || activeFilterCount > 0 ? "border-poke-blue/60 bg-poke-blue/20 text-white" : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"}`}>
                                 <SlidersHorizontal size={13} className={activeFilterCount > 0 ? "text-poke-blue" : "text-slate-400"} />
                                 <span className="inline">Filtros</span>
                                 {activeFilterCount > 0 && <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-poke-blue px-1 text-[10px] font-bold text-white">{activeFilterCount}</span>}
                             </button>
                         </div>
 
-                        <div className={`grid transition-all duration-300 ease-in-out ${showFilters ? "grid-rows-[1fr] opacity-100 border-t border-white/5 pt-3" : "grid-rows-[0fr] opacity-0 border-t-0 pt-0 pointer-events-none"}`}>
+                        <div className={`grid transition-all duration-300 ease-in-out ${showFilters ? "grid-rows-[1fr] opacity-100 border-t border-white/10 pt-3" : "grid-rows-[0fr] opacity-0 border-t-0 pt-0 pointer-events-none"}`}>
                             <div className="overflow-hidden">
-                                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5 lg:justify-between">
-                                    <div className="contents sm:flex sm:flex-wrap sm:items-center sm:gap-2.5">
-                                        <Select<BinderStatusFilter> value={statusFilter} onChange={setStatusFilter} options={STATUS_FILTER_OPTIONS} icon={<BookOpen size={13} />} ariaLabel="Filtrar por status no binder" className="w-full sm:w-[170px]" />
-                                        <Select<string> value={languageFilter} onChange={setLanguageFilter} options={LANGUAGE_FILTER_OPTIONS} icon={<Globe size={13} />} ariaLabel="Filtrar por idioma" className="w-full sm:w-[180px]" menuClassName="sm:left-0 sm:right-auto" align="right" />
-                                        <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar por raridade" className="w-full sm:w-[195px]" />
-                                        <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar por expansão" className="w-full sm:w-[210px]" />
-                                    </div>
+                                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5 w-full">
+                                    <Select<BinderStatusFilter> value={statusFilter} onChange={setStatusFilter} options={STATUS_FILTER_OPTIONS} icon={<BookOpen size={13} />} ariaLabel="Filtrar por status no binder" className="w-full sm:flex-1 sm:min-w-[140px]" />
+                                    <Select<string> value={languageFilter} onChange={setLanguageFilter} options={LANGUAGE_FILTER_OPTIONS} icon={<Globe size={13} />} ariaLabel="Filtrar por idioma" className="w-full sm:flex-1 sm:min-w-[145px]" menuClassName="sm:left-0 sm:right-auto" align="right" />
+                                    <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar por raridade" className="w-full sm:flex-1 sm:min-w-[155px]" />
+                                    <Select<string> value={variantFilter} onChange={setVariantFilter} options={VARIANT_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar por versão" className="w-full sm:flex-1 sm:min-w-[185px]" />
+                                    <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar por expansão" className="w-full col-span-2 sm:col-span-1 sm:flex-1 sm:min-w-[170px]" />
 
-                                    <div className="col-span-2 flex w-full min-w-0 items-center gap-1.5 sm:w-auto lg:ml-auto">
-                                        <Select<SortField> value={sortField} onChange={setSortField} options={SORT_FIELD_OPTIONS} icon={<ArrowUpDown size={13} />} ariaLabel="Ordenar coleção" className="min-w-0 flex-1 sm:w-[180px]" align="right" />
+                                    <div className="col-span-2 flex w-full min-w-0 items-center gap-1.5 sm:col-span-1 sm:flex-1 sm:min-w-[190px]">
+                                        <Select<SortField> value={sortField} onChange={setSortField} options={SORT_FIELD_OPTIONS} icon={<ArrowUpDown size={13} />} ariaLabel="Ordenar coleção" className="min-w-0 flex-1" align="right" />
                                         <button type="button" onClick={() => setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))} aria-label={sortDirection === "asc" ? "Ordem crescente" : "Ordem decrescente"} className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition-all hover:border-poke-blue/50 hover:bg-white/10 hover:text-white active:scale-95">
                                             <ArrowUpDown size={15} className={`transition-transform duration-200 ${sortDirection === "desc" ? "rotate-180 text-poke-blue" : ""}`} />
                                         </button>
@@ -341,26 +345,24 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
                                                 <span className="flex h-4.5 sm:h-5 items-center shrink-0 rounded bg-black/60 px-1 text-[9px] font-bold text-slate-300 backdrop-blur-sm sm:px-1.5 sm:text-[10px]">#{String(card.pokemon_dex_id).padStart(3, "0")}</span>
                                                 <div className="flex items-center gap-0.5 sm:gap-1">
                                                     {card.card_variant === "holo" && (
-                                                        <span className="flex h-4.5 sm:h-5 items-center gap-0.5 rounded border border-white/15 bg-black/60 px-1 text-[7px] font-bold text-amber-200 backdrop-blur-sm sm:px-1.5 sm:text-[8px]">
-                                                            <Sparkles size={8} className="shrink-0 text-amber-300 sm:h-2.5 sm:w-2.5" />
-                                                            <span>Foil</span>
+                                                        <span title="Foil" aria-label="Foil" className="flex h-4.5 sm:h-5 w-4.5 sm:w-5 items-center justify-center rounded border border-amber-500/40 bg-amber-500/20 text-amber-300">
+                                                            <Sparkles size={11} className="sm:h-3 sm:w-3" />
                                                         </span>
                                                     )}
                                                     {card.card_variant === "reverse" && (
-                                                        <span className="flex h-4.5 sm:h-5 items-center gap-0.5 rounded border border-white/15 bg-black/60 px-1 text-[7px] font-bold text-cyan-200 backdrop-blur-sm sm:px-1.5 sm:text-[8px]">
-                                                            <RefreshCw size={8} className="shrink-0 text-cyan-300 sm:h-2.5 sm:w-2.5" />
-                                                            <span className="truncate">Reverse Foil</span>
+                                                        <span title="Reverse Foil" aria-label="Reverse Foil" className="flex h-4.5 sm:h-5 w-4.5 sm:w-5 items-center justify-center rounded border border-cyan-500/40 bg-cyan-500/20 text-cyan-300">
+                                                            <RefreshCw size={11} className="sm:h-3 sm:w-3" />
                                                         </span>
                                                     )}
                                                     {group.hasInBinder && (
-                                                        <span title="No Binder" className="flex h-4.5 sm:h-5 w-4.5 sm:w-5 items-center justify-center rounded border border-poke-blue/40 bg-poke-blue/20 text-poke-blue">
+                                                        <span title="No Binder" aria-label="No Binder" className="flex h-4.5 sm:h-5 w-4.5 sm:w-5 items-center justify-center rounded border border-poke-blue/40 bg-poke-blue/20 text-poke-blue">
                                                             <BookOpen size={11} className="sm:h-3 sm:w-3" />
                                                         </span>
                                                     )}
                                                     {group.totalCount > 1 && <span className="flex h-4.5 sm:h-5 items-center rounded bg-poke-blue px-1 font-mono text-[8px] font-extrabold text-white shadow-md sm:px-1.5 sm:text-[10px]">x{group.totalCount}</span>}
                                                 </div>
                                             </div>
-                                            <div className="relative my-1 aspect-[2.5/3.5] w-full sm:my-2">
+                                            <div className="relative my-1 aspect-[8/11] w-full sm:my-2">
                                                 <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={shineMode}>
                                                     <Image src={imageSrc} alt={card.card_name} fill unoptimized sizes="(max-width: 640px) 30vw, (max-width: 768px) 33vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" priority={index === 0} />
                                                 </Card3DTilt>

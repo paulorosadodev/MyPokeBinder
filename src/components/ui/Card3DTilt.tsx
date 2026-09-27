@@ -212,7 +212,7 @@ export function Card3DTilt({ children, className = "", glareOpacity = 0.25, maxT
         resetTilt();
     }, [enableTouch, resetTilt]);
 
-    const sheenClass = !isTiltDisabled && shineMode === "prismatic" ? "holo-sheen" : !isTiltDisabled && shineMode === "holo" ? "holo-sheen" : !isTiltDisabled && shineMode === "foil" ? "foil-sheen" : null;
+    const sheenClass = !isTiltDisabled && shineMode === "prismatic" ? "prismatic-sheen" : !isTiltDisabled && shineMode === "holo" ? "holo-sheen" : !isTiltDisabled && shineMode === "foil" ? "foil-sheen" : null;
     const glareClass = !isTiltDisabled && shineMode === "prismatic" ? "card-glare card-glare--prismatic" : !isTiltDisabled && shineMode === "holo" ? "card-glare card-glare--holo" : !isTiltDisabled && shineMode === "foil" ? "card-glare card-glare--foil" : !isTiltDisabled ? "card-glare card-glare--soft" : null;
     const idleClass = !animationsEnabled ? null : shineMode === "prismatic" ? "card-idle-prismatic" : shineMode === "holo" ? "card-idle-holo" : shineMode === "foil" ? "card-idle-foil" : null;
     const activeHover = isHovering && !isTiltDisabled;

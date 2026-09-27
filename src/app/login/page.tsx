@@ -91,7 +91,7 @@ function LoginForm() {
 
                     <div className="mt-14 flex w-full max-w-lg items-end justify-end gap-3 self-end xl:ml-auto xl:max-w-xl xl:gap-4">
                         {HERO_CARDS.map((card, index) => (
-                            <div key={card.dex} className={`landing-enter landing-enter-d${index + 4} relative aspect-[2.5/3.5] w-[34%] shrink-0 ${index === 1 ? "z-20 -translate-y-5 scale-110" : index === 0 ? "z-10 origin-bottom rotate-[-8deg]" : "z-10 origin-bottom rotate-[8deg]"}`}>
+                            <div key={card.dex} className={`landing-enter landing-enter-d${index + 4} relative aspect-[8/11] w-[34%] shrink-0 ${index === 1 ? "z-20 -translate-y-5 scale-110" : index === 0 ? "z-10 origin-bottom rotate-[-8deg]" : "z-10 origin-bottom rotate-[8deg]"}`}>
                                 <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={18} scale={1.04} glareOpacity={0.4} perspective={700} shineMode={card.shineMode}>
                                     <Image src={card.image} alt={card.name} fill priority={index === 1} sizes="(max-width: 1280px) 18vw, 220px" className="object-contain drop-shadow-[0_16px_32px_rgba(0,0,0,0.75)]" unoptimized />
                                 </Card3DTilt>

@@ -11,6 +11,10 @@ export interface LanguageSliderOption<T extends string = string> {
     shortLabel?: string;
     country?: CardLanguage;
     icon?: React.ReactNode;
+    indicatorClassName?: string;
+    activeClassName?: string;
+    activeIconClassName?: string;
+    inactiveIconClassName?: string;
 }
 
 const DEFAULT_OPTIONS: LanguageSliderOption<CardLanguage>[] = [
@@ -47,6 +51,7 @@ export function LanguageSlider<T extends string = CardLanguage>({ value, onChang
         0,
         options.findIndex((opt) => opt.value === value),
     );
+    const activeOption = options[activeIndex];
 
     const updateIndicator = () => {
         const container = containerRef.current;
@@ -101,7 +106,7 @@ export function LanguageSlider<T extends string = CardLanguage>({ value, onChang
                     width: indicatorStyle.ready ? `${indicatorStyle.width}px` : `${100 / Math.max(1, options.length)}%`,
                     opacity: indicatorStyle.ready ? 1 : 0.85,
                 }}
-                className="pointer-events-none absolute top-1 bottom-1 left-0 rounded-lg border border-poke-blue/50 bg-poke-blue/20 shadow-[0_0_12px_var(--theme-primary-glow)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                className={`pointer-events-none absolute top-1 bottom-1 left-0 rounded-lg border transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${activeOption?.indicatorClassName || "border-poke-blue/50 bg-poke-blue/20 shadow-[0_0_12px_var(--theme-primary-glow)]"}`}
             />
 
             <div className={`relative z-10 flex items-center min-w-0 ${fullWidth ? "w-full" : "w-auto"}`}>
@@ -126,14 +131,14 @@ export function LanguageSlider<T extends string = CardLanguage>({ value, onChang
                                     onChange(option.value);
                                 }
                             }}
-                            className={`group relative flex items-center justify-center rounded-lg font-semibold tracking-tight transition-all duration-200 select-none active:scale-95 disabled:cursor-not-allowed min-w-0 ${fullWidth ? "flex-1" : ""} ${isCompact ? "px-1 sm:px-2.5 py-1 text-[10px] sm:text-xs gap-1 sm:gap-1.5" : "px-3.5 py-2 text-xs sm:text-sm gap-1.5"} ${isSelected ? "text-white font-bold" : "text-slate-400 hover:text-slate-200"}`}
+                            className={`group relative flex items-center justify-center rounded-lg font-semibold tracking-tight transition-all duration-200 select-none active:scale-95 disabled:cursor-not-allowed min-w-0 ${fullWidth ? "flex-1" : ""} ${isCompact ? "px-1 sm:px-2.5 py-1 text-[10px] sm:text-xs gap-1 sm:gap-1.5" : "px-3.5 py-2 text-xs sm:text-sm gap-1.5"} ${isSelected ? option.activeClassName || "text-white font-bold" : "text-slate-400 hover:text-slate-200"}`}
                         >
                             {isLoading ? (
                                 <Loader2 size={isCompact ? 11 : 14} className="shrink-0 animate-spin text-poke-blue" />
                             ) : option.country ? (
                                 <FlagIcon country={option.country} className={`shrink-0 transition-transform duration-200 ${isSelected ? "scale-105 drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)]" : "opacity-75 group-hover:opacity-100"}`} />
                             ) : option.icon ? (
-                                <span className={`inline-flex shrink-0 items-center justify-center transition-transform duration-200 ${isSelected ? "scale-105 text-white" : "opacity-75 group-hover:opacity-100 text-slate-400"}`}>{option.icon}</span>
+                                <span className={`inline-flex shrink-0 items-center justify-center transition-transform duration-200 ${isSelected ? `scale-105 ${option.activeIconClassName || "text-white"}` : `opacity-75 group-hover:opacity-100 ${option.inactiveIconClassName || "text-slate-400"}`}`}>{option.icon}</span>
                             ) : null}
 
                             <span className={`truncate whitespace-nowrap ${option.shortLabel ? "hidden sm:inline" : "inline"}`}>{option.label}</span>

@@ -158,7 +158,7 @@ export function LandingPage() {
                         {/* Cards first on mobile for product-led hero */}
                         <div className="order-1 relative mx-auto flex w-full max-w-lg items-end justify-center gap-1 sm:max-w-xl sm:gap-2 lg:order-2 lg:max-w-none lg:gap-4 xl:gap-5">
                             {HERO_CARDS.map((card, index) => (
-                                <div key={card.dex} className={`relative aspect-[2.5/3.5] w-[36%] shrink-0 sm:w-[34%] lg:w-[38%] xl:w-[40%] ${index === 1 ? "z-20 -translate-y-4 scale-110 sm:-translate-y-7 sm:scale-[1.12]" : index === 0 ? "z-10 origin-bottom rotate-[-8deg] sm:rotate-[-10deg]" : "z-10 origin-bottom rotate-[8deg] sm:rotate-[10deg]"}`}>
+                                <div key={card.dex} className={`relative aspect-[8/11] w-[36%] shrink-0 sm:w-[34%] lg:w-[38%] xl:w-[40%] ${index === 1 ? "z-20 -translate-y-4 scale-110 sm:-translate-y-7 sm:scale-[1.12]" : index === 0 ? "z-10 origin-bottom rotate-[-8deg] sm:rotate-[-10deg]" : "z-10 origin-bottom rotate-[8deg] sm:rotate-[10deg]"}`}>
                                     <div className={`landing-enter landing-enter-d${index + 1} h-full w-full`}>
                                         <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={18} scale={1.04} glareOpacity={0.4} perspective={700} shineMode={card.shineMode}>
                                             <Image src={card.image} alt={card.name} fill priority={index === 1} sizes="(max-width: 640px) 36vw, (max-width: 1024px) 30vw, 280px" className="object-contain drop-shadow-[0_16px_32px_rgba(0,0,0,0.75)]" unoptimized />
@@ -200,7 +200,7 @@ export function LandingPage() {
                         <div className="grid grid-cols-3 gap-2 sm:gap-4 md:gap-5">
                             {BINDER_PAGE_CARDS.map((card, index) => (
                                 <CardAppearOnView key={card.dex} index={index} className="group relative flex flex-col items-center">
-                                    <div className="relative aspect-[2.5/3.5] w-full">
+                                    <div className="relative aspect-[8/11] w-full">
                                         <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={14} scale={1.06} glareOpacity={0.35} perspective={750} shineMode={card.shineMode}>
                                             <Image src={card.image} alt={card.name} fill sizes="(max-width: 768px) 30vw, 12vw" className="object-contain drop-shadow-[0_4px_14px_rgba(0,0,0,0.55)]" unoptimized />
                                         </Card3DTilt>

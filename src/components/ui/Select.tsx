@@ -9,6 +9,11 @@ export interface SelectOption<T extends string = string> {
     label: string;
     icon?: React.ReactNode;
     description?: string;
+    className?: string;
+    selectedClassName?: string;
+    triggerClassName?: string;
+    triggerTextClassName?: string;
+    checkClassName?: string;
 }
 
 export interface SelectProps<T extends string = string> {
@@ -141,24 +146,21 @@ export function Select<T extends string = string>({ value, onChange, options, pl
                   <div className="flex max-h-60 flex-col gap-0.5 overflow-y-auto">
                       {options.map((option) => {
                           const isSelected = option.value === value;
+                          const defaultSelectedStyle = "border-poke-blue/30 bg-poke-blue/20 font-bold text-poke-blue shadow-[0_0_8px_var(--theme-primary-glow)]";
+                          const defaultUnselectedStyle = "border-transparent text-slate-300 font-medium hover:border-poke-blue/30 hover:bg-poke-blue/15 hover:text-poke-blue";
+                          const itemStyle = isSelected ? option.selectedClassName || defaultSelectedStyle : option.className || defaultUnselectedStyle;
+
                           return (
-                              <button
-                                  key={option.value}
-                                  type="button"
-                                  role="option"
-                                  aria-selected={isSelected}
-                                  onClick={() => handleSelect(option.value)}
-                                  className={`group/item flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg border px-2.5 py-2 text-left text-xs transition-colors duration-150 ${isSelected ? "border-poke-blue/30 bg-poke-blue/20 font-bold text-poke-blue shadow-[0_0_8px_var(--theme-primary-glow)]" : "border-transparent text-slate-300 font-medium hover:border-poke-blue/30 hover:bg-poke-blue/15 hover:text-poke-blue"}`}
-                              >
+                              <button key={option.value} type="button" role="option" aria-selected={isSelected} onClick={() => handleSelect(option.value)} className={`group/item flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg border ${isSm ? "px-2 sm:px-2.5 py-1.5 sm:py-2 text-[11px] sm:text-xs" : "px-2.5 py-2 text-xs"} transition-colors duration-150 ${itemStyle}`}>
                                   <div className="flex min-w-0 items-center gap-2">
                                       {option.icon && <span className="shrink-0">{option.icon}</span>}
                                       <div className="flex min-w-0 flex-col">
                                           <span className="truncate">{option.label}</span>
-                                          {option.description && <span className="truncate text-[10px] text-slate-400 group-hover/item:text-poke-blue/70">{option.description}</span>}
+                                          {option.description && <span className="truncate text-[10px] text-slate-400 group-hover/item:text-inherit">{option.description}</span>}
                                       </div>
                                   </div>
 
-                                  {isSelected && <Check size={13} className="shrink-0 text-poke-blue" />}
+                                  {isSelected && <Check size={13} className={`shrink-0 ${option.checkClassName || (option.selectedClassName ? "text-current" : "text-poke-blue")}`} />}
                               </button>
                           );
                       })}
@@ -178,17 +180,16 @@ export function Select<T extends string = string>({ value, onChange, options, pl
                 aria-haspopup="listbox"
                 aria-expanded={isOpen}
                 aria-label={ariaLabel}
-                className={`group flex w-full items-center justify-between shadow-sm backdrop-blur-sm transition-all duration-200 focus:border-poke-blue focus:ring-1 focus:ring-poke-blue/40 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
-                    isSm ? "h-7 gap-1 rounded-lg border border-white/10 bg-white/5 px-2 text-[11px] font-semibold text-slate-200" : "h-9 gap-1.5 sm:gap-2.5 rounded-xl border border-white/10 bg-white/5 px-2.5 sm:px-3 text-xs font-semibold text-slate-200"
-                } ${disabled ? "" : "hover:border-poke-blue/40 hover:bg-white/[0.08]"} ${isOpen ? "border-poke-blue ring-1 ring-poke-blue/30 bg-white/[0.08]" : ""}`}
+                className={`group flex w-full items-center justify-between shadow-sm backdrop-blur-sm transition-all duration-200 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${isSm ? "h-7 sm:h-9 gap-1 sm:gap-2 rounded-lg sm:rounded-xl border px-2 sm:px-3 text-[11px] sm:text-xs font-semibold" : "h-9 gap-1.5 sm:gap-2.5 rounded-xl border px-2.5 sm:px-3 text-xs font-semibold"} ${
+                    selectedOption?.triggerClassName ? selectedOption.triggerClassName : `border-white/10 bg-white/5 text-slate-200 ${disabled ? "" : "hover:border-poke-blue/40 hover:bg-white/[0.08]"} focus:border-poke-blue focus:ring-1 focus:ring-poke-blue/40`
+                } ${isOpen ? (selectedOption?.triggerClassName ? "ring-1 ring-current/40" : "border-poke-blue ring-1 ring-poke-blue/30 bg-white/[0.08]") : ""}`}
             >
-                <div className={`flex min-w-0 items-center ${isSm ? "gap-1" : "gap-1.5 sm:gap-2"}`}>
-                    {icon && <span className="shrink-0 text-slate-400 transition-colors group-hover:text-poke-blue">{icon}</span>}
-                    {selectedOption?.icon && <span className="shrink-0">{selectedOption.icon}</span>}
-                    <span className="truncate text-slate-200">{selectedOption ? selectedOption.label : placeholder}</span>
+                <div className={`flex min-w-0 items-center ${isSm ? "gap-1 sm:gap-2" : "gap-1.5 sm:gap-2"}`}>
+                    {selectedOption?.icon ? <span className="shrink-0">{selectedOption.icon}</span> : icon && <span className="shrink-0 text-slate-400 transition-colors group-hover:text-poke-blue">{icon}</span>}
+                    <span className={`truncate ${selectedOption?.triggerTextClassName || (selectedOption?.triggerClassName ? "" : "text-slate-200")}`}>{selectedOption ? selectedOption.label : placeholder}</span>
                 </div>
 
-                <ChevronDown size={isSm ? 12 : 14} className={`shrink-0 text-slate-400 transition-transform duration-200 ${disabled ? "" : "group-hover:text-poke-blue"} ${isOpen ? "rotate-180 text-poke-blue" : ""}`} />
+                <ChevronDown size={14} className={`shrink-0 ${isSm ? "h-3 w-3 sm:h-3.5 sm:w-3.5" : "h-3.5 w-3.5"} transition-transform duration-200 ${disabled ? "text-slate-400" : selectedOption?.triggerClassName ? "text-current opacity-70 group-hover:opacity-100" : "text-slate-400 group-hover:text-poke-blue"} ${isOpen ? "rotate-180 text-poke-blue" : ""}`} />
             </button>
 
             {menu}

@@ -13,7 +13,7 @@ import { CardSearchModal } from "@/components/modal/CardSearchModal";
 import { formatTcgdexImageUrl } from "@/lib/pokemon/tcgdex";
 import { getPokemonSilhouetteUrl, POKEMON_151, markSilhouetteLoaded } from "@/lib/pokemon/constants";
 import { getRarityBadgeStyle, RARITY_FILTER_OPTIONS } from "@/lib/pokemon/rarity";
-import { resolveCardShine } from "@/lib/pokemon/variant";
+import { resolveCardShine, VARIANT_FILTER_OPTIONS } from "@/lib/pokemon/variant";
 import { ALL_EXPANSIONS_FILTER, buildCollectionFilterResetKey, buildExpansionFilterOptions, type CollectionSortDirection, type CollectionSortField } from "@/lib/collection/listCards";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { getCardAppearProps } from "@/lib/ui/cardAppear";
@@ -51,6 +51,7 @@ export default function CollectionPage() {
     const [languageFilter, setLanguageFilter] = useState<string>("all");
     const [rarityFilter, setRarityFilter] = useState<string>("all");
     const [expansionFilter, setExpansionFilter] = useState<string>(ALL_EXPANSIONS_FILTER);
+    const [variantFilter, setVariantFilter] = useState<string>("all");
     const [sortField, setSortField] = useState<SortField>("dex");
     const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
     const [showFilters, setShowFilters] = useState(false);
@@ -69,9 +70,10 @@ export default function CollectionPage() {
         if (languageFilter !== "all") count++;
         if (rarityFilter !== "all") count++;
         if (expansionFilter !== ALL_EXPANSIONS_FILTER) count++;
+        if (variantFilter !== "all") count++;
         if (sortField !== "dex" || sortDirection !== "asc") count++;
         return count;
-    }, [statusFilter, languageFilter, rarityFilter, expansionFilter, sortField, sortDirection]);
+    }, [statusFilter, languageFilter, rarityFilter, expansionFilter, variantFilter, sortField, sortDirection]);
 
     useEffect(() => {
         try {
@@ -86,6 +88,7 @@ export default function CollectionPage() {
                 if (parsed.languageFilter) setLanguageFilter(parsed.languageFilter);
                 if (parsed.rarityFilter) setRarityFilter(parsed.rarityFilter);
                 if (parsed.expansionFilter) setExpansionFilter(parsed.expansionFilter);
+                if (parsed.variantFilter) setVariantFilter(parsed.variantFilter);
                 if (parsed.sortField) setSortField(parsed.sortField);
                 if (parsed.sortDirection) setSortDirection(parsed.sortDirection);
             }
@@ -119,6 +122,7 @@ export default function CollectionPage() {
         languageFilter,
         rarityFilter,
         expansionFilter,
+        variantFilter,
         sortField,
         sortDirection,
     });
@@ -133,10 +137,11 @@ export default function CollectionPage() {
                 languageFilter,
                 rarityFilter,
                 expansionFilter,
+                variantFilter,
                 sortField,
                 sortDirection,
             }),
-        [debouncedSearchTerm, statusFilter, languageFilter, rarityFilter, expansionFilter, sortField, sortDirection],
+        [debouncedSearchTerm, statusFilter, languageFilter, rarityFilter, expansionFilter, variantFilter, sortField, sortDirection],
     );
 
     const sentinelRef = useInfiniteScroll({
@@ -156,12 +161,13 @@ export default function CollectionPage() {
                     languageFilter,
                     rarityFilter,
                     expansionFilter,
+                    variantFilter,
                     sortField,
                     sortDirection,
                 }),
             );
         } catch {}
-    }, [searchTerm, statusFilter, languageFilter, rarityFilter, expansionFilter, sortField, sortDirection]);
+    }, [searchTerm, statusFilter, languageFilter, rarityFilter, expansionFilter, variantFilter, sortField, sortDirection]);
 
     const filteredPokemonList = useMemo(() => {
         if (!pokemonPickerSearch.trim()) return POKEMON_151;
@@ -212,7 +218,7 @@ export default function CollectionPage() {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 placeholder={isMobile ? "Buscar cartas..." : "Buscar por pokémon, número, coleção ou pokédex..."}
                                 placeholderClassName="left-8.5 right-8 text-xs sm:left-10 sm:right-9 sm:text-sm"
-                                className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pr-8 pl-8.5 text-xs text-white transition-colors focus:border-poke-blue/60 focus:bg-white/[0.08] focus:outline-none sm:py-2.5 sm:pr-9 sm:pl-10 sm:text-sm"
+                                className="w-full h-9 sm:h-10 rounded-xl border border-white/10 bg-white/5 py-2 sm:py-2.5 pr-8 sm:pr-9 pl-8.5 sm:pl-10 text-xs sm:text-sm text-white transition-colors focus:border-poke-blue/60 focus:bg-white/[0.08] focus:outline-none"
                             />
                             {searchTerm && (
                                 <button type="button" onClick={() => setSearchTerm("")} aria-label="Limpar busca" className="absolute top-1/2 right-2.5 -translate-y-1/2 text-slate-500 hover:text-white z-20 sm:right-3">
@@ -221,28 +227,24 @@ export default function CollectionPage() {
                             )}
                         </div>
 
-                        <button type="button" onClick={() => setShowFilters((prev) => !prev)} aria-label="Alternar filtros" aria-expanded={showFilters} className={`flex h-8.5 sm:h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border px-2.5 sm:px-3 text-xs font-semibold transition-colors ${showFilters || activeFilterCount > 0 ? "border-poke-blue/60 bg-poke-blue/20 text-white" : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"}`}>
+                        <button type="button" onClick={() => setShowFilters((prev) => !prev)} aria-label="Alternar filtros" aria-expanded={showFilters} className={`flex h-9 sm:h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border px-2.5 sm:px-3 text-xs font-semibold transition-colors ${showFilters || activeFilterCount > 0 ? "border-poke-blue/60 bg-poke-blue/20 text-white" : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"}`}>
                             <SlidersHorizontal size={13} className={activeFilterCount > 0 ? "text-poke-blue" : "text-slate-400"} />
                             <span className="inline">Filtros</span>
                             {activeFilterCount > 0 && <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-poke-blue px-1 text-[10px] font-bold text-white">{activeFilterCount}</span>}
                         </button>
                     </div>
 
-                    <div className={`grid transition-all duration-300 ease-in-out ${showFilters ? "grid-rows-[1fr] opacity-100 border-t border-white/5 pt-3" : "grid-rows-[0fr] opacity-0 border-t-0 pt-0 pointer-events-none"}`}>
+                    <div className={`grid transition-all duration-300 ease-in-out ${showFilters ? "grid-rows-[1fr] opacity-100 border-t border-white/10 pt-3" : "grid-rows-[0fr] opacity-0 border-t-0 pt-0 pointer-events-none"}`}>
                         <div className="overflow-hidden">
-                            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5 lg:justify-between">
-                                <div className="contents sm:flex sm:flex-wrap sm:items-center sm:gap-2.5">
-                                    <Select<BinderStatusFilter> value={statusFilter} onChange={setStatusFilter} options={STATUS_FILTER_OPTIONS} icon={<BookOpen size={13} />} ariaLabel="Filtrar coleção por status no binder" className="w-full sm:w-[170px]" />
+                            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5 w-full">
+                                <Select<BinderStatusFilter> value={statusFilter} onChange={setStatusFilter} options={STATUS_FILTER_OPTIONS} icon={<BookOpen size={13} />} ariaLabel="Filtrar coleção por status no binder" className="w-full sm:flex-1 sm:min-w-[140px]" />
+                                <Select<string> value={languageFilter} onChange={setLanguageFilter} options={LANGUAGE_FILTER_OPTIONS} icon={<Globe size={13} />} ariaLabel="Filtrar coleção por idioma da carta" className="w-full sm:flex-1 sm:min-w-[145px]" menuClassName="sm:left-0 sm:right-auto" align="right" />
+                                <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar coleção por raridade" className="w-full sm:flex-1 sm:min-w-[155px]" />
+                                <Select<string> value={variantFilter} onChange={setVariantFilter} options={VARIANT_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar coleção por versão" className="w-full sm:flex-1 sm:min-w-[185px]" />
+                                <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar coleção por expansão" className="w-full col-span-2 sm:col-span-1 sm:flex-1 sm:min-w-[170px]" />
 
-                                    <Select<string> value={languageFilter} onChange={setLanguageFilter} options={LANGUAGE_FILTER_OPTIONS} icon={<Globe size={13} />} ariaLabel="Filtrar coleção por idioma da carta" className="w-full sm:w-[180px]" menuClassName="sm:left-0 sm:right-auto" align="right" />
-
-                                    <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar coleção por raridade" className="w-full sm:w-[195px]" />
-
-                                    <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar coleção por expansão" className="w-full sm:w-[210px]" />
-                                </div>
-
-                                <div className="col-span-2 flex w-full min-w-0 items-center gap-1.5 sm:w-auto lg:ml-auto">
-                                    <Select<SortField> value={sortField} onChange={setSortField} options={SORT_FIELD_OPTIONS} icon={<ArrowUpDown size={13} />} ariaLabel="Ordenar coleção" className="flex-1 min-w-0 sm:w-[180px]" align="right" />
+                                <div className="col-span-2 flex w-full min-w-0 items-center gap-1.5 sm:col-span-1 sm:flex-1 sm:min-w-[190px]">
+                                    <Select<SortField> value={sortField} onChange={setSortField} options={SORT_FIELD_OPTIONS} icon={<ArrowUpDown size={13} />} ariaLabel="Ordenar coleção" className="flex-1 min-w-0" align="right" />
                                     <button
                                         type="button"
                                         onClick={() => setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))}
@@ -330,15 +332,13 @@ export default function CollectionPage() {
 
                                             <div className="flex items-center gap-0.5 sm:gap-1">
                                                 {card.card_variant === "holo" && (
-                                                    <span className="flex h-4.5 sm:h-5 items-center gap-0.5 rounded border border-white/15 bg-black/60 px-1 text-[7px] font-bold text-amber-200 backdrop-blur-sm sm:px-1.5 sm:text-[8px]">
-                                                        <Sparkles size={8} className="shrink-0 text-amber-300 sm:h-2.5 sm:w-2.5" />
-                                                        <span>Foil</span>
+                                                    <span title="Foil" aria-label="Foil" className="flex h-4.5 sm:h-5 w-4.5 sm:w-5 items-center justify-center rounded border border-amber-500/40 bg-amber-500/20 text-amber-300">
+                                                        <Sparkles size={11} className="sm:h-3 sm:w-3" />
                                                     </span>
                                                 )}
                                                 {card.card_variant === "reverse" && (
-                                                    <span className="flex h-4.5 sm:h-5 items-center gap-0.5 rounded border border-white/15 bg-black/60 px-1 text-[7px] font-bold text-cyan-200 backdrop-blur-sm sm:px-1.5 sm:text-[8px]">
-                                                        <RefreshCw size={8} className="shrink-0 text-cyan-300 sm:h-2.5 sm:w-2.5" />
-                                                        <span className="truncate">Reverse Foil</span>
+                                                    <span title="Reverse Foil" aria-label="Reverse Foil" className="flex h-4.5 sm:h-5 w-4.5 sm:w-5 items-center justify-center rounded border border-cyan-500/40 bg-cyan-500/20 text-cyan-300">
+                                                        <RefreshCw size={11} className="sm:h-3 sm:w-3" />
                                                     </span>
                                                 )}
 
@@ -356,7 +356,7 @@ export default function CollectionPage() {
                                             </div>
                                         </div>
 
-                                        <div className="relative my-1 aspect-[2.5/3.5] w-full sm:my-2">
+                                        <div className="relative my-1 aspect-[8/11] w-full sm:my-2">
                                             <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={resolveCardShine(card.card_variant, card.card_rarity)}>
                                                 <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill unoptimized sizes="(max-width: 640px) 30vw, (max-width: 768px) 33vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" priority={index === 0} />
                                             </Card3DTilt>
@@ -399,7 +399,7 @@ export default function CollectionPage() {
                         if (e.target === e.currentTarget) setIsPokemonPickerOpen(false);
                     }}
                 >
-                    <div className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#12151d] shadow-2xl md:max-w-4xl lg:max-w-5xl">
+                    <div className="flex h-[90vh] sm:h-[85vh] max-h-[820px] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#12151d] shadow-2xl md:max-w-4xl lg:max-w-5xl">
                         <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
                             <div>
                                 <h3 className="text-lg font-bold text-white">Escolha um Pokémon</h3>
@@ -419,7 +419,7 @@ export default function CollectionPage() {
 
                         <div className="flex-1 overflow-y-auto p-4 md:p-5">
                             {filteredPokemonList.length === 0 ? (
-                                <div className="flex h-48 flex-col items-center justify-center gap-2 text-center text-slate-500">
+                                <div className="flex h-full min-h-[250px] flex-col items-center justify-center gap-2 text-center text-slate-500">
                                     <Search size={28} className="text-slate-600" />
                                     <span className="text-xs">Nenhum Pokémon encontrado com esse nome ou número.</span>
                                 </div>

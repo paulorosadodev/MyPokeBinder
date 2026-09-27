@@ -14,11 +14,11 @@ import { ModalSearchFilters } from "@/components/ui/ModalSearchFilters";
 import { Card3DTilt } from "@/components/ui/Card3DTilt";
 import { Select, type SelectOption } from "@/components/ui/Select";
 import { getCardAppearProps } from "@/lib/ui/cardAppear";
-import { ALL_CARD_VARIANTS, cardCopyGroupKey, formatVariantLabel, resolveCardShine } from "@/lib/pokemon/variant";
+import { ALL_CARD_VARIANTS, VARIANT_FILTER_OPTIONS, cardCopyGroupKey, formatVariantLabel, resolveCardShine } from "@/lib/pokemon/variant";
 import { RARITY_FILTER_OPTIONS } from "@/lib/pokemon/rarity";
-import { ALL_EXPANSIONS_FILTER, buildExpansionFilterOptions, filterAndSortCollectionGroups } from "@/lib/collection/listCards";
+import { ALL_EXPANSIONS_FILTER, CollectionSortDirection, CollectionSortField, buildExpansionFilterOptions, filterAndSortCollectionGroups } from "@/lib/collection/listCards";
 import { isCardMatchingPokemon } from "@/lib/pokemon/match";
-import { X, Sparkles, Check, Search, Plus, BookOpen, Pencil, Loader2, Globe, Layers } from "lucide-react";
+import { X, Sparkles, Check, Search, Plus, BookOpen, Pencil, Loader2, Globe, Layers, ArrowUpDown } from "lucide-react";
 
 interface BinderSlotSelectModalProps {
     isOpen: boolean;
@@ -47,6 +47,12 @@ const LANGUAGE_FILTER_OPTIONS: SelectOption<string>[] = [
     { value: "ja", label: "Japonês (JA)", icon: <FlagIcon country="ja" /> },
 ];
 
+const SORT_FIELD_OPTIONS: SelectOption<CollectionSortField>[] = [
+    { value: "name", label: "Nome" },
+    { value: "recent", label: "Data de adição" },
+    { value: "dex", label: "Pokédex" },
+];
+
 export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId, activeCard, onClose, onCardSelected, onCardRemoved, onOpenCatalogSearch }: BinderSlotSelectModalProps) {
     const router = useRouter();
     const { mutate: mutateGlobal } = useSWRConfig();
@@ -59,7 +65,10 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
     const [searchTerm, setSearchTerm] = useState("");
     const [languageFilter, setLanguageFilter] = useState("all");
     const [rarityFilter, setRarityFilter] = useState("all");
+    const [variantFilter, setVariantFilter] = useState("all");
     const [expansionFilter, setExpansionFilter] = useState(ALL_EXPANSIONS_FILTER);
+    const [sortField, setSortField] = useState<CollectionSortField>("name");
+    const [sortDirection, setSortDirection] = useState<CollectionSortDirection>("asc");
     const [showFilters, setShowFilters] = useState(false);
 
     useEffect(() => {
@@ -71,7 +80,10 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
             setSearchTerm("");
             setLanguageFilter("all");
             setRarityFilter("all");
+            setVariantFilter("all");
             setExpansionFilter(ALL_EXPANSIONS_FILTER);
+            setSortField("name");
+            setSortDirection("asc");
             setShowFilters(false);
             return;
         }
@@ -162,8 +174,9 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
                 languageFilter,
                 rarityFilter,
                 expansionFilter,
-                sortField: "name",
-                sortDirection: "asc",
+                variantFilter,
+                sortField,
+                sortDirection,
             },
         );
         const originalByKey = new Map(groupedCards.map((group) => [group.key, group]));
@@ -171,10 +184,10 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
             const original = originalByKey.get(group.key);
             return original ? [original] : [];
         });
-    }, [groupedCards, searchTerm, languageFilter, rarityFilter, expansionFilter]);
+    }, [groupedCards, searchTerm, languageFilter, rarityFilter, expansionFilter, variantFilter, sortField, sortDirection]);
 
-    const hasActiveFilters = Boolean(searchTerm.trim()) || languageFilter !== "all" || rarityFilter !== "all" || expansionFilter !== ALL_EXPANSIONS_FILTER;
-    const activeFilterCount = (languageFilter !== "all" ? 1 : 0) + (rarityFilter !== "all" ? 1 : 0) + (expansionFilter !== ALL_EXPANSIONS_FILTER ? 1 : 0);
+    const hasActiveFilters = Boolean(searchTerm.trim()) || languageFilter !== "all" || rarityFilter !== "all" || variantFilter !== "all" || expansionFilter !== ALL_EXPANSIONS_FILTER || sortField !== "name" || sortDirection !== "asc";
+    const activeFilterCount = (languageFilter !== "all" ? 1 : 0) + (rarityFilter !== "all" ? 1 : 0) + (variantFilter !== "all" ? 1 : 0) + (expansionFilter !== ALL_EXPANSIONS_FILTER ? 1 : 0) + (sortField !== "name" || sortDirection !== "asc" ? 1 : 0);
 
     const handleSelectCard = (card: UserCard) => {
         if (card.id === selectedCardId) return;
@@ -221,11 +234,11 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
                 if (!editingCardId && e.target === e.currentTarget) onClose();
             }}
         >
-            <div className="flex max-h-[92vh] w-full max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl flex-col items-center justify-center gap-5 lg:flex-row lg:items-center">
+            <div className="flex h-[90vh] sm:h-[85vh] max-h-[820px] w-full max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl flex-col items-center justify-center gap-5 lg:flex-row lg:items-center">
                 <div className="hidden lg:flex lg:w-[240px] xl:w-[300px] 2xl:w-[340px] shrink-0 flex-col items-center justify-center transition-all duration-200">
                     {previewCard ? (
                         <>
-                            <div className="relative aspect-[2.5/3.5] w-full select-none">
+                            <div className="relative aspect-[8/11] w-full select-none">
                                 <Card3DTilt key={previewCard.id} className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={10} maxMove={4} scale={1} glareOpacity={0.25} perspective={1000} shineMode={resolveCardShine(previewCard.card_variant, previewCard.card_rarity)}>
                                     <Image key={previewCard.id} src={formatTcgdexImageUrl(previewCard.card_image_url)} alt={previewCard.card_name} fill sizes="(max-width: 1280px) 240px, 340px" className="object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.9)]" unoptimized />
                                 </Card3DTilt>
@@ -237,7 +250,7 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
                         </>
                     ) : (
                         <>
-                            <div className="relative flex aspect-[2.5/3.5] w-full select-none flex-col items-center justify-between rounded-2xl border-2 border-dashed border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent p-5 shadow-2xl backdrop-blur-md">
+                            <div className="relative flex aspect-[8/11] w-full select-none flex-col items-center justify-between rounded-2xl border-2 border-dashed border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent p-5 shadow-2xl backdrop-blur-md">
                                 <div className="flex w-full items-center justify-between">
                                     <span className="rounded bg-black/40 px-2 py-0.5 text-xs font-bold text-slate-400 backdrop-blur-sm">#{String(dexId).padStart(3, "0")}</span>
                                     <span className="rounded bg-white/5 px-2 py-0.5 text-[10px] font-semibold text-slate-400">Vazio</span>
@@ -259,7 +272,7 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
                     )}
                 </div>
 
-                <div className="relative flex h-[85vh] max-h-[780px] w-full flex-1 min-w-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#12151d] shadow-2xl">
+                <div className="relative flex h-full w-full flex-1 min-w-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#12151d] shadow-2xl">
                     {editingCardId && (
                         <div className="absolute top-0 inset-x-0 h-1 overflow-hidden rounded-t-2xl bg-white/5 z-30">
                             <div className="h-full w-full bg-poke-blue animate-pulse" />
@@ -281,11 +294,32 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
 
                     {groupedCards.length > 0 ? (
                         <div className="flex shrink-0 flex-col border-b border-white/5 bg-black/20 px-3 py-2.5 sm:px-6 sm:py-3">
-                            <ModalSearchFilters searchTerm={searchTerm} onSearchChange={setSearchTerm} showFilters={showFilters} onToggleFilters={() => setShowFilters((prev) => !prev)} activeFilterCount={activeFilterCount} filterButtonAriaLabel="Alternar filtros de idioma, raridade e expansão">
-                                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5 pt-0.5">
-                                    <Select<string> value={languageFilter} onChange={setLanguageFilter} options={LANGUAGE_FILTER_OPTIONS} icon={<Globe size={13} />} ariaLabel="Filtrar por idioma da carta" className="w-full sm:w-36" size="sm" />
-                                    <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar por raridade" className="w-full sm:w-44" size="sm" />
-                                    <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar por expansão" className="w-full col-span-2 sm:col-span-1 sm:w-52" size="sm" align="right" />
+                            <ModalSearchFilters searchTerm={searchTerm} onSearchChange={setSearchTerm} showFilters={showFilters} onToggleFilters={() => setShowFilters((prev) => !prev)} activeFilterCount={activeFilterCount} filterButtonAriaLabel="Alternar filtros de idioma, raridade, versão, expansão e ordenação">
+                                <div className="grid grid-cols-2 gap-2 sm:grid-cols-6 sm:gap-2.5 w-full pt-0.5">
+                                    <div className="col-span-1 sm:col-span-2">
+                                        <Select<string> value={languageFilter} onChange={setLanguageFilter} options={LANGUAGE_FILTER_OPTIONS} icon={<Globe size={13} />} ariaLabel="Filtrar por idioma da carta" className="w-full" size="sm" />
+                                    </div>
+                                    <div className="col-span-1 sm:col-span-2">
+                                        <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar por raridade" className="w-full" size="sm" />
+                                    </div>
+                                    <div className="col-span-1 sm:col-span-2">
+                                        <Select<string> value={variantFilter} onChange={setVariantFilter} options={VARIANT_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar por versão" className="w-full" size="sm" />
+                                    </div>
+                                    <div className="col-span-1 sm:col-span-3">
+                                        <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar por expansão" className="w-full" size="sm" />
+                                    </div>
+                                    <div className="col-span-2 sm:col-span-3 flex items-center gap-1.5">
+                                        <Select<CollectionSortField> value={sortField} onChange={setSortField} options={SORT_FIELD_OPTIONS} icon={<ArrowUpDown size={13} />} ariaLabel="Ordenar cartas" className="flex-1 min-w-0" size="sm" align="right" />
+                                        <button
+                                            type="button"
+                                            onClick={() => setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))}
+                                            aria-label={sortDirection === "asc" ? "Ordem crescente. Clique para inverter para decrescente." : "Ordem decrescente. Clique para inverter para crescente."}
+                                            title={sortDirection === "asc" ? "Crescente (Clique para inverter)" : "Decrescente (Clique para inverter)"}
+                                            className="flex h-7 w-7 sm:h-9 sm:w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg sm:rounded-xl border border-white/10 bg-white/5 text-slate-300 transition-all hover:border-poke-blue/50 hover:bg-white/10 hover:text-white active:scale-95"
+                                        >
+                                            <ArrowUpDown size={14} className={`transition-transform duration-200 ${sortDirection === "desc" ? "rotate-180 text-poke-blue" : ""}`} />
+                                        </button>
+                                    </div>
                                 </div>
                             </ModalSearchFilters>
                         </div>
@@ -334,7 +368,10 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
                                             setSearchTerm("");
                                             setLanguageFilter("all");
                                             setRarityFilter("all");
+                                            setVariantFilter("all");
                                             setExpansionFilter(ALL_EXPANSIONS_FILTER);
+                                            setSortField("name");
+                                            setSortDirection("asc");
                                         }}
                                         className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-semibold text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
                                     >
@@ -382,7 +419,7 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
                                                         handleSelectCard(group.activeCard);
                                                     }
                                                 }}
-                                                className={`relative aspect-[2.5/3.5] w-full ${isNavigating ? "cursor-not-allowed opacity-80" : "cursor-pointer"}`}
+                                                className={`relative aspect-[8/11] w-full ${isNavigating ? "cursor-not-allowed opacity-80" : "cursor-pointer"}`}
                                             >
                                                 <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={resolveCardShine(card.card_variant, card.card_rarity)}>
                                                     <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill sizes="(max-width: 768px) 50vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" unoptimized />

@@ -1,4 +1,6 @@
 import { describe, it, expect } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { CARD_3D_REST_TRANSFORM, getCard3DNeutralTransform } from "@/components/ui/Card3DTilt";
 
 describe("Lightweight 3D Card Tilt Logic", () => {
@@ -83,5 +85,43 @@ describe("Lightweight 3D Card Tilt Logic", () => {
         expect(collectionConfig.maxTilt).toBeLessThanOrEqual(10);
         expect(collectionConfig.maxMove).toBeLessThanOrEqual(5);
         expect(collectionConfig.glareOpacity).toBeLessThanOrEqual(0.25);
+    });
+
+    it("should match every foil surface to the 600 by 825 TCGdex card contour", () => {
+        expect(600 / 825).toBe(8 / 11);
+
+        const cardSurfaceFiles = ["../src/app/collection/page.tsx", "../src/app/cards/[id]/page.tsx", "../src/app/login/page.tsx", "../src/components/landing/LandingPage.tsx", "../src/components/modal/BinderSlotSelectModal.tsx", "../src/components/modal/CardSearchModal.tsx", "../src/components/profile/PublicCollectionView.tsx", "../src/components/profile/TrainerProfileView.tsx", "../src/components/ui/CardLightbox.tsx"];
+
+        for (const relativePath of cardSurfaceFiles) {
+            const source = readFileSync(join(import.meta.dir, relativePath), "utf8");
+
+            expect(source).not.toContain("aspect-[2.5/3.5]");
+            expect(source).not.toContain('aspectRatio: "2.5 / 3.5"');
+            expect(source).toMatch(/aspect-\[8\/11\]|aspectRatio: "8 \/ 11"/);
+        }
+    });
+
+    it("should crop normal foil to the artwork and align the lower reverse foil cutout", () => {
+        const css = readFileSync(join(import.meta.dir, "../src/app/globals.css"), "utf8");
+        const holoCropRule = css.match(/\.holo-sheen,\s*\.card-glare--holo,\s*\.card-idle-holo\s*\{([\s\S]*?)\}/)?.[1] ?? "";
+        const reverseCropRule = css.match(/\.foil-sheen,\s*\.card-glare--foil,\s*\.card-idle-foil\s*\{([\s\S]*?)\}/)?.[1] ?? "";
+
+        expect(holoCropRule).toContain("inset: 9% 7.8% 50% 7.8%");
+        expect(reverseCropRule).toContain("#000 8.4%, transparent 9%");
+        expect(reverseCropRule).toContain("transparent 49.4%, #000 50%");
+        expect(reverseCropRule).toContain("-webkit-mask-composite: source-over");
+        expect(reverseCropRule).toContain("mask-composite: add");
+        expect(css).not.toContain("#000 11.2%, transparent 11.8%");
+        expect(css).not.toContain("transparent 52.4%, #000 53%");
+    });
+
+    it("should keep prismatic artwork on an uncropped sheen layer", () => {
+        const component = readFileSync(join(import.meta.dir, "../src/components/ui/Card3DTilt.tsx"), "utf8");
+        const css = readFileSync(join(import.meta.dir, "../src/app/globals.css"), "utf8");
+        const holoCropSelector = css.match(/([^{}]*\.holo-sheen[^{}]*)\{\s*inset: 9% 7.8% 50% 7.8%/)?.[1] ?? "";
+
+        expect(component).toContain('shineMode === "prismatic" ? "prismatic-sheen"');
+        expect(css).toMatch(/\.prismatic-sheen,\s*\.holo-sheen\s*\{/);
+        expect(holoCropSelector).not.toContain(".prismatic-sheen");
     });
 });

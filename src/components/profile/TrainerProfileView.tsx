@@ -57,7 +57,7 @@ const fetcher = async (url: string): Promise<ProfilePayload> => {
 
 function FeaturedSlotFrame({ children, className = "" }: { children: ReactNode; className?: string }) {
     return (
-        <div className={`relative w-full ${className}`} style={{ aspectRatio: "2.5 / 3.5" }}>
+        <div className={`relative w-full ${className}`} style={{ aspectRatio: "8 / 11" }}>
             <div className="absolute inset-0">{children}</div>
         </div>
     );
@@ -84,7 +84,7 @@ function SortableFeaturedCard({ id, index, card, onRemove, priority = false }: {
     const shineMode = resolveCardShine(card.card_variant, card.card_rarity);
 
     return (
-        <div ref={ref} className={`relative w-full touch-none select-none !cursor-grab active:!cursor-grabbing ${isDragging ? "z-30" : "z-0"}`} style={{ aspectRatio: "2.5 / 3.5" }} aria-label={`${card.card_name}, arraste para reordenar`}>
+        <div ref={ref} className={`relative w-full touch-none select-none !cursor-grab active:!cursor-grabbing ${isDragging ? "z-30" : "z-0"}`} style={{ aspectRatio: "8 / 11" }} aria-label={`${card.card_name}, arraste para reordenar`}>
             <div className={`absolute inset-0 ${isDragging ? "opacity-90 ring-2 ring-poke-blue/60 rounded-lg" : ""}`}>
                 <Card3DTilt className="relative h-full w-full" maxTilt={0} maxMove={0} scale={1} glareOpacity={0} perspective={900} shineMode={shineMode} paused>
                     <Image src={imageSrc} alt={card.card_name} fill sizes="(max-width: 640px) 45vw, 200px" className="pointer-events-none object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" unoptimized priority={priority} draggable={false} />
@@ -112,7 +112,7 @@ function FeaturedEmptySlot({ editing, onAdd }: { editing: boolean; onAdd: () => 
 }
 
 function ProfileShell({ children }: { children: ReactNode }) {
-    return <div className="flex min-h-screen flex-col bg-[#0a0c10]">{children}</div>;
+    return <div className="flex min-h-[calc(100dvh-4rem)] flex-col bg-[#0a0c10]">{children}</div>;
 }
 
 function ProfileThemeScope({ themeColor, children }: { themeColor?: string; children: ReactNode }) {
@@ -325,7 +325,7 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
     if (isLoading && !profile) {
         return (
             <ProfileShell>
-                <main className="flex flex-1 items-center justify-center bg-[#0a0c10]">
+                <main className="flex flex-1 items-start justify-center pt-10 sm:pt-14 md:pt-18 pb-16 bg-[#0a0c10]">
                     <PokeballLoader message="Carregando perfil do treinador..." size="lg" />
                 </main>
             </ProfileShell>
@@ -570,7 +570,7 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
                         if (e.target === e.currentTarget) setIsPickerOpen(false);
                     }}
                 >
-                    <div className="flex h-[min(85dvh,720px)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#12151d] shadow-2xl">
+                    <div className="flex h-[90vh] sm:h-[85vh] max-h-[820px] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#12151d] shadow-2xl">
                         <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-5 py-4">
                             <div>
                                 <h3 className="text-base font-bold text-white">Escolher cartas em destaque</h3>
@@ -584,7 +584,7 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
                         <div className="flex shrink-0 flex-col gap-2.5 border-b border-white/10 px-4 py-3">
                             <div className="relative w-full">
                                 <Search size={15} className="absolute top-1/2 left-3 -translate-y-1/2 text-slate-500" />
-                                <SearchInput type="text" value={pickerSearch} onChange={(e) => setPickerSearch(e.target.value)} placeholder="Buscar por pokémon, número, coleção ou pokédex..." placeholderClassName="left-9 right-9" className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pr-9 pl-9 text-xs text-white transition-colors focus:border-poke-blue/60 focus:bg-white/[0.08] focus:outline-none" />
+                                <SearchInput type="text" value={pickerSearch} onChange={(e) => setPickerSearch(e.target.value)} placeholder="Buscar por pokémon, número, coleção ou pokédex..." placeholderClassName="left-9 right-9" className="w-full h-9 sm:h-10 rounded-xl border border-white/10 bg-white/5 py-2 sm:py-2.5 pr-9 pl-9 text-xs sm:text-sm text-white transition-colors focus:border-poke-blue/60 focus:bg-white/[0.08] focus:outline-none" />
                                 {pickerSearch ? (
                                     <button type="button" onClick={() => setPickerSearch("")} aria-label="Limpar busca" className="absolute top-1/2 right-2.5 -translate-y-1/2 text-slate-500 hover:text-white">
                                         <X size={14} />
@@ -633,7 +633,7 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
                                             return (
                                                 <button key={card.id} type="button" onClick={() => toggleFavorite(card.id)} className={`relative flex flex-col rounded-xl border p-1.5 text-left transition-all active:scale-[0.98] ${selected ? "border-poke-blue bg-poke-blue/10 ring-1 ring-poke-blue/40" : "border-white/10 bg-white/[0.03] hover:border-white/25"}`}>
                                                     <span className={`absolute right-1.5 top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full border shadow-md transition-colors ${selected ? "border-emerald-400/60 bg-emerald-500 text-white shadow-emerald-500/25" : "border-white/20 bg-black/70 text-slate-400"}`}>{selected ? <Check size={13} strokeWidth={3} /> : <Plus size={13} strokeWidth={2.5} />}</span>
-                                                    <div className="relative aspect-[2.5/3.5] w-full">
+                                                    <div className="relative aspect-[8/11] w-full">
                                                         <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill unoptimized sizes="100px" className="object-contain" />
                                                     </div>
                                                     <span className="mt-1 truncate text-[9px] font-semibold text-white">{card.card_name}</span>

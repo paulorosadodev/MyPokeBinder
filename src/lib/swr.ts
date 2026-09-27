@@ -42,7 +42,7 @@ export interface PublicCollectionGroupsResponse {
     hasMore: boolean;
 }
 
-export function useInfiniteCollectionGroups(filters: { searchTerm: string; statusFilter: BinderStatusFilter; languageFilter: string; rarityFilter: string; expansionFilter?: string; sortField: CollectionSortField; sortDirection: CollectionSortDirection }) {
+export function useInfiniteCollectionGroups(filters: { searchTerm: string; statusFilter: BinderStatusFilter; languageFilter: string; rarityFilter: string; expansionFilter?: string; variantFilter?: string; sortField: CollectionSortField; sortDirection: CollectionSortDirection }) {
     const getKey = (pageIndex: number, previousPageData: CollectionGroupsResponse | null) => {
         if (previousPageData && !previousPageData.hasMore) return null;
 
@@ -56,6 +56,9 @@ export function useInfiniteCollectionGroups(filters: { searchTerm: string; statu
         if (filters.rarityFilter !== "all") params.set("rarity", filters.rarityFilter);
         if (filters.expansionFilter && filters.expansionFilter !== ALL_EXPANSIONS_FILTER) {
             params.set("expansion", filters.expansionFilter);
+        }
+        if (filters.variantFilter && filters.variantFilter !== "all") {
+            params.set("variant", filters.variantFilter);
         }
         params.set("sort", filters.sortField);
         params.set("direction", filters.sortDirection);
@@ -118,6 +121,7 @@ export function useInfinitePublicCollectionGroups(
         languageFilter: string;
         rarityFilter: string;
         expansionFilter?: string;
+        variantFilter?: string;
         sortField: CollectionSortField;
         sortDirection: CollectionSortDirection;
     },
@@ -135,6 +139,9 @@ export function useInfinitePublicCollectionGroups(
         if (filters.rarityFilter !== "all") params.set("rarity", filters.rarityFilter);
         if (filters.expansionFilter && filters.expansionFilter !== ALL_EXPANSIONS_FILTER) {
             params.set("expansion", filters.expansionFilter);
+        }
+        if (filters.variantFilter && filters.variantFilter !== "all") {
+            params.set("variant", filters.variantFilter);
         }
         params.set("sort", filters.sortField);
         params.set("direction", filters.sortDirection);

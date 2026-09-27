@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { CARD_VARIANT_OPTIONS, cardCopyGroupKey, defaultVariant, formatVariantLabel, getAvailableVariants, isCardVariant, resolveCardShine } from "../src/lib/pokemon/variant";
+import { CARD_VARIANT_OPTIONS, VARIANT_SELECT_OPTIONS, cardCopyGroupKey, defaultVariant, formatVariantLabel, getAvailableVariants, isCardVariant, resolveCardShine } from "../src/lib/pokemon/variant";
 
 describe("Card variant helpers", () => {
     it("filters available variants from TCGdex flags in priority order", () => {
@@ -40,6 +40,12 @@ describe("Card variant helpers", () => {
         expect(resolveCardShine("normal", "Double rare")).toBe("prismatic");
         expect(resolveCardShine("normal", "Rare Holo VMAX")).toBe("prismatic");
         expect(resolveCardShine("normal", "Radiant Rare")).toBe("prismatic");
+
+        for (const rarity of ["Illustration rare", "Special illustration rare", "Ultra Rare", "Hyper rare", "Secret Rare"]) {
+            expect(resolveCardShine("normal", rarity)).toBe("prismatic");
+            expect(resolveCardShine("holo", rarity)).toBe("prismatic");
+            expect(resolveCardShine("reverse", rarity)).toBe("prismatic");
+        }
     });
 
     it("builds copy group keys including variant", () => {
@@ -58,5 +64,18 @@ describe("Card variant helpers", () => {
                 card_variant: null,
             }),
         ).toBe("swsh3-136_en_normal");
+    });
+
+    it("provides variant select options with badge styling", () => {
+        expect(VARIANT_SELECT_OPTIONS.map((opt) => opt.value)).toEqual(["normal", "holo", "reverse"]);
+        const foilOption = VARIANT_SELECT_OPTIONS.find((opt) => opt.value === "holo");
+        expect(foilOption?.triggerClassName).toContain("border-amber-500");
+        expect(foilOption?.triggerClassName).toContain("text-amber-200");
+        const reverseOption = VARIANT_SELECT_OPTIONS.find((opt) => opt.value === "reverse");
+        expect(reverseOption?.triggerClassName).toContain("border-cyan-500");
+        expect(reverseOption?.triggerClassName).toContain("text-cyan-200");
+        const normalOption = VARIANT_SELECT_OPTIONS.find((opt) => opt.value === "normal");
+        expect(normalOption?.triggerClassName).toContain("border-slate-500");
+        expect(normalOption?.triggerClassName).toContain("text-slate-200");
     });
 });

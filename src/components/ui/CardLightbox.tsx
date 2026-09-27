@@ -73,7 +73,7 @@ export function CardLightbox({ src, alt = "Carta", shineMode = "none", onClose }
                 <X size={20} strokeWidth={2.5} />
             </button>
 
-            <div className="relative aspect-[2.5/3.5] w-[88vw] max-w-[420px] select-none touch-none">
+            <div className="relative aspect-[8/11] w-[88vw] max-w-[420px] select-none touch-none">
                 <Card3DTilt className="relative h-full w-full overflow-hidden rounded-2xl touch-none" maxTilt={18} scale={1.05} glareOpacity={0.35} perspective={1000} shineMode={shineMode} enableTouch>
                     <Image src={src} alt={alt} fill unoptimized priority sizes="(max-width: 768px) 90vw, 500px" className="pointer-events-none object-contain drop-shadow-[0_25px_60px_rgba(0,0,0,0.95)]" />
                 </Card3DTilt>

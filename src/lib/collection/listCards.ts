@@ -25,6 +25,7 @@ export interface CollectionListFilters {
     languageFilter: string;
     rarityFilter: string;
     expansionFilter?: string;
+    variantFilter?: string;
     sortField: CollectionSortField;
     sortDirection: CollectionSortDirection;
 }
@@ -189,6 +190,7 @@ export function filterCatalogCards(cards: SearchCardItem[], filters: CatalogList
 export function filterAndSortCollectionGroups(groups: CollectionCardGroup[], filters: CollectionListFilters): CollectionCardGroup[] {
     const { searchTerm, statusFilter, languageFilter, rarityFilter, sortField, sortDirection } = filters;
     const expansionFilter = filters.expansionFilter ?? ALL_EXPANSIONS_FILTER;
+    const variantFilter = filters.variantFilter ?? "all";
 
     const list = groups.filter((group) => {
         const card = group.card;
@@ -203,6 +205,8 @@ export function filterAndSortCollectionGroups(groups: CollectionCardGroup[], fil
         if (statusFilter === "stored" && group.hasInBinder && group.totalCount === 1) return false;
 
         if (languageFilter !== "all" && card.card_language !== languageFilter) return false;
+
+        if (variantFilter !== "all" && card.card_variant !== variantFilter) return false;
 
         if (rarityFilter !== "all") {
             const lower = (card.card_rarity || "").trim().toLowerCase();
@@ -229,8 +233,8 @@ export function filterAndSortCollectionGroups(groups: CollectionCardGroup[], fil
     return list;
 }
 
-export function buildCollectionFilterResetKey(filters: { searchTerm: string; statusFilter: string; languageFilter: string; rarityFilter: string; expansionFilter?: string; sortField?: string; sortDirection?: string }): string {
-    return [filters.searchTerm.trim().toLowerCase(), filters.statusFilter, filters.languageFilter, filters.rarityFilter, filters.expansionFilter ?? ALL_EXPANSIONS_FILTER, filters.sortField ?? "", filters.sortDirection ?? ""].join("|");
+export function buildCollectionFilterResetKey(filters: { searchTerm: string; statusFilter: string; languageFilter: string; rarityFilter: string; expansionFilter?: string; variantFilter?: string; sortField?: string; sortDirection?: string }): string {
+    return [filters.searchTerm.trim().toLowerCase(), filters.statusFilter, filters.languageFilter, filters.rarityFilter, filters.expansionFilter ?? ALL_EXPANSIONS_FILTER, filters.variantFilter ?? "all", filters.sortField ?? "", filters.sortDirection ?? ""].join("|");
 }
 
 /** Pure helper for tests and non-React consumers. */

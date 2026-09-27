@@ -5,12 +5,13 @@ import Image from "next/image";
 import { SearchCardItem, CardLanguage, CardVariant, UserCard, SearchResponse } from "@/types/binder";
 import { formatTcgdexImageUrl } from "@/lib/pokemon/tcgdex";
 import { getRarityBadgeStyle, RARITY_FILTER_OPTIONS } from "@/lib/pokemon/rarity";
-import { formatVariantLabel, resolveCardShine } from "@/lib/pokemon/variant";
+import { formatVariantLabel, resolveCardShine, VARIANT_SLIDER_OPTIONS, VARIANT_SELECT_OPTIONS } from "@/lib/pokemon/variant";
 import { ALL_EXPANSIONS_FILTER, COLLECTION_PAGE_SIZE, buildExpansionFilterOptions, filterCatalogCards } from "@/lib/collection/listCards";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { PokeballLoader } from "@/components/loading/PokeballLoader";
 import { LanguageSlider, type LanguageSliderOption } from "@/components/ui/LanguageSlider";
-import { Select } from "@/components/ui/Select";
+import { FlagIcon } from "@/components/ui/FlagIcon";
+import { Select, type SelectOption } from "@/components/ui/Select";
 import { Card3DTilt } from "@/components/ui/Card3DTilt";
 import { Spinner } from "@/components/ui/Spinner";
 import { ModalSearchFilters } from "@/components/ui/ModalSearchFilters";
@@ -34,10 +35,10 @@ const LANGUAGE_OPTIONS: LanguageSliderOption<CardLanguage>[] = [
     { value: "ja", label: "JA", country: "ja" },
 ];
 
-const VARIANT_SLIDER_OPTIONS: LanguageSliderOption<CardVariant>[] = [
-    { value: "normal", label: "Normal", icon: <Circle size={11} strokeWidth={2.25} /> },
-    { value: "holo", label: "Foil", icon: <Sparkles size={11} strokeWidth={2.25} /> },
-    { value: "reverse", label: "Reverse Foil", icon: <RefreshCw size={11} strokeWidth={2.25} /> },
+const LANGUAGE_SELECT_OPTIONS: SelectOption<CardLanguage>[] = [
+    { value: "pt-br", label: "PT-BR", icon: <FlagIcon country="pt-br" /> },
+    { value: "en", label: "EN", icon: <FlagIcon country="en" /> },
+    { value: "ja", label: "JA", icon: <FlagIcon country="ja" /> },
 ];
 
 export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdded }: CardSearchModalProps) {
@@ -246,7 +247,7 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                 if (e.target === e.currentTarget) onClose();
             }}
         >
-            <div className="flex h-[92vh] sm:h-[85vh] max-h-[820px] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#12151d] shadow-2xl md:max-w-5xl lg:max-w-6xl">
+            <div className="flex h-[90vh] sm:h-[85vh] max-h-[820px] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#12151d] shadow-2xl md:max-w-5xl lg:max-w-6xl">
                 <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-2.5 sm:px-6 sm:py-3.5">
                     <div>
                         <div className="flex items-center gap-2 sm:gap-2.5">
@@ -261,7 +262,7 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                     </button>
                 </div>
 
-                <div className="flex shrink-0 flex-col gap-2.5 border-b border-white/5 bg-black/20 px-3 py-2.5 sm:px-6 sm:py-3">
+                <div className="flex shrink-0 flex-col gap-2.5 border-b border-white/10 bg-black/20 px-3 py-2.5 sm:px-6 sm:py-3">
                     <ModalSearchFilters searchTerm={searchTerm} onSearchChange={setSearchTerm} showFilters={showFilters} onToggleFilters={() => setShowFilters((prev) => !prev)} activeFilterCount={activeFilterCount} filterButtonAriaLabel="Alternar filtros de raridade e expansão">
                         <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2.5 pt-0.5">
                             <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar catálogo por raridade" className="w-full sm:w-44" size="sm" />
@@ -269,20 +270,17 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                         </div>
                     </ModalSearchFilters>
 
-                    <div className="grid grid-cols-1 gap-2.5 border-t border-white/5 pt-2.5 sm:grid-cols-2 sm:gap-4 sm:pt-3">
-                        <div className="flex flex-col gap-1 min-w-0">
-                            <div className="flex items-center gap-1.5 text-slate-400">
-                                <Globe size={11} className="text-poke-blue shrink-0" />
-                                <span className="text-[11px] sm:text-xs font-semibold tracking-wide text-slate-300">Idioma</span>
-                            </div>
-                            <LanguageSlider value={lang} onChange={setLang} options={LANGUAGE_OPTIONS} size="sm" fullWidth ariaLabel="Idioma da carta a ser adicionada" />
+                    <div className="flex flex-col gap-1.5 sm:gap-2 border-t border-white/10 pt-2 sm:pt-2.5">
+                        <div className="flex items-center gap-1.5 text-slate-400">
+                            <Sparkles size={11} className="text-poke-blue shrink-0" />
+                            <span className="text-[11px] sm:text-xs font-semibold tracking-wide text-slate-300">Sua carta</span>
                         </div>
-
-                        <div className="flex flex-col gap-1 min-w-0">
-                            <div className="flex items-center gap-1.5 text-slate-400">
-                                <Sparkles size={11} className="text-poke-blue shrink-0" />
-                                <span className="text-[11px] sm:text-xs font-semibold tracking-wide text-slate-300">Versão</span>
-                            </div>
+                        <div className="grid grid-cols-2 gap-2 sm:hidden">
+                            <Select<CardLanguage> value={lang} onChange={setLang} options={LANGUAGE_SELECT_OPTIONS} ariaLabel="Idioma da carta a ser adicionada" size="sm" className="w-full" />
+                            <Select<CardVariant> value={variant} onChange={setVariant} options={VARIANT_SELECT_OPTIONS} ariaLabel="Versão física da carta a ser adicionada" size="sm" className="w-full" />
+                        </div>
+                        <div className="hidden sm:grid sm:grid-cols-2 sm:gap-3">
+                            <LanguageSlider value={lang} onChange={setLang} options={LANGUAGE_OPTIONS} size="sm" fullWidth ariaLabel="Idioma da carta a ser adicionada" />
                             <LanguageSlider<CardVariant> value={variant} onChange={setVariant} options={VARIANT_SLIDER_OPTIONS} size="sm" fullWidth ariaLabel="Versão física da carta a ser adicionada" />
                         </div>
                     </div>
@@ -292,16 +290,16 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
 
                 <div ref={setScrollRoot} className="flex-1 overflow-y-auto p-3 sm:p-6">
                     {initialLoading ? (
-                        <div className="flex h-full min-h-[200px] sm:min-h-[250px] flex-col items-center justify-center">
+                        <div className="flex h-full min-h-[250px] flex-col items-center justify-center">
                             <PokeballLoader message="Carregando cartas..." size="md" />
                         </div>
                     ) : cards.length === 0 ? (
-                        <div className="flex h-full min-h-[200px] sm:min-h-[250px] flex-col items-center justify-center gap-2 text-slate-500">
+                        <div className="flex h-full min-h-[250px] flex-col items-center justify-center gap-2 text-slate-500">
                             <Search size={32} className="text-slate-600" />
                             <span className="text-sm">Nenhuma carta com imagem encontrada.</span>
                         </div>
                     ) : filteredCards.length === 0 ? (
-                        <div className="flex h-full min-h-[200px] sm:min-h-[250px] flex-col items-center justify-center gap-3 text-center text-slate-500">
+                        <div className="flex h-full min-h-[250px] flex-col items-center justify-center gap-3 text-center text-slate-500">
                             <Search size={32} className="text-slate-600" />
                             <span className="text-sm text-white">Nenhuma carta encontrada</span>
                             <span className="text-xs">Tente ajustar a busca ou os filtros.</span>
@@ -328,7 +326,7 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
 
                                     return (
                                         <div key={card.id} className={`group relative flex h-full flex-col justify-between gap-1.5 sm:gap-2 rounded-xl border p-2 sm:p-2.5 transition-all duration-200 ${isSubmittingThis ? "border-poke-blue bg-poke-blue/15 ring-2 ring-poke-blue/40" : "border-white/10 bg-white/[0.03] hover:border-poke-blue/50 hover:bg-white/[0.07]"} ${appear.className}`} style={appear.style}>
-                                            <div className="relative aspect-[2.5/3.5] w-full shrink-0 cursor-pointer" onClick={() => handleAddCard(card)}>
+                                            <div className="relative aspect-[8/11] w-full shrink-0 cursor-pointer" onClick={() => handleAddCard(card)}>
                                                 <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={shineMode} enableTouch>
                                                     <Image src={formatTcgdexImageUrl(card.image)} alt={card.name} fill sizes="(max-width: 768px) 50vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" unoptimized />
                                                 </Card3DTilt>

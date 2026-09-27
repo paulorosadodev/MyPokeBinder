@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
         const expansion = request.nextUrl.searchParams.get("expansion") ?? "all";
         const sort = request.nextUrl.searchParams.get("sort") ?? "dex";
         const direction = request.nextUrl.searchParams.get("direction") ?? "asc";
+        const variant = request.nextUrl.searchParams.get("variant") ?? "all";
 
         const page = parseInt(pageParam, 10);
         const limit = parseInt(limitParam, 10);
@@ -40,6 +41,11 @@ export async function GET(request: NextRequest) {
         const validLanguages = ["all", "pt-br", "en", "ja"];
         if (!validLanguages.includes(language)) {
             return NextResponse.json({ error: "Filtro de idioma inválido" }, { status: 400 });
+        }
+
+        const validVariants = ["all", "normal", "holo", "reverse"];
+        if (!validVariants.includes(variant)) {
+            return NextResponse.json({ error: "Filtro de versão inválido" }, { status: 400 });
         }
 
         const validSortFields = ["dex", "name", "recent"];
@@ -65,6 +71,7 @@ export async function GET(request: NextRequest) {
             p_language: language,
             p_rarity: rarity,
             p_expansion: expansion,
+            p_variant: variant,
             p_sort_field: sort,
             p_sort_direction: direction,
             p_limit: limit,

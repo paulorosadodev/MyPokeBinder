@@ -12,16 +12,9 @@ import { useCardDetails } from "@/lib/swr";
 import { useSWRConfig } from "swr";
 import { CardLanguage, CardVariant, UserCard } from "@/types/binder";
 import { getRarityBadgeStyle } from "@/lib/pokemon/rarity";
-import { formatVariantLabel, isCardVariant, resolveCardShine } from "@/lib/pokemon/variant";
+import { VARIANT_SLIDER_OPTIONS, formatVariantLabel, isCardVariant, resolveCardShine } from "@/lib/pokemon/variant";
 import { toast } from "sonner";
-import { ArrowLeft, Sparkles, BookOpen, Trash2, Plus, Minus, Check, AlertCircle, Calendar, Layers, Loader2, X, Search, Circle, RefreshCw } from "lucide-react";
-import { Select, type SelectOption } from "@/components/ui/Select";
-
-const VARIANT_SELECT_OPTIONS: SelectOption<CardVariant>[] = [
-    { value: "normal", label: "Normal", icon: <Circle size={14} strokeWidth={2.25} />, description: "Sem holográfico" },
-    { value: "holo", label: "Foil", icon: <Sparkles size={14} strokeWidth={2.25} />, description: "Arte holográfica" },
-    { value: "reverse", label: "Reverse Foil", icon: <RefreshCw size={14} strokeWidth={2.25} />, description: "Fundo holográfico" },
-];
+import { ArrowLeft, Sparkles, BookOpen, Trash2, Plus, Minus, Check, AlertCircle, Calendar, Layers, Loader2, X, Search, RefreshCw, Circle } from "lucide-react";
 
 export default function CardDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = use(params);
@@ -635,7 +628,7 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
                                         setIsZoomed(true);
                                     }
                                 }}
-                                className="group/card relative z-0 aspect-[2.5/3.5] w-full max-w-[290px] cursor-pointer select-none isolate"
+                                className="group/card relative z-0 aspect-[8/11] w-full max-w-[290px] cursor-pointer select-none isolate"
                             >
                                 <Card3DTilt className="relative h-full w-full overflow-hidden rounded-2xl bg-[#0d1017]" maxTilt={10} scale={1.03} glareOpacity={0.3} perspective={1000} shineMode={shineMode}>
                                     <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill unoptimized sizes="(max-width: 768px) 80vw, 350px" className="object-contain drop-shadow-[0_16px_36px_rgba(0,0,0,0.85)] transition-all duration-300 group-hover/card:scale-[1.01]" priority />
@@ -739,7 +732,7 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
 
                                 <div className="flex flex-col gap-2">
                                     <label className="text-xs font-medium text-slate-400">Versão física (acabamento):</label>
-                                    <Select<CardVariant> value={currentVariant} onChange={handleChangeVariant} options={VARIANT_SELECT_OPTIONS} disabled={updatingVariant !== null} className="w-full" ariaLabel="Versão física da carta" />
+                                    <LanguageSlider<CardVariant> value={currentVariant} onChange={handleChangeVariant} options={VARIANT_SLIDER_OPTIONS} size="md" fullWidth ariaLabel="Versão física (acabamento)" loadingValue={updatingVariant} disabled={updatingVariant !== null} />
                                 </div>
                             </div>
 
