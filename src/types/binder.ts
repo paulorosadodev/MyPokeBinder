@@ -1,3 +1,6 @@
+import type { CardCondition } from "@/lib/pokemon/condition";
+
+export type { CardCondition };
 export type CardLanguage = "pt-br" | "en" | "ja";
 export type CardVariant = "normal" | "holo" | "reverse";
 export type CardShineMode = "none" | "foil" | "holo" | "prismatic";
@@ -22,6 +25,8 @@ export interface UserCard {
     card_types?: CardElementType[];
     card_language: CardLanguage;
     card_variant: CardVariant;
+    card_artist?: string;
+    card_condition?: CardCondition;
     is_in_binder: boolean;
     created_at: string;
     updated_at: string;
@@ -34,6 +39,7 @@ export interface SearchCardItem {
     image: string;
     setName?: string;
     rarity?: string;
+    artist?: string;
     types?: CardElementType[];
     variants?: CardVariantsFlags;
 }

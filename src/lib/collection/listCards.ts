@@ -5,6 +5,7 @@ import { isCardMatchingPokemon } from "@/lib/pokemon/match";
 
 export const COLLECTION_PAGE_SIZE = 36;
 export const ALL_EXPANSIONS_FILTER = "all";
+export const ALL_ARTISTS_FILTER = "all";
 
 const SORTED_151 = [...POKEMON_151].sort((a, b) => b.name.length - a.name.length);
 
@@ -26,6 +27,7 @@ export interface CollectionListFilters {
     rarityFilter: string;
     expansionFilter?: string;
     variantFilter?: string;
+    artistFilter?: string;
     sortField: CollectionSortField;
     sortDirection: CollectionSortDirection;
 }
@@ -34,10 +36,16 @@ export interface CatalogListFilters {
     searchTerm: string;
     rarityFilter: string;
     expansionFilter: string;
+    artistFilter?: string;
     dexId?: number;
 }
 
 export interface ExpansionFilterOption {
+    value: string;
+    label: string;
+}
+
+export interface ArtistFilterOption {
     value: string;
     label: string;
 }
@@ -80,6 +88,18 @@ export function buildExpansionFilterOptions(setNames: Iterable<string | null | u
     }
     const sorted = [...unique.values()].toSorted((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
     return [{ value: ALL_EXPANSIONS_FILTER, label: "Todas as expansões" }, ...sorted.map((name) => ({ value: name, label: name }))];
+}
+
+export function buildArtistFilterOptions(artists: Iterable<string | null | undefined>): ArtistFilterOption[] {
+    const unique = new Map<string, string>();
+    for (const name of artists) {
+        const trimmed = (name || "").trim();
+        if (!trimmed) continue;
+        const key = trimmed.toLowerCase();
+        if (!unique.has(key)) unique.set(key, trimmed);
+    }
+    const sorted = [...unique.values()].toSorted((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
+    return [{ value: ALL_ARTISTS_FILTER, label: "Todos os artistas" }, ...sorted.map((name) => ({ value: name, label: name }))];
 }
 
 export function extractCardLocalId(card: { tcgdex_card_id?: string | null; id?: string | null }): string {
@@ -137,12 +157,13 @@ export function matchesCardNumber(rawLocalId: string | undefined | null, term: s
     return false;
 }
 
-export function matchesCardSearch(card: { card_name: string; card_set_name?: string | null; pokemon_dex_id: number; tcgdex_card_id: string }, searchTerm: string): boolean {
+export function matchesCardSearch(card: { card_name: string; card_set_name?: string | null; pokemon_dex_id: number; tcgdex_card_id: string; card_artist?: string | null }, searchTerm: string): boolean {
     const term = searchTerm.trim().toLowerCase();
     if (!term) return true;
 
     const matchesName = card.card_name.toLowerCase().includes(term);
     const matchesSet = (card.card_set_name || "").toLowerCase().includes(term);
+    const matchesArtist = (card.card_artist || "").toLowerCase().includes(term);
 
     const dexQuery = parseDexQuery(term);
     const matchesDex = dexQuery !== null && card.pokemon_dex_id === dexQuery;
@@ -150,11 +171,11 @@ export function matchesCardSearch(card: { card_name: string; card_set_name?: str
     const cardLocalId = extractCardLocalId(card);
     const matchesCardNum = matchesCardNumber(cardLocalId, term);
 
-    return matchesName || matchesSet || matchesDex || matchesCardNum;
+    return matchesName || matchesSet || matchesArtist || matchesDex || matchesCardNum;
 }
 
 export function filterCatalogCards(cards: SearchCardItem[], filters: CatalogListFilters): SearchCardItem[] {
-    const { searchTerm, rarityFilter, expansionFilter, dexId } = filters;
+    const { searchTerm, rarityFilter, expansionFilter, artistFilter, dexId } = filters;
 
     return cards.filter((card) => {
         if (dexId && !isCardMatchingPokemon(card.name, dexId)) {
@@ -165,6 +186,7 @@ export function filterCatalogCards(cards: SearchCardItem[], filters: CatalogList
             const term = searchTerm.toLowerCase().trim();
             const matchesName = card.name.toLowerCase().includes(term);
             const matchesSet = (card.setName || "").toLowerCase().includes(term);
+            const matchesArtist = (card.artist || "").toLowerCase().includes(term);
 
             const dexQuery = parseDexQuery(term);
             const cardDexId = resolveCardDexId(card);
@@ -173,10 +195,12 @@ export function filterCatalogCards(cards: SearchCardItem[], filters: CatalogList
             const cardLocalId = card.localId || extractCardLocalId({ id: card.id });
             const matchesLocal = matchesCardNumber(cardLocalId, term);
 
-            if (!matchesName && !matchesSet && !matchesDex && !matchesLocal) return false;
+            if (!matchesName && !matchesSet && !matchesArtist && !matchesDex && !matchesLocal) return false;
         }
 
         if (expansionFilter !== ALL_EXPANSIONS_FILTER && (card.setName || "") !== expansionFilter) return false;
+
+        if (artistFilter && artistFilter !== ALL_ARTISTS_FILTER && (card.artist || "") !== artistFilter) return false;
 
         if (rarityFilter !== "all") {
             const lower = (card.rarity || "").trim().toLowerCase();
@@ -191,6 +215,7 @@ export function filterAndSortCollectionGroups(groups: CollectionCardGroup[], fil
     const { searchTerm, statusFilter, languageFilter, rarityFilter, sortField, sortDirection } = filters;
     const expansionFilter = filters.expansionFilter ?? ALL_EXPANSIONS_FILTER;
     const variantFilter = filters.variantFilter ?? "all";
+    const artistFilter = filters.artistFilter ?? ALL_ARTISTS_FILTER;
 
     const list = groups.filter((group) => {
         const card = group.card;
@@ -207,6 +232,8 @@ export function filterAndSortCollectionGroups(groups: CollectionCardGroup[], fil
         if (languageFilter !== "all" && card.card_language !== languageFilter) return false;
 
         if (variantFilter !== "all" && card.card_variant !== variantFilter) return false;
+
+        if (artistFilter !== ALL_ARTISTS_FILTER && (card.card_artist || "") !== artistFilter) return false;
 
         if (rarityFilter !== "all") {
             const lower = (card.card_rarity || "").trim().toLowerCase();
@@ -233,8 +260,8 @@ export function filterAndSortCollectionGroups(groups: CollectionCardGroup[], fil
     return list;
 }
 
-export function buildCollectionFilterResetKey(filters: { searchTerm: string; statusFilter: string; languageFilter: string; rarityFilter: string; expansionFilter?: string; variantFilter?: string; sortField?: string; sortDirection?: string }): string {
-    return [filters.searchTerm.trim().toLowerCase(), filters.statusFilter, filters.languageFilter, filters.rarityFilter, filters.expansionFilter ?? ALL_EXPANSIONS_FILTER, filters.variantFilter ?? "all", filters.sortField ?? "", filters.sortDirection ?? ""].join("|");
+export function buildCollectionFilterResetKey(filters: { searchTerm: string; statusFilter: string; languageFilter: string; rarityFilter: string; expansionFilter?: string; variantFilter?: string; artistFilter?: string; sortField?: string; sortDirection?: string }): string {
+    return [filters.searchTerm.trim().toLowerCase(), filters.statusFilter, filters.languageFilter, filters.rarityFilter, filters.expansionFilter ?? ALL_EXPANSIONS_FILTER, filters.variantFilter ?? "all", filters.artistFilter ?? ALL_ARTISTS_FILTER, filters.sortField ?? "", filters.sortDirection ?? ""].join("|");
 }
 
 /** Pure helper for tests and non-React consumers. */

@@ -1,6 +1,7 @@
 import React from "react";
 import { Circle, Sparkles, RefreshCw } from "lucide-react";
 import { isFullArtRarity } from "@/lib/pokemon/rarity";
+import { hasCardImage } from "@/lib/pokemon/tcgdex";
 import type { CardShineMode, CardVariant, CardVariantsFlags } from "@/types/binder";
 import type { SelectOption } from "@/components/ui/Select";
 import type { LanguageSliderOption } from "@/components/ui/LanguageSlider";
@@ -137,7 +138,10 @@ export function formatVariantLabel(variant?: CardVariant | string | null): strin
     return "Normal";
 }
 
-export function resolveCardShine(variant?: CardVariant | string | null, rarity?: string | null): CardShineMode {
+export function resolveCardShine(variant?: CardVariant | string | null, rarity?: string | null, imageUrl?: string | null): CardShineMode {
+    if (imageUrl !== undefined && !hasCardImage(imageUrl)) {
+        return "none";
+    }
     if (isFullArtRarity(rarity)) {
         return "prismatic";
     }

@@ -2,6 +2,7 @@ import { describe, it, expect } from "bun:test";
 import { NextRequest } from "next/server";
 import { POST as postCard, GET as getCards } from "../src/app/api/cards/route";
 import { GET as getExpansions } from "../src/app/api/cards/expansions/route";
+import { GET as getArtists } from "../src/app/api/cards/artists/route";
 import { PATCH as patchCard, DELETE as deleteCard, GET as getCard } from "../src/app/api/cards/[id]/route";
 
 describe("Cards API Validation", () => {
@@ -165,6 +166,24 @@ describe("Cards API Validation", () => {
         const json = await response.json();
         expect(json.error).toBe("Tipos elementais inválidos");
     });
+    it("should allow relative card_image_url using card back image", async () => {
+        const request = new NextRequest("http://localhost:3000/api/cards", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-test-user-id": "test-user-id",
+            },
+            body: JSON.stringify({
+                tcgdex_card_id: "base1-44",
+                pokemon_dex_id: 1,
+                card_name: "Bulbasaur",
+                card_image_url: "/pokemon-card-back.png",
+                card_language: "en",
+            }),
+        });
+        const response = await postCard(request);
+        expect(response.status).not.toBe(400);
+    });
 
     it("should return 400 for GET with invalid UUID", async () => {
         const request = new Request("http://localhost:3000/api/cards/not-a-uuid");
@@ -249,5 +268,84 @@ describe("Cards API Validation", () => {
         const reqUnauth = new NextRequest("http://localhost:3000/api/cards/expansions");
         const resUnauth = await getExpansions(reqUnauth);
         expect(resUnauth.status).toBe(401);
+    });
+
+    it("should validate authentication on artists route", async () => {
+        const reqUnauth = new NextRequest("http://localhost:3000/api/cards/artists");
+        const resUnauth = await getArtists(reqUnauth);
+        expect(resUnauth.status).toBe(401);
+    });
+
+    it("should return 400 for POST with invalid card_condition", async () => {
+        const request = new NextRequest("http://localhost:3000/api/cards", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-test-user-id": "test-user-id",
+            },
+            body: JSON.stringify({
+                tcgdex_card_id: "base1-44",
+                pokemon_dex_id: 1,
+                card_name: "Bulbasaur",
+                card_image_url: "https://assets.tcgdex.net/en/base/base1/44/high.webp",
+                card_language: "en",
+                card_condition: "POOR",
+            }),
+        });
+        const response = await postCard(request);
+        expect(response.status).toBe(400);
+
+        const json = await response.json();
+        expect(json.error).toBe("Condição da carta inválida");
+    });
+
+    it("should return 400 for POST with card_artist exceeding 100 characters", async () => {
+        const request = new NextRequest("http://localhost:3000/api/cards", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-test-user-id": "test-user-id",
+            },
+            body: JSON.stringify({
+                tcgdex_card_id: "base1-44",
+                pokemon_dex_id: 1,
+                card_name: "Bulbasaur",
+                card_image_url: "https://assets.tcgdex.net/en/base/base1/44/high.webp",
+                card_language: "en",
+                card_artist: "A".repeat(101),
+            }),
+        });
+        const response = await postCard(request);
+        expect(response.status).toBe(400);
+
+        const json = await response.json();
+        expect(json.error).toBe("Campos obrigatórios ausentes ou inválidos");
+    });
+
+    it("should return 400 for PATCH with invalid card_condition", async () => {
+        const request = new Request("http://localhost:3000/api/cards/a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                "x-test-user-id": "test-user-id",
+            },
+            body: JSON.stringify({ card_condition: "INVALID" }),
+        });
+        const response = await patchCard(request, { params: Promise.resolve({ id: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11" }) });
+        expect(response.status).toBe(400);
+
+        const json = await response.json();
+        expect(json.error).toBe("Condição da carta inválida");
+    });
+
+    it("should return 400 for GET grouped cards with artist filter exceeding 100 characters", async () => {
+        const reqLongArtist = new NextRequest(`http://localhost:3000/api/cards?grouped=true&artist=${"a".repeat(101)}`, {
+            headers: { "x-test-user-id": "test-user-id" },
+        });
+        const resLongArtist = await getCards(reqLongArtist);
+        expect(resLongArtist.status).toBe(400);
+
+        const json = await resLongArtist.json();
+        expect(json.error).toBe("Tamanho de filtro excede o limite permitido");
     });
 });

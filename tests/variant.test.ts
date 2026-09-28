@@ -48,6 +48,15 @@ describe("Card variant helpers", () => {
         }
     });
 
+    it("returns none for shine mode when card image is the card back or missing", () => {
+        expect(resolveCardShine("holo", "Rare", "/pokemon-card-back.png")).toBe("none");
+        expect(resolveCardShine("reverse", "Uncommon", "/pokemon-card-back.png")).toBe("none");
+        expect(resolveCardShine("normal", "Illustration rare", "/pokemon-card-back.png")).toBe("none");
+        expect(resolveCardShine("holo", "Rare", "")).toBe("none");
+        expect(resolveCardShine("holo", "Rare", null)).toBe("none");
+        expect(resolveCardShine("holo", "Rare", "https://assets.tcgdex.net/en/base/base1/44/high.webp")).toBe("holo");
+    });
+
     it("builds copy group keys including variant", () => {
         expect(
             cardCopyGroupKey({

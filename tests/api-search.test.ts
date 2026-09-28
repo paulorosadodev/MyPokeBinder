@@ -4,11 +4,15 @@ import { formatTcgdexImageUrl, isPocketCard } from "../src/lib/pokemon/tcgdex";
 import { NextRequest } from "next/server";
 
 describe("formatTcgdexImageUrl", () => {
-    it("should handle empty or null values", () => {
-        expect(formatTcgdexImageUrl(null)).toBe("");
-        expect(formatTcgdexImageUrl(undefined)).toBe("");
-        expect(formatTcgdexImageUrl("")).toBe("");
-        expect(formatTcgdexImageUrl("   ")).toBe("");
+    it("should handle empty or null values and return card back", () => {
+        expect(formatTcgdexImageUrl(null)).toBe("/pokemon-card-back.png");
+        expect(formatTcgdexImageUrl(undefined)).toBe("/pokemon-card-back.png");
+        expect(formatTcgdexImageUrl("")).toBe("/pokemon-card-back.png");
+        expect(formatTcgdexImageUrl("   ")).toBe("/pokemon-card-back.png");
+    });
+
+    it("should preserve relative path if already pointing to card back", () => {
+        expect(formatTcgdexImageUrl("/pokemon-card-back.png")).toBe("/pokemon-card-back.png");
     });
 
     it("should append /high.webp to raw URLs without extension", () => {
@@ -100,7 +104,7 @@ describe("GET /api/search", () => {
             expect(card.id).toBeDefined();
             expect(card.name).toBeDefined();
             expect(typeof card.image).toBe("string");
-            expect(card.image.endsWith(".webp")).toBe(true);
+            expect(card.image.endsWith(".webp") || card.image === "/pokemon-card-back.png").toBe(true);
             expect(isPocketCard(card)).toBe(false);
         }
     }, 15000);
@@ -142,5 +146,21 @@ describe("GET /api/search", () => {
                 .trim();
             expect(/\bmew\b/i.test(cleanName)).toBe(true);
         }
+    }, 15000);
+
+    it("should include cards without dexId in tcgdex without duplicates when searching with dexId", async () => {
+        const req = new NextRequest("http://localhost:3000/api/search?name=Pikachu&dexId=25&page=1&pageSize=36", {
+            headers: { "x-test-user-id": "test-user-id" },
+        });
+        const res = await GET(req);
+        expect(res.status).toBe(200);
+
+        const json = await res.json();
+        expect(Array.isArray(json.cards)).toBe(true);
+        expect(json.cards.length).toBeGreaterThan(0);
+
+        const cardIds = json.cards.map((c: { id: string }) => c.id);
+        const uniqueCardIds = new Set(cardIds);
+        expect(cardIds.length).toBe(uniqueCardIds.size);
     }, 15000);
 });

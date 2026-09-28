@@ -25,6 +25,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ use
     const sort = request.nextUrl.searchParams.get("sort") ?? "dex";
     const direction = request.nextUrl.searchParams.get("direction") ?? "asc";
     const variant = request.nextUrl.searchParams.get("variant") ?? "all";
+    const artist = request.nextUrl.searchParams.get("artist") ?? "all";
 
     const page = parseInt(pageParam, 10);
     const limit = parseInt(limitParam, 10);
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ use
         return NextResponse.json({ error: "Direção de ordenação inválida" }, { status: 400 });
     }
 
-    if (search.length > 100 || rarity.length > 50 || expansion.length > 100) {
+    if (search.length > 100 || rarity.length > 50 || expansion.length > 100 || artist.length > 100) {
         return NextResponse.json({ error: "Tamanho de filtro excede o limite permitido" }, { status: 400 });
     }
 
@@ -97,6 +98,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ use
         p_rarity: rarity,
         p_expansion: expansion,
         p_variant: variant,
+        p_artist: artist,
         p_sort_field: sort,
         p_sort_direction: direction,
         p_limit: limit,
@@ -119,6 +121,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ use
         card_types: string[];
         card_language: string;
         card_variant: string;
+        card_artist: string;
+        card_condition: string;
         is_in_binder: boolean;
         created_at: string;
         updated_at: string;
@@ -144,6 +148,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ use
             card_types: row.card_types,
             card_language: row.card_language,
             card_variant: row.card_variant,
+            card_artist: row.card_artist,
+            card_condition: row.card_condition as import("@/types/binder").CardCondition,
             is_in_binder: row.is_in_binder,
             created_at: row.created_at,
             updated_at: row.updated_at,
@@ -160,6 +166,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ use
             card_types: row.card_types,
             card_language: row.card_language,
             card_variant: row.card_variant,
+            card_artist: row.card_artist,
+            card_condition: row.card_condition as import("@/types/binder").CardCondition,
             is_in_binder: row.has_in_binder,
             created_at: row.created_at,
             updated_at: row.updated_at,

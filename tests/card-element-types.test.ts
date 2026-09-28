@@ -25,15 +25,11 @@ describe("Tipos elementais das cartas", () => {
         expect(resolveCardElementTypes([], 95)).toEqual(["Fighting"]);
     });
 
-    it("mantém todos os tipos oficiais na página de validação", () => {
-        const page = readFileSync(join(import.meta.dir, "../src/app/teste/reverse-foil/page.tsx"), "utf8");
+    it("mantém todos os tipos oficiais no componente de padrão visual", () => {
         const pattern = readFileSync(join(import.meta.dir, "../src/components/ui/CardElementPattern.tsx"), "utf8");
 
         for (const type of CARD_ELEMENT_TYPES) {
-            expect(page).toContain(`type: "${type}"`);
             expect(pattern).toContain(`type === "${type}"`);
         }
-        expect(page).toContain('shineMode="foil"');
-        expect(page).toContain("elementTypes={[card.type]}");
     });
 });

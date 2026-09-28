@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
-import { formatTcgdexImageUrl, isPocketCard } from "@/lib/pokemon/tcgdex";
+import { formatTcgdexImageUrl, isPocketCard, POKEMON_CARD_BACK_URL } from "@/lib/pokemon/tcgdex";
 import { coalesceRequest, getFromMemoryCache, setToMemoryCache } from "@/lib/pokemon/coalesce";
 import { normalizeVariantsFlags } from "@/lib/pokemon/variant";
 import { normalizeCardElementTypes } from "@/lib/pokemon/cardTypes";
@@ -20,6 +20,7 @@ interface TcgDexCardDetail {
     name: string;
     image?: string;
     rarity?: string;
+    illustrator?: string;
     types?: string[];
     set?: {
         id?: string;
@@ -31,6 +32,7 @@ interface TcgDexCardDetail {
 interface CachedCardDetail {
     setName: string;
     rarity: string;
+    artist?: string;
     types: CardElementType[];
     variants: CardVariantsFlags;
 }
@@ -75,17 +77,24 @@ export async function GET(request: NextRequest) {
         const searchCacheKey = targetDexId ? `search_dex_${targetDexId}_${encodedName}` : `search_${encodedName}`;
 
         const data = await coalesceRequest<unknown>(searchCacheKey, async () => {
-            const apiUrl = targetDexId ? `https://api.tcgdex.net/v2/en/cards?dexId=eq:${targetDexId}` : `https://api.tcgdex.net/v2/en/cards?name=${encodedName}`;
-            const response = await fetch(apiUrl, {
-                headers: { Accept: "application/json" },
-                next: { revalidate: 3600 },
-            });
+            const fetchCards = async (url: string): Promise<TcgDexCardSummary[]> => {
+                const response = await fetch(url, {
+                    headers: { Accept: "application/json" },
+                    next: { revalidate: 3600 },
+                });
+                if (!response.ok) {
+                    return [];
+                }
+                const json = await response.json();
+                return Array.isArray(json) ? (json as TcgDexCardSummary[]) : [];
+            };
 
-            if (!response.ok) {
-                return [];
+            if (targetDexId) {
+                const [nameCards, dexCards] = await Promise.all([fetchCards(`https://api.tcgdex.net/v2/en/cards?name=${encodedName}`), fetchCards(`https://api.tcgdex.net/v2/en/cards?dexId=eq:${targetDexId}`)]);
+                return [...nameCards, ...dexCards];
             }
 
-            return await response.json();
+            return await fetchCards(`https://api.tcgdex.net/v2/en/cards?name=${encodedName}`);
         });
 
         if (!Array.isArray(data)) {
@@ -103,9 +112,12 @@ export async function GET(request: NextRequest) {
         const seenIds = new Set<string>();
 
         for (const card of data as TcgDexCardSummary[]) {
-            if (typeof card.image === "string" && card.image.trim().length > 0 && !isPocketCard(card) && !seenIds.has(card.id) && (!targetDexId || isCardMatchingPokemon(card.name, targetDexId))) {
+            if (!isPocketCard(card) && !seenIds.has(card.id) && (!targetDexId || isCardMatchingPokemon(card.name, targetDexId))) {
                 seenIds.add(card.id);
-                validCards.push(card);
+                validCards.push({
+                    ...card,
+                    image: typeof card.image === "string" && card.image.trim().length > 0 ? card.image : POKEMON_CARD_BACK_URL,
+                });
             }
         }
 
@@ -125,6 +137,7 @@ export async function GET(request: NextRequest) {
                         image: formatTcgdexImageUrl(card.image),
                         setName: cachedDetail.setName,
                         rarity: cachedDetail.rarity,
+                        artist: cachedDetail.artist || "",
                         types: cachedDetail.types ?? [],
                         variants: cachedDetail.variants,
                     };
@@ -132,8 +145,10 @@ export async function GET(request: NextRequest) {
 
                 let setName = "";
                 let rarity = "";
+                let artist = "";
                 let types: CardElementType[] = [];
                 let variants = normalizeVariantsFlags({ normal: true });
+                let cardImage = card.image;
 
                 try {
                     const detail = await coalesceRequest<TcgDexCardDetail | null>(`fetch_detail_${card.id}`, async () => {
@@ -150,12 +165,16 @@ export async function GET(request: NextRequest) {
                     if (detail) {
                         setName = detail.set?.name || "";
                         rarity = detail.rarity || "";
+                        artist = (detail.illustrator || "").trim();
                         types = normalizeCardElementTypes(detail.types);
                         variants = normalizeVariantsFlags(detail.variants);
                         if (!variants.normal && !variants.holo && !variants.reverse) {
                             variants = normalizeVariantsFlags({ normal: true });
                         }
-                        setToMemoryCache(`detail_${card.id}`, { setName, rarity, types, variants } satisfies CachedCardDetail, 86400000);
+                        if ((!cardImage || cardImage === POKEMON_CARD_BACK_URL) && typeof detail.image === "string" && detail.image.trim().length > 0) {
+                            cardImage = detail.image;
+                        }
+                        setToMemoryCache(`detail_${card.id}`, { setName, rarity, artist, types, variants } satisfies CachedCardDetail, 86400000);
                     }
                 } catch {}
 
@@ -163,9 +182,10 @@ export async function GET(request: NextRequest) {
                     id: card.id,
                     localId: card.localId,
                     name: card.name,
-                    image: formatTcgdexImageUrl(card.image),
+                    image: formatTcgdexImageUrl(cardImage),
                     setName,
                     rarity,
+                    artist,
                     types,
                     variants,
                 };

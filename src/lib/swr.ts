@@ -2,7 +2,7 @@ import useSWR, { SWRConfiguration } from "swr";
 import useSWRInfinite from "swr/infinite";
 import { useMemo, useCallback } from "react";
 import type { CardVariant, UserCard, DashboardData, CollectionCardGroup, BinderStatusFilter } from "@/types/binder";
-import { ALL_EXPANSIONS_FILTER, COLLECTION_PAGE_SIZE, type CollectionSortDirection, type CollectionSortField } from "@/lib/collection/listCards";
+import { ALL_ARTISTS_FILTER, ALL_EXPANSIONS_FILTER, COLLECTION_PAGE_SIZE, type CollectionSortDirection, type CollectionSortField } from "@/lib/collection/listCards";
 
 export const defaultSWRConfig: SWRConfiguration = {
     dedupingInterval: 2000,
@@ -42,7 +42,7 @@ export interface PublicCollectionGroupsResponse {
     hasMore: boolean;
 }
 
-export function useInfiniteCollectionGroups(filters: { searchTerm: string; statusFilter: BinderStatusFilter; languageFilter: string; rarityFilter: string; expansionFilter?: string; variantFilter?: string; sortField: CollectionSortField; sortDirection: CollectionSortDirection }) {
+export function useInfiniteCollectionGroups(filters: { searchTerm: string; statusFilter: BinderStatusFilter; languageFilter: string; rarityFilter: string; expansionFilter?: string; variantFilter?: string; artistFilter?: string; sortField: CollectionSortField; sortDirection: CollectionSortDirection }) {
     const getKey = (pageIndex: number, previousPageData: CollectionGroupsResponse | null) => {
         if (previousPageData && !previousPageData.hasMore) return null;
 
@@ -59,6 +59,9 @@ export function useInfiniteCollectionGroups(filters: { searchTerm: string; statu
         }
         if (filters.variantFilter && filters.variantFilter !== "all") {
             params.set("variant", filters.variantFilter);
+        }
+        if (filters.artistFilter && filters.artistFilter !== ALL_ARTISTS_FILTER) {
+            params.set("artist", filters.artistFilter);
         }
         params.set("sort", filters.sortField);
         params.set("direction", filters.sortDirection);
@@ -113,6 +116,19 @@ export function useUserExpansions() {
     };
 }
 
+export function useUserArtists() {
+    const { data, error, isLoading, mutate } = useSWR<{ artists: string[] }>("/api/cards/artists", fetcher, {
+        ...defaultSWRConfig,
+        revalidateOnFocus: false,
+    });
+    return {
+        artists: data?.artists ?? [],
+        isLoading,
+        isError: error,
+        mutate,
+    };
+}
+
 export function useInfinitePublicCollectionGroups(
     username: string,
     filters: {
@@ -122,6 +138,7 @@ export function useInfinitePublicCollectionGroups(
         rarityFilter: string;
         expansionFilter?: string;
         variantFilter?: string;
+        artistFilter?: string;
         sortField: CollectionSortField;
         sortDirection: CollectionSortDirection;
     },
@@ -142,6 +159,9 @@ export function useInfinitePublicCollectionGroups(
         }
         if (filters.variantFilter && filters.variantFilter !== "all") {
             params.set("variant", filters.variantFilter);
+        }
+        if (filters.artistFilter && filters.artistFilter !== ALL_ARTISTS_FILTER) {
+            params.set("artist", filters.artistFilter);
         }
         params.set("sort", filters.sortField);
         params.set("direction", filters.sortDirection);
@@ -196,6 +216,20 @@ export function usePublicUserExpansions(username: string) {
     });
     return {
         expansions: data?.expansions ?? [],
+        isLoading,
+        isError: error,
+        mutate,
+    };
+}
+
+export function usePublicUserArtists(username: string) {
+    const key = username ? `/api/profile/${encodeURIComponent(username)}/artists` : null;
+    const { data, error, isLoading, mutate } = useSWR<{ artists: string[] }>(key, fetcher, {
+        ...defaultSWRConfig,
+        revalidateOnFocus: false,
+    });
+    return {
+        artists: data?.artists ?? [],
         isLoading,
         isError: error,
         mutate,

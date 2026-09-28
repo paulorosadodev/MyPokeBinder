@@ -15,24 +15,26 @@ import { getPokemonSilhouetteUrl, POKEMON_151, markSilhouetteLoaded } from "@/li
 import { getRarityBadgeStyle, RARITY_FILTER_OPTIONS } from "@/lib/pokemon/rarity";
 import { resolveCardShine, VARIANT_FILTER_OPTIONS } from "@/lib/pokemon/variant";
 import { resolveCardElementTypes } from "@/lib/pokemon/cardTypes";
-import { ALL_EXPANSIONS_FILTER, buildCollectionFilterResetKey, buildExpansionFilterOptions, type CollectionSortDirection, type CollectionSortField } from "@/lib/collection/listCards";
+import { getConditionBadgeStyle } from "@/lib/pokemon/condition";
+import { ConditionBadge } from "@/components/ui/ConditionBadge";
+import { ALL_EXPANSIONS_FILTER, ALL_ARTISTS_FILTER, buildCollectionFilterResetKey, buildExpansionFilterOptions, buildArtistFilterOptions, type CollectionSortDirection, type CollectionSortField } from "@/lib/collection/listCards";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { getCardAppearProps } from "@/lib/ui/cardAppear";
-import { useInfiniteCollectionGroups, useUserExpansions } from "@/lib/swr";
+import { useInfiniteCollectionGroups, useUserExpansions, useUserArtists } from "@/lib/swr";
 import { UserCard, CardLanguage, BinderStatusFilter } from "@/types/binder";
-import { Search, Plus, Sparkles, BookOpen, Layers, X, ArrowUpDown, Globe, SlidersHorizontal, RefreshCw } from "lucide-react";
+import { Search, Plus, Sparkles, Gem, BookOpen, Layers, X, ArrowUpDown, ArrowUp, ArrowDown, Globe, SlidersHorizontal, RefreshCw, Palette } from "lucide-react";
 
 type SortField = CollectionSortField;
 type SortDirection = CollectionSortDirection;
 
 const STATUS_FILTER_OPTIONS: SelectOption<BinderStatusFilter>[] = [
-    { value: "all", label: "Todas as Cartas" },
+    { value: "all", label: "Todas as cartas" },
     { value: "in_binder", label: "No Binder" },
     { value: "stored", label: "Guardadas" },
 ];
 
 const LANGUAGE_FILTER_OPTIONS: SelectOption<string>[] = [
-    { value: "all", label: "Todos os Idiomas" },
+    { value: "all", label: "Todos os idiomas" },
     { value: "pt-br", label: "Português (PT-BR)", icon: <FlagIcon country="pt-br" /> },
     { value: "en", label: "Inglês (EN)", icon: <FlagIcon country="en" /> },
     { value: "ja", label: "Japonês (JA)", icon: <FlagIcon country="ja" /> },
@@ -52,9 +54,10 @@ export default function CollectionPage() {
     const [languageFilter, setLanguageFilter] = useState<string>("all");
     const [rarityFilter, setRarityFilter] = useState<string>("all");
     const [expansionFilter, setExpansionFilter] = useState<string>(ALL_EXPANSIONS_FILTER);
+    const [artistFilter, setArtistFilter] = useState<string>(ALL_ARTISTS_FILTER);
     const [variantFilter, setVariantFilter] = useState<string>("all");
-    const [sortField, setSortField] = useState<SortField>("dex");
-    const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+    const [sortField, setSortField] = useState<SortField>("recent");
+    const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
     const [showFilters, setShowFilters] = useState(false);
     const isFiltersRestored = useRef(false);
 
@@ -71,10 +74,10 @@ export default function CollectionPage() {
         if (languageFilter !== "all") count++;
         if (rarityFilter !== "all") count++;
         if (expansionFilter !== ALL_EXPANSIONS_FILTER) count++;
+        if (artistFilter !== ALL_ARTISTS_FILTER) count++;
         if (variantFilter !== "all") count++;
-        if (sortField !== "dex" || sortDirection !== "asc") count++;
         return count;
-    }, [statusFilter, languageFilter, rarityFilter, expansionFilter, variantFilter, sortField, sortDirection]);
+    }, [statusFilter, languageFilter, rarityFilter, expansionFilter, artistFilter, variantFilter]);
 
     useEffect(() => {
         try {
@@ -89,6 +92,7 @@ export default function CollectionPage() {
                 if (parsed.languageFilter) setLanguageFilter(parsed.languageFilter);
                 if (parsed.rarityFilter) setRarityFilter(parsed.rarityFilter);
                 if (parsed.expansionFilter) setExpansionFilter(parsed.expansionFilter);
+                if (parsed.artistFilter) setArtistFilter(parsed.artistFilter);
                 if (parsed.variantFilter) setVariantFilter(parsed.variantFilter);
                 if (parsed.sortField) setSortField(parsed.sortField);
                 if (parsed.sortDirection) setSortDirection(parsed.sortDirection);
@@ -116,6 +120,8 @@ export default function CollectionPage() {
 
     const { expansions, mutate: mutateExpansions } = useUserExpansions();
     const expansionOptions = useMemo(() => buildExpansionFilterOptions(expansions), [expansions]);
+    const { artists, mutate: mutateArtists } = useUserArtists();
+    const artistOptions = useMemo(() => buildArtistFilterOptions(artists), [artists]);
 
     const { groups, total, isLoading, isLoadingMore, hasMore, loadMore, isError, mutate } = useInfiniteCollectionGroups({
         searchTerm: debouncedSearchTerm,
@@ -123,6 +129,7 @@ export default function CollectionPage() {
         languageFilter,
         rarityFilter,
         expansionFilter,
+        artistFilter,
         variantFilter,
         sortField,
         sortDirection,
@@ -138,11 +145,12 @@ export default function CollectionPage() {
                 languageFilter,
                 rarityFilter,
                 expansionFilter,
+                artistFilter,
                 variantFilter,
                 sortField,
                 sortDirection,
             }),
-        [debouncedSearchTerm, statusFilter, languageFilter, rarityFilter, expansionFilter, variantFilter, sortField, sortDirection],
+        [debouncedSearchTerm, statusFilter, languageFilter, rarityFilter, expansionFilter, artistFilter, variantFilter, sortField, sortDirection],
     );
 
     const sentinelRef = useInfiniteScroll({
@@ -162,13 +170,14 @@ export default function CollectionPage() {
                     languageFilter,
                     rarityFilter,
                     expansionFilter,
+                    artistFilter,
                     variantFilter,
                     sortField,
                     sortDirection,
                 }),
             );
         } catch {}
-    }, [searchTerm, statusFilter, languageFilter, rarityFilter, expansionFilter, variantFilter, sortField, sortDirection]);
+    }, [searchTerm, statusFilter, languageFilter, rarityFilter, expansionFilter, artistFilter, variantFilter, sortField, sortDirection]);
 
     const filteredPokemonList = useMemo(() => {
         if (!pokemonPickerSearch.trim()) return POKEMON_151;
@@ -186,6 +195,7 @@ export default function CollectionPage() {
     const handleCardAdded = (newCard: UserCard) => {
         mutate();
         mutateExpansions();
+        mutateArtists();
     };
 
     return (
@@ -237,23 +247,24 @@ export default function CollectionPage() {
 
                     <div className={`grid transition-all duration-300 ease-in-out ${showFilters ? "grid-rows-[1fr] opacity-100 border-t border-white/10 pt-3" : "grid-rows-[0fr] opacity-0 border-t-0 pt-0 pointer-events-none"}`}>
                         <div className="overflow-hidden">
-                            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5 w-full">
-                                <Select<BinderStatusFilter> value={statusFilter} onChange={setStatusFilter} options={STATUS_FILTER_OPTIONS} icon={<BookOpen size={13} />} ariaLabel="Filtrar coleção por status no binder" className="w-full sm:flex-1 sm:min-w-[140px]" />
-                                <Select<string> value={languageFilter} onChange={setLanguageFilter} options={LANGUAGE_FILTER_OPTIONS} icon={<Globe size={13} />} ariaLabel="Filtrar coleção por idioma da carta" className="w-full sm:flex-1 sm:min-w-[145px]" menuClassName="sm:left-0 sm:right-auto" align="right" />
-                                <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar coleção por raridade" className="w-full sm:flex-1 sm:min-w-[155px]" />
-                                <Select<string> value={variantFilter} onChange={setVariantFilter} options={VARIANT_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar coleção por versão" className="w-full sm:flex-1 sm:min-w-[185px]" />
-                                <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar coleção por expansão" className="w-full col-span-2 sm:col-span-1 sm:flex-1 sm:min-w-[170px]" />
+                            <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5 w-full">
+                                <Select<BinderStatusFilter> value={statusFilter} onChange={setStatusFilter} options={STATUS_FILTER_OPTIONS} icon={<BookOpen size={13} />} ariaLabel="Filtrar coleção por status no binder" className="w-full min-w-0 sm:flex-1 sm:min-w-[140px]" size="sm" />
+                                <Select<string> value={languageFilter} onChange={setLanguageFilter} options={LANGUAGE_FILTER_OPTIONS} icon={<Globe size={13} />} ariaLabel="Filtrar coleção por idioma da carta" className="w-full min-w-0 sm:flex-1 sm:min-w-[145px]" menuClassName="sm:left-0 sm:right-auto" align="right" size="sm" />
+                                <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Gem size={13} />} ariaLabel="Filtrar coleção por raridade" className="w-full min-w-0 sm:flex-1 sm:min-w-[155px]" size="sm" />
+                                <Select<string> value={variantFilter} onChange={setVariantFilter} options={VARIANT_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar coleção por versão" className="w-full min-w-0 sm:flex-1 sm:min-w-[185px]" size="sm" />
+                                <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar coleção por expansão" className="w-full min-w-0 sm:col-span-1 sm:flex-1 sm:min-w-[170px]" size="sm" />
+                                <Select<string> value={artistFilter} onChange={setArtistFilter} options={artistOptions} icon={<Palette size={13} />} ariaLabel="Filtrar coleção por ilustrador" className="w-full min-w-0 sm:col-span-1 sm:flex-1 sm:min-w-[170px]" size="sm" />
 
                                 <div className="col-span-2 flex w-full min-w-0 items-center gap-1.5 sm:col-span-1 sm:flex-1 sm:min-w-[190px]">
-                                    <Select<SortField> value={sortField} onChange={setSortField} options={SORT_FIELD_OPTIONS} icon={<ArrowUpDown size={13} />} ariaLabel="Ordenar coleção" className="flex-1 min-w-0" align="right" />
+                                    <Select<SortField> value={sortField} onChange={setSortField} options={SORT_FIELD_OPTIONS} icon={<ArrowUpDown size={13} />} ariaLabel="Ordenar coleção" className="flex-1 min-w-0" size="sm" align="right" />
                                     <button
                                         type="button"
                                         onClick={() => setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))}
                                         aria-label={sortDirection === "asc" ? "Ordem crescente. Clique para inverter para decrescente." : "Ordem decrescente. Clique para inverter para crescente."}
                                         title={sortDirection === "asc" ? "Crescente (Clique para inverter)" : "Decrescente (Clique para inverter)"}
-                                        className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition-all hover:border-poke-blue/50 hover:bg-white/10 hover:text-white active:scale-95"
+                                        className="flex h-7 w-7 sm:h-9 sm:w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg sm:rounded-xl border border-white/10 bg-white/5 text-slate-300 transition-all hover:border-poke-blue/50 hover:bg-white/10 hover:text-white active:scale-95"
                                     >
-                                        <ArrowUpDown size={15} className={`transition-transform duration-200 ${sortDirection === "desc" ? "rotate-180 text-poke-blue" : ""}`} />
+                                        {sortDirection === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
                                     </button>
                                 </div>
                             </div>
@@ -307,8 +318,9 @@ export default function CollectionPage() {
                                 setLanguageFilter("all");
                                 setRarityFilter("all");
                                 setExpansionFilter(ALL_EXPANSIONS_FILTER);
-                                setSortField("dex");
-                                setSortDirection("asc");
+                                setArtistFilter(ALL_ARTISTS_FILTER);
+                                setSortField("recent");
+                                setSortDirection("desc");
                                 setShowFilters(false);
                                 if (typeof window !== "undefined") {
                                     sessionStorage.removeItem("mypokebinder_collection_filters");
@@ -332,6 +344,7 @@ export default function CollectionPage() {
                                             <span className="flex h-4.5 sm:h-5 items-center shrink-0 rounded bg-black/60 px-1 text-[9px] font-bold text-slate-300 backdrop-blur-sm sm:px-1.5 sm:text-[10px]">#{String(card.pokemon_dex_id).padStart(3, "0")}</span>
 
                                             <div className="flex items-center gap-0.5 sm:gap-1">
+                                                {card.card_condition && <ConditionBadge condition={card.card_condition} />}
                                                 {card.card_variant === "holo" && (
                                                     <span title="Foil" aria-label="Foil" className="flex h-4.5 sm:h-5 w-4.5 sm:w-5 items-center justify-center rounded border border-amber-500/40 bg-amber-500/20 text-amber-300">
                                                         <Sparkles size={11} className="sm:h-3 sm:w-3" />
@@ -358,7 +371,7 @@ export default function CollectionPage() {
                                         </div>
 
                                         <div className="relative my-1 aspect-[8/11] w-full sm:my-2">
-                                            <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={resolveCardShine(card.card_variant, card.card_rarity)} elementTypes={resolveCardElementTypes(card.card_types, card.pokemon_dex_id)}>
+                                            <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={resolveCardShine(card.card_variant, card.card_rarity, card.card_image_url)} elementTypes={resolveCardElementTypes(card.card_types, card.pokemon_dex_id)}>
                                                 <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill unoptimized sizes="(max-width: 640px) 30vw, (max-width: 768px) 33vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" priority={index === 0} />
                                             </Card3DTilt>
                                         </div>
@@ -370,7 +383,9 @@ export default function CollectionPage() {
                                             </div>
 
                                             <div className="flex items-center justify-between text-[8px] text-slate-400 sm:text-[10px]">
-                                                <span className="max-w-[65%] truncate">{card.card_set_name || "Coleção"}</span>
+                                                <span className="max-w-[65%] truncate" title={card.card_artist ? `${card.card_set_name || "Coleção"} · ${card.card_artist}` : card.card_set_name || "Coleção"}>
+                                                    {card.card_set_name || "Coleção"}
+                                                </span>
                                                 <div className="flex items-center gap-0.5 sm:gap-1">
                                                     <FlagIcon country={card.card_language as CardLanguage} />
                                                     <span className="hidden text-[7px] font-bold uppercase sm:inline sm:text-[9px]">{card.card_language}</span>

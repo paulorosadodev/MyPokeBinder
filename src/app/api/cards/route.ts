@@ -5,6 +5,7 @@ import { revalidatePublicProfileForUserId } from "@/lib/profile/publicCache";
 import { isCardVariant } from "@/lib/pokemon/variant";
 import { isCardMatchingPokemon } from "@/lib/pokemon/match";
 import { isValidCardElementTypes, resolveCardElementTypes } from "@/lib/pokemon/cardTypes";
+import { isCardCondition, type CardCondition } from "@/lib/pokemon/condition";
 
 export async function GET(request: NextRequest) {
     const auth = await getAuthenticatedUser(request);
@@ -26,6 +27,7 @@ export async function GET(request: NextRequest) {
         const sort = request.nextUrl.searchParams.get("sort") ?? "dex";
         const direction = request.nextUrl.searchParams.get("direction") ?? "asc";
         const variant = request.nextUrl.searchParams.get("variant") ?? "all";
+        const artist = request.nextUrl.searchParams.get("artist") ?? "all";
 
         const page = parseInt(pageParam, 10);
         const limit = parseInt(limitParam, 10);
@@ -59,7 +61,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: "Direção de ordenação inválida" }, { status: 400 });
         }
 
-        if (search.length > 100 || rarity.length > 50 || expansion.length > 100) {
+        if (search.length > 100 || rarity.length > 50 || expansion.length > 100 || artist.length > 100) {
             return NextResponse.json({ error: "Tamanho de filtro excede o limite permitido" }, { status: 400 });
         }
 
@@ -73,6 +75,7 @@ export async function GET(request: NextRequest) {
             p_rarity: rarity,
             p_expansion: expansion,
             p_variant: variant,
+            p_artist: artist,
             p_sort_field: sort,
             p_sort_direction: direction,
             p_limit: limit,
@@ -95,6 +98,8 @@ export async function GET(request: NextRequest) {
             card_types: string[];
             card_language: string;
             card_variant: string;
+            card_artist: string;
+            card_condition: string;
             is_in_binder: boolean;
             created_at: string;
             updated_at: string;
@@ -120,6 +125,8 @@ export async function GET(request: NextRequest) {
                 card_types: row.card_types,
                 card_language: row.card_language,
                 card_variant: row.card_variant,
+                card_artist: row.card_artist,
+                card_condition: row.card_condition as CardCondition,
                 is_in_binder: row.is_in_binder,
                 created_at: row.created_at,
                 updated_at: row.updated_at,
@@ -136,6 +143,8 @@ export async function GET(request: NextRequest) {
                 card_types: row.card_types,
                 card_language: row.card_language,
                 card_variant: row.card_variant,
+                card_artist: row.card_artist,
+                card_condition: row.card_condition as CardCondition,
                 is_in_binder: row.has_in_binder,
                 created_at: row.created_at,
                 updated_at: row.updated_at,
@@ -182,7 +191,7 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const { tcgdex_card_id, pokemon_dex_id, card_name, card_image_url, card_set_name = "", card_rarity = "", card_types, card_language = "pt-br", card_variant = "normal" } = body;
+        const { tcgdex_card_id, pokemon_dex_id, card_name, card_image_url, card_set_name = "", card_rarity = "", card_artist = "", card_condition = "NM", card_types, card_language = "pt-br", card_variant = "normal" } = body;
 
         if (
             typeof tcgdex_card_id !== "string" ||
@@ -196,12 +205,14 @@ export async function POST(request: NextRequest) {
             card_name.trim().length === 0 ||
             card_name.length > 100 ||
             typeof card_image_url !== "string" ||
-            !card_image_url.startsWith("https://") ||
+            (!card_image_url.startsWith("https://") && !card_image_url.startsWith("/")) ||
             card_image_url.length > 1000 ||
             typeof card_set_name !== "string" ||
             card_set_name.length > 100 ||
             typeof card_rarity !== "string" ||
-            card_rarity.length > 100
+            card_rarity.length > 100 ||
+            typeof card_artist !== "string" ||
+            card_artist.length > 100
         ) {
             return NextResponse.json({ error: "Campos obrigatórios ausentes ou inválidos" }, { status: 400 });
         }
@@ -214,6 +225,10 @@ export async function POST(request: NextRequest) {
         const variant = typeof card_variant === "string" ? card_variant.toLowerCase() : "normal";
         if (!isCardVariant(variant)) {
             return NextResponse.json({ error: "Versão inválida" }, { status: 400 });
+        }
+
+        if (typeof card_condition !== "string" || !isCardCondition(card_condition)) {
+            return NextResponse.json({ error: "Condição da carta inválida" }, { status: 400 });
         }
 
         if (isPocketCard({ id: tcgdex_card_id, image: card_image_url })) {
@@ -240,6 +255,8 @@ export async function POST(request: NextRequest) {
                 card_image_url: formatTcgdexImageUrl(card_image_url.trim()),
                 card_set_name: typeof card_set_name === "string" ? card_set_name.trim() : "",
                 card_rarity: typeof card_rarity === "string" ? card_rarity.trim() : "",
+                card_artist: typeof card_artist === "string" ? card_artist.trim() : "",
+                card_condition,
                 card_types: resolvedCardTypes,
                 card_language: card_language.toLowerCase(),
                 card_variant: variant,

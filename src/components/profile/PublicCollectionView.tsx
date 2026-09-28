@@ -14,13 +14,15 @@ import { formatTcgdexImageUrl } from "@/lib/pokemon/tcgdex";
 import { getRarityBadgeStyle, RARITY_FILTER_OPTIONS } from "@/lib/pokemon/rarity";
 import { resolveCardShine, VARIANT_FILTER_OPTIONS } from "@/lib/pokemon/variant";
 import { resolveCardElementTypes } from "@/lib/pokemon/cardTypes";
-import { ALL_EXPANSIONS_FILTER, buildCollectionFilterResetKey, buildExpansionFilterOptions, type CollectionSortDirection, type CollectionSortField } from "@/lib/collection/listCards";
+import { getConditionBadgeStyle } from "@/lib/pokemon/condition";
+import { ConditionBadge } from "@/components/ui/ConditionBadge";
+import { ALL_EXPANSIONS_FILTER, ALL_ARTISTS_FILTER, buildCollectionFilterResetKey, buildExpansionFilterOptions, buildArtistFilterOptions, type CollectionSortDirection, type CollectionSortField } from "@/lib/collection/listCards";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { getCardAppearProps } from "@/lib/ui/cardAppear";
 import { buildThemeCssVars } from "@/lib/profile/username";
-import { useInfinitePublicCollectionGroups, usePublicUserExpansions } from "@/lib/swr";
+import { useInfinitePublicCollectionGroups, usePublicUserExpansions, usePublicUserArtists } from "@/lib/swr";
 import { BinderStatusFilter, CardLanguage, UserCard, CollectionCardGroup, type CardElementType, type CardShineMode } from "@/types/binder";
-import { ArrowLeft, ArrowUpDown, BookOpen, Globe, Layers, Layers2, RefreshCw, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
+import { ArrowLeft, ArrowUpDown, ArrowUp, ArrowDown, BookOpen, Globe, Layers, Layers2, RefreshCw, Search, SlidersHorizontal, Sparkles, Gem, X, Palette } from "lucide-react";
 
 export interface PublicCollectionPayload {
     owner: {
@@ -41,13 +43,13 @@ type SortField = CollectionSortField;
 type SortDirection = CollectionSortDirection;
 
 const STATUS_FILTER_OPTIONS: SelectOption<BinderStatusFilter>[] = [
-    { value: "all", label: "Todas as Cartas" },
+    { value: "all", label: "Todas as cartas" },
     { value: "in_binder", label: "No Binder" },
     { value: "stored", label: "Guardadas" },
 ];
 
 const LANGUAGE_FILTER_OPTIONS: SelectOption<string>[] = [
-    { value: "all", label: "Todos os Idiomas" },
+    { value: "all", label: "Todos os idiomas" },
     { value: "pt-br", label: "Português (PT-BR)", icon: <FlagIcon country="pt-br" /> },
     { value: "en", label: "Inglês (EN)", icon: <FlagIcon country="en" /> },
     { value: "ja", label: "Japonês (JA)", icon: <FlagIcon country="ja" /> },
@@ -68,6 +70,7 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
     const [rarityFilter, setRarityFilter] = useState("all");
     const [variantFilter, setVariantFilter] = useState("all");
     const [expansionFilter, setExpansionFilter] = useState(ALL_EXPANSIONS_FILTER);
+    const [artistFilter, setArtistFilter] = useState(ALL_ARTISTS_FILTER);
     const [sortField, setSortField] = useState<SortField>("dex");
     const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
     const [lightbox, setLightbox] = useState<{ src: string; alt: string; shineMode: CardShineMode; elementTypes: CardElementType[] } | null>(null);
@@ -100,6 +103,7 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
         setRarityFilter("all");
         setVariantFilter("all");
         setExpansionFilter(ALL_EXPANSIONS_FILTER);
+        setArtistFilter(ALL_ARTISTS_FILTER);
         setSortField("dex");
         setSortDirection("asc");
         setShowFilters(false);
@@ -112,9 +116,9 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
         if (rarityFilter !== "all") count++;
         if (variantFilter !== "all") count++;
         if (expansionFilter !== ALL_EXPANSIONS_FILTER) count++;
-        if (sortField !== "dex" || sortDirection !== "asc") count++;
+        if (artistFilter !== ALL_ARTISTS_FILTER) count++;
         return count;
-    }, [statusFilter, languageFilter, rarityFilter, variantFilter, expansionFilter, sortField, sortDirection]);
+    }, [statusFilter, languageFilter, rarityFilter, variantFilter, expansionFilter, artistFilter]);
 
     const openLightbox = useCallback((src: string, alt: string, shineMode: CardShineMode = "none", elementTypes: CardElementType[] = ["Colorless"]) => {
         setLightbox({ src, alt, shineMode, elementTypes });
@@ -126,6 +130,8 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
 
     const { expansions } = usePublicUserExpansions(username);
     const expansionOptions = useMemo(() => buildExpansionFilterOptions(expansions), [expansions]);
+    const { artists } = usePublicUserArtists(username);
+    const artistOptions = useMemo(() => buildArtistFilterOptions(artists), [artists]);
 
     const {
         groups,
@@ -143,6 +149,7 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
         languageFilter,
         rarityFilter,
         expansionFilter,
+        artistFilter,
         variantFilter,
         sortField,
         sortDirection,
@@ -159,11 +166,12 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
                 languageFilter,
                 rarityFilter,
                 expansionFilter,
+                artistFilter,
                 variantFilter,
                 sortField,
                 sortDirection,
             }),
-        [debouncedSearchTerm, statusFilter, languageFilter, rarityFilter, expansionFilter, variantFilter, sortField, sortDirection],
+        [debouncedSearchTerm, statusFilter, languageFilter, rarityFilter, expansionFilter, artistFilter, variantFilter, sortField, sortDirection],
     );
 
     const sentinelRef = useInfiniteScroll({
@@ -206,7 +214,7 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
     }
 
     const themeStyle = buildThemeCssVars(owner.themeColor || "#ef4444");
-    const hasActiveFilters = Boolean(searchTerm.trim()) || statusFilter !== "all" || languageFilter !== "all" || rarityFilter !== "all" || variantFilter !== "all" || expansionFilter !== ALL_EXPANSIONS_FILTER;
+    const hasActiveFilters = Boolean(searchTerm.trim()) || statusFilter !== "all" || languageFilter !== "all" || rarityFilter !== "all" || variantFilter !== "all" || expansionFilter !== ALL_EXPANSIONS_FILTER || artistFilter !== ALL_ARTISTS_FILTER;
     const displayName = owner.name || `@${owner.username}`;
 
     return (
@@ -279,17 +287,18 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
 
                         <div className={`grid transition-all duration-300 ease-in-out ${showFilters ? "grid-rows-[1fr] opacity-100 border-t border-white/10 pt-3" : "grid-rows-[0fr] opacity-0 border-t-0 pt-0 pointer-events-none"}`}>
                             <div className="overflow-hidden">
-                                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5 w-full">
-                                    <Select<BinderStatusFilter> value={statusFilter} onChange={setStatusFilter} options={STATUS_FILTER_OPTIONS} icon={<BookOpen size={13} />} ariaLabel="Filtrar por status no binder" className="w-full sm:flex-1 sm:min-w-[140px]" />
-                                    <Select<string> value={languageFilter} onChange={setLanguageFilter} options={LANGUAGE_FILTER_OPTIONS} icon={<Globe size={13} />} ariaLabel="Filtrar por idioma" className="w-full sm:flex-1 sm:min-w-[145px]" menuClassName="sm:left-0 sm:right-auto" align="right" />
-                                    <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar por raridade" className="w-full sm:flex-1 sm:min-w-[155px]" />
-                                    <Select<string> value={variantFilter} onChange={setVariantFilter} options={VARIANT_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar por versão" className="w-full sm:flex-1 sm:min-w-[185px]" />
-                                    <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar por expansão" className="w-full col-span-2 sm:col-span-1 sm:flex-1 sm:min-w-[170px]" />
+                                <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5 w-full">
+                                    <Select<BinderStatusFilter> value={statusFilter} onChange={setStatusFilter} options={STATUS_FILTER_OPTIONS} icon={<BookOpen size={13} />} ariaLabel="Filtrar por status no binder" className="w-full min-w-0 sm:flex-1 sm:min-w-[140px]" size="sm" />
+                                    <Select<string> value={languageFilter} onChange={setLanguageFilter} options={LANGUAGE_FILTER_OPTIONS} icon={<Globe size={13} />} ariaLabel="Filtrar por idioma" className="w-full min-w-0 sm:flex-1 sm:min-w-[145px]" menuClassName="sm:left-0 sm:right-auto" align="right" size="sm" />
+                                    <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Gem size={13} />} ariaLabel="Filtrar por raridade" className="w-full min-w-0 sm:flex-1 sm:min-w-[155px]" size="sm" />
+                                    <Select<string> value={variantFilter} onChange={setVariantFilter} options={VARIANT_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar por versão" className="w-full min-w-0 sm:flex-1 sm:min-w-[185px]" size="sm" />
+                                    <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar por expansão" className="w-full min-w-0 sm:col-span-1 sm:flex-1 sm:min-w-[170px]" size="sm" />
+                                    <Select<string> value={artistFilter} onChange={setArtistFilter} options={artistOptions} icon={<Palette size={13} />} ariaLabel="Filtrar por ilustrador" className="w-full min-w-0 sm:col-span-1 sm:flex-1 sm:min-w-[170px]" size="sm" />
 
                                     <div className="col-span-2 flex w-full min-w-0 items-center gap-1.5 sm:col-span-1 sm:flex-1 sm:min-w-[190px]">
-                                        <Select<SortField> value={sortField} onChange={setSortField} options={SORT_FIELD_OPTIONS} icon={<ArrowUpDown size={13} />} ariaLabel="Ordenar coleção" className="min-w-0 flex-1" align="right" />
-                                        <button type="button" onClick={() => setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))} aria-label={sortDirection === "asc" ? "Ordem crescente" : "Ordem decrescente"} className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition-all hover:border-poke-blue/50 hover:bg-white/10 hover:text-white active:scale-95">
-                                            <ArrowUpDown size={15} className={`transition-transform duration-200 ${sortDirection === "desc" ? "rotate-180 text-poke-blue" : ""}`} />
+                                        <Select<SortField> value={sortField} onChange={setSortField} options={SORT_FIELD_OPTIONS} icon={<ArrowUpDown size={13} />} ariaLabel="Ordenar coleção" className="min-w-0 flex-1" size="sm" align="right" />
+                                        <button type="button" onClick={() => setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))} aria-label={sortDirection === "asc" ? "Ordem crescente" : "Ordem decrescente"} className="flex h-7 w-7 sm:h-9 sm:w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg sm:rounded-xl border border-white/10 bg-white/5 text-slate-300 transition-all hover:border-poke-blue/50 hover:bg-white/10 hover:text-white active:scale-95">
+                                            {sortDirection === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
                                         </button>
                                     </div>
                                 </div>
@@ -322,6 +331,7 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
                                         setLanguageFilter("all");
                                         setRarityFilter("all");
                                         setExpansionFilter(ALL_EXPANSIONS_FILTER);
+                                        setArtistFilter(ALL_ARTISTS_FILTER);
                                         setShowFilters(false);
                                     }}
                                     className="mt-3 rounded-xl border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-semibold text-slate-300 hover:bg-white/10"
@@ -338,7 +348,7 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
                                     const appear = getCardAppearProps(index);
                                     const rarity = getRarityBadgeStyle(card.card_rarity);
                                     const imageSrc = formatTcgdexImageUrl(card.card_image_url);
-                                    const shineMode = resolveCardShine(card.card_variant, card.card_rarity);
+                                    const shineMode = resolveCardShine(card.card_variant, card.card_rarity, card.card_image_url);
                                     const elementTypes = resolveCardElementTypes(card.card_types, card.pokemon_dex_id);
 
                                     return (
@@ -346,6 +356,7 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
                                             <div className="z-10 flex min-h-[20px] items-center justify-between gap-1 sm:min-h-[26px]">
                                                 <span className="flex h-4.5 sm:h-5 items-center shrink-0 rounded bg-black/60 px-1 text-[9px] font-bold text-slate-300 backdrop-blur-sm sm:px-1.5 sm:text-[10px]">#{String(card.pokemon_dex_id).padStart(3, "0")}</span>
                                                 <div className="flex items-center gap-0.5 sm:gap-1">
+                                                    {card.card_condition && <ConditionBadge condition={card.card_condition} />}
                                                     {card.card_variant === "holo" && (
                                                         <span title="Foil" aria-label="Foil" className="flex h-4.5 sm:h-5 w-4.5 sm:w-5 items-center justify-center rounded border border-amber-500/40 bg-amber-500/20 text-amber-300">
                                                             <Sparkles size={11} className="sm:h-3 sm:w-3" />
@@ -375,7 +386,9 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
                                                     <span className={`shrink-0 rounded border px-1 text-[7px] font-semibold sm:text-[8px] ${rarity.badgeClasses}`}>{rarity.label}</span>
                                                 </div>
                                                 <div className="flex items-center justify-between text-[8px] text-slate-400 sm:text-[10px]">
-                                                    <span className="max-w-[65%] truncate">{card.card_set_name || "Coleção"}</span>
+                                                    <span className="max-w-[65%] truncate" title={card.card_artist ? `${card.card_set_name || "Coleção"} · ${card.card_artist}` : card.card_set_name || "Coleção"}>
+                                                        {card.card_set_name || "Coleção"}
+                                                    </span>
                                                     <div className="flex items-center gap-0.5 sm:gap-1">
                                                         <FlagIcon country={card.card_language as CardLanguage} />
                                                     </div>

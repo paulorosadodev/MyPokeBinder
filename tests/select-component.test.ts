@@ -13,13 +13,13 @@ describe("Custom Select Component Logic and Theme Integration", () => {
     ];
 
     const STATUS_FILTER_OPTIONS: SelectOption<BinderStatusFilter>[] = [
-        { value: "all", label: "Todas as Cartas" },
+        { value: "all", label: "Todas as cartas" },
         { value: "in_binder", label: "No Binder" },
         { value: "stored", label: "Guardadas" },
     ];
 
     const LANGUAGE_FILTER_OPTIONS: SelectOption<string>[] = [
-        { value: "all", label: "Todos os Idiomas" },
+        { value: "all", label: "Todos os idiomas" },
         { value: "pt-br", label: "Português (PT-BR)" },
         { value: "en", label: "Inglês (EN)" },
         { value: "ja", label: "Japonês (JA)" },
@@ -37,11 +37,11 @@ describe("Custom Select Component Logic and Theme Integration", () => {
         expect(resolveLabel("name_asc", SORT_OPTIONS)).toBe("Nome (A - Z)");
         expect(resolveLabel("unknown", SORT_OPTIONS)).toBe("Selecione uma opção");
 
-        expect(resolveLabel("all", STATUS_FILTER_OPTIONS)).toBe("Todas as Cartas");
+        expect(resolveLabel("all", STATUS_FILTER_OPTIONS)).toBe("Todas as cartas");
         expect(resolveLabel("in_binder", STATUS_FILTER_OPTIONS)).toBe("No Binder");
         expect(resolveLabel("stored", STATUS_FILTER_OPTIONS)).toBe("Guardadas");
 
-        expect(resolveLabel("all", LANGUAGE_FILTER_OPTIONS)).toBe("Todos os Idiomas");
+        expect(resolveLabel("all", LANGUAGE_FILTER_OPTIONS)).toBe("Todos os idiomas");
         expect(resolveLabel("pt-br", LANGUAGE_FILTER_OPTIONS)).toBe("Português (PT-BR)");
     });
 

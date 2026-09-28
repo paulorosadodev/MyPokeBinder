@@ -81,8 +81,10 @@ describe("isCardMatchingPokemon", () => {
 
     it("should correctly match special character names like Farfetch'd and Mr. Mime", () => {
         expect(isCardMatchingPokemon("Farfetch'd", 83)).toBe(true);
+        expect(isCardMatchingPokemon("Farfetch’d", 83)).toBe(true);
         expect(isCardMatchingPokemon("Farfetchd", 83)).toBe(true);
         expect(isCardMatchingPokemon("Galarian Farfetch'd", 83)).toBe(true);
+        expect(isCardMatchingPokemon("Galarian Farfetch’d", 83)).toBe(true);
 
         expect(isCardMatchingPokemon("Mr. Mime", 122)).toBe(true);
         expect(isCardMatchingPokemon("Mr Mime", 122)).toBe(true);

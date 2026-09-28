@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Image from "next/image";
-import { SearchCardItem, CardLanguage, CardVariant, UserCard, SearchResponse } from "@/types/binder";
+import { SearchCardItem, CardLanguage, CardVariant, CardCondition, UserCard, SearchResponse } from "@/types/binder";
 import { formatTcgdexImageUrl } from "@/lib/pokemon/tcgdex";
 import { getRarityBadgeStyle, RARITY_FILTER_OPTIONS } from "@/lib/pokemon/rarity";
 import { formatVariantLabel, resolveCardShine, VARIANT_SLIDER_OPTIONS, VARIANT_SELECT_OPTIONS } from "@/lib/pokemon/variant";
-import { ALL_EXPANSIONS_FILTER, COLLECTION_PAGE_SIZE, buildExpansionFilterOptions, filterCatalogCards } from "@/lib/collection/listCards";
+import { CONDITION_SLIDER_OPTIONS, CONDITION_SELECT_OPTIONS } from "@/lib/pokemon/condition";
+import { ALL_EXPANSIONS_FILTER, ALL_ARTISTS_FILTER, COLLECTION_PAGE_SIZE, buildExpansionFilterOptions, buildArtistFilterOptions, filterCatalogCards } from "@/lib/collection/listCards";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { PokeballLoader } from "@/components/loading/PokeballLoader";
 import { LanguageSlider, type LanguageSliderOption } from "@/components/ui/LanguageSlider";
@@ -17,7 +18,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { ModalSearchFilters } from "@/components/ui/ModalSearchFilters";
 import { getCardAppearProps } from "@/lib/ui/cardAppear";
 import { toast } from "sonner";
-import { X, Search, Plus, Circle, Sparkles, RefreshCw, Layers, Globe } from "lucide-react";
+import { X, Search, Plus, Circle, Sparkles, Gem, RefreshCw, Layers, Globe, Palette } from "lucide-react";
 
 interface CardSearchModalProps {
     isOpen: boolean;
@@ -44,6 +45,7 @@ const LANGUAGE_SELECT_OPTIONS: SelectOption<CardLanguage>[] = [
 export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdded }: CardSearchModalProps) {
     const [lang, setLang] = useState<CardLanguage>("pt-br");
     const [variant, setVariant] = useState<CardVariant>("normal");
+    const [condition, setCondition] = useState<CardCondition>("NM");
     const [cards, setCards] = useState<SearchCardItem[]>([]);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(false);
@@ -55,15 +57,18 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
     const [searchTerm, setSearchTerm] = useState("");
     const [rarityFilter, setRarityFilter] = useState("all");
     const [expansionFilter, setExpansionFilter] = useState(ALL_EXPANSIONS_FILTER);
+    const [artistFilter, setArtistFilter] = useState(ALL_ARTISTS_FILTER);
     const [showFilters, setShowFilters] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
             setLang("pt-br");
             setVariant("normal");
+            setCondition("NM");
             setSearchTerm("");
             setRarityFilter("all");
             setExpansionFilter(ALL_EXPANSIONS_FILTER);
+            setArtistFilter(ALL_ARTISTS_FILTER);
             setShowFilters(false);
         }
     }, [isOpen]);
@@ -171,12 +176,14 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                 searchTerm,
                 rarityFilter,
                 expansionFilter,
+                artistFilter,
                 dexId,
             }),
-        [cards, searchTerm, rarityFilter, expansionFilter, dexId],
+        [cards, searchTerm, rarityFilter, expansionFilter, artistFilter, dexId],
     );
     const expansionOptions = useMemo(() => buildExpansionFilterOptions(cards.map((card) => card.setName)), [cards]);
-    const hasActiveCatalogFilters = Boolean(searchTerm.trim()) || rarityFilter !== "all" || expansionFilter !== ALL_EXPANSIONS_FILTER;
+    const artistOptions = useMemo(() => buildArtistFilterOptions(cards.map((card) => card.artist)), [cards]);
+    const hasActiveCatalogFilters = Boolean(searchTerm.trim()) || rarityFilter !== "all" || expansionFilter !== ALL_EXPANSIONS_FILTER || artistFilter !== ALL_ARTISTS_FILTER;
 
     useEffect(() => {
         if (!isOpen || initialLoading || loadingMore || !hasMore || !hasActiveCatalogFilters) return;
@@ -209,6 +216,8 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                     card_image_url: formatTcgdexImageUrl(card.image),
                     card_set_name: card.setName || "",
                     card_rarity: card.rarity || "",
+                    card_artist: card.artist || "",
+                    card_condition: condition,
                     card_types: card.types || [],
                     card_language: lang,
                     card_variant: variant,
@@ -239,7 +248,7 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
 
     if (!isOpen) return null;
 
-    const activeFilterCount = (rarityFilter !== "all" ? 1 : 0) + (expansionFilter !== ALL_EXPANSIONS_FILTER ? 1 : 0);
+    const activeFilterCount = (rarityFilter !== "all" ? 1 : 0) + (expansionFilter !== ALL_EXPANSIONS_FILTER ? 1 : 0) + (artistFilter !== ALL_ARTISTS_FILTER ? 1 : 0);
 
     return (
         <div
@@ -264,10 +273,11 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                 </div>
 
                 <div className="flex shrink-0 flex-col gap-2.5 border-b border-white/10 bg-black/20 px-3 py-2.5 sm:px-6 sm:py-3">
-                    <ModalSearchFilters searchTerm={searchTerm} onSearchChange={setSearchTerm} showFilters={showFilters} onToggleFilters={() => setShowFilters((prev) => !prev)} activeFilterCount={activeFilterCount} filterButtonAriaLabel="Alternar filtros de raridade e expansão">
-                        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2.5 pt-0.5">
-                            <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar catálogo por raridade" className="w-full sm:w-44" size="sm" />
-                            <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar catálogo por expansão" className="w-full sm:w-56" size="sm" align="right" />
+                    <ModalSearchFilters searchTerm={searchTerm} onSearchChange={setSearchTerm} showFilters={showFilters} onToggleFilters={() => setShowFilters((prev) => !prev)} activeFilterCount={activeFilterCount} filterButtonAriaLabel="Alternar filtros de raridade, expansão e ilustrador">
+                        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 sm:gap-2.5 pt-0.5 w-full">
+                            <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Gem size={13} />} ariaLabel="Filtrar catálogo por raridade" className="w-full min-w-0" size="sm" />
+                            <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar catálogo por expansão" className="w-full min-w-0" size="sm" />
+                            <Select<string> value={artistFilter} onChange={setArtistFilter} options={artistOptions} icon={<Palette size={13} />} ariaLabel="Filtrar catálogo por ilustrador" className="col-span-2 sm:col-span-1 w-full min-w-0" size="sm" align="right" />
                         </div>
                     </ModalSearchFilters>
 
@@ -276,13 +286,15 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                             <Sparkles size={11} className="text-poke-blue shrink-0" />
                             <span className="text-[11px] sm:text-xs font-semibold tracking-wide text-slate-300">Sua carta</span>
                         </div>
-                        <div className="grid grid-cols-2 gap-2 sm:hidden">
+                        <div className="grid grid-cols-3 gap-1.5 sm:hidden">
                             <Select<CardLanguage> value={lang} onChange={setLang} options={LANGUAGE_SELECT_OPTIONS} ariaLabel="Idioma da carta a ser adicionada" size="sm" className="w-full" />
                             <Select<CardVariant> value={variant} onChange={setVariant} options={VARIANT_SELECT_OPTIONS} ariaLabel="Versão física da carta a ser adicionada" size="sm" className="w-full" />
+                            <Select<CardCondition> value={condition} onChange={setCondition} options={CONDITION_SELECT_OPTIONS} ariaLabel="Estado de conservação da carta" size="sm" className="w-full" />
                         </div>
-                        <div className="hidden sm:grid sm:grid-cols-2 sm:gap-3">
+                        <div className="hidden sm:grid sm:grid-cols-3 sm:gap-2.5">
                             <LanguageSlider value={lang} onChange={setLang} options={LANGUAGE_OPTIONS} size="sm" fullWidth ariaLabel="Idioma da carta a ser adicionada" />
                             <LanguageSlider<CardVariant> value={variant} onChange={setVariant} options={VARIANT_SLIDER_OPTIONS} size="sm" fullWidth ariaLabel="Versão física da carta a ser adicionada" />
+                            <LanguageSlider<CardCondition> value={condition} onChange={setCondition} options={CONDITION_SLIDER_OPTIONS} size="sm" fullWidth ariaLabel="Estado de conservação da carta" />
                         </div>
                     </div>
                 </div>
@@ -310,6 +322,7 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                                     setSearchTerm("");
                                     setRarityFilter("all");
                                     setExpansionFilter(ALL_EXPANSIONS_FILTER);
+                                    setArtistFilter(ALL_ARTISTS_FILTER);
                                 }}
                                 className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-semibold text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
                             >
@@ -323,7 +336,7 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                                     const isSubmittingThis = submittingCardId === card.id;
                                     const appear = getCardAppearProps(index);
                                     const rarityInfo = card.rarity ? getRarityBadgeStyle(card.rarity) : null;
-                                    const shineMode = resolveCardShine(variant, card.rarity);
+                                    const shineMode = resolveCardShine(variant, card.rarity, card.image);
 
                                     return (
                                         <div key={card.id} className={`group relative flex h-full flex-col justify-between gap-1.5 sm:gap-2 rounded-xl border p-2 sm:p-2.5 transition-all duration-200 ${isSubmittingThis ? "border-poke-blue bg-poke-blue/15 ring-2 ring-poke-blue/40" : "border-white/10 bg-white/[0.03] hover:border-poke-blue/50 hover:bg-white/[0.07]"} ${appear.className}`} style={appear.style}>

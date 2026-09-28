@@ -20,7 +20,9 @@ import { formatTcgdexImageUrl } from "@/lib/pokemon/tcgdex";
 import { getRarityBadgeStyle, RARITY_FILTER_OPTIONS } from "@/lib/pokemon/rarity";
 import { resolveCardShine } from "@/lib/pokemon/variant";
 import { resolveCardElementTypes } from "@/lib/pokemon/cardTypes";
-import { buildCollectionFilterResetKey, matchesCardSearch } from "@/lib/collection/listCards";
+import { getConditionBadgeStyle } from "@/lib/pokemon/condition";
+import { ConditionBadge } from "@/components/ui/ConditionBadge";
+import { ALL_ARTISTS_FILTER, buildArtistFilterOptions, buildCollectionFilterResetKey, matchesCardSearch } from "@/lib/collection/listCards";
 import { useClientPagedWindow } from "@/lib/hooks/useClientPagedWindow";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { buildThemeCssVars } from "@/lib/profile/username";
@@ -29,16 +31,16 @@ import { fetcher as jsonFetcher } from "@/lib/swr";
 import { BinderStatusFilter, UserCard, type CardElementType, type CardShineMode } from "@/types/binder";
 import type { ProfilePayload } from "@/lib/profile/buildProfile";
 import { toast } from "sonner";
-import { Settings, Share2, BookOpen, Layers, Check, Layers2, Pencil, Plus, X, Search, Globe, Sparkles, GripVertical } from "lucide-react";
+import { Settings, Share2, BookOpen, Layers, Check, Layers2, Pencil, Plus, X, Search, Globe, Sparkles, Gem, GripVertical, Palette } from "lucide-react";
 
 const PICKER_STATUS_OPTIONS: SelectOption<BinderStatusFilter>[] = [
-    { value: "all", label: "Todas as Cartas" },
+    { value: "all", label: "Todas as cartas" },
     { value: "in_binder", label: "No Binder" },
     { value: "stored", label: "Guardadas" },
 ];
 
 const PICKER_LANGUAGE_OPTIONS: SelectOption<string>[] = [
-    { value: "all", label: "Todos os Idiomas" },
+    { value: "all", label: "Todos os idiomas" },
     { value: "pt-br", label: "Português (PT-BR)", icon: <FlagIcon country="pt-br" /> },
     { value: "en", label: "Inglês (EN)", icon: <FlagIcon country="en" /> },
     { value: "ja", label: "Japonês (JA)", icon: <FlagIcon country="ja" /> },
@@ -66,7 +68,7 @@ function FeaturedSlotFrame({ children, className = "" }: { children: ReactNode; 
 
 function FeaturedCardTile({ card, onMaximize, priority = false }: { card: UserCard; onMaximize?: (src: string, alt: string, shineMode: CardShineMode, elementTypes: CardElementType[]) => void; priority?: boolean }) {
     const imageSrc = formatTcgdexImageUrl(card.card_image_url);
-    const shineMode = resolveCardShine(card.card_variant, card.card_rarity);
+    const shineMode = resolveCardShine(card.card_variant, card.card_rarity, card.card_image_url);
     const elementTypes = resolveCardElementTypes(card.card_types, card.pokemon_dex_id);
 
     return (
@@ -83,7 +85,7 @@ function FeaturedCardTile({ card, onMaximize, priority = false }: { card: UserCa
 function SortableFeaturedCard({ id, index, card, onRemove, priority = false }: { id: string; index: number; card: UserCard; onRemove: () => void; priority?: boolean }) {
     const { ref, isDragging } = useSortable({ id, index });
     const imageSrc = formatTcgdexImageUrl(card.card_image_url);
-    const shineMode = resolveCardShine(card.card_variant, card.card_rarity);
+    const shineMode = resolveCardShine(card.card_variant, card.card_rarity, card.card_image_url);
     const elementTypes = resolveCardElementTypes(card.card_types, card.pokemon_dex_id);
 
     return (
@@ -153,6 +155,7 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
     const [pickerStatus, setPickerStatus] = useState<BinderStatusFilter>("all");
     const [pickerLanguage, setPickerLanguage] = useState("all");
     const [pickerRarity, setPickerRarity] = useState("all");
+    const [pickerArtist, setPickerArtist] = useState(ALL_ARTISTS_FILTER);
     const [lightbox, setLightbox] = useState<{ src: string; alt: string; shineMode: CardShineMode; elementTypes: CardElementType[] } | null>(null);
     const [pickerScrollRoot, setPickerScrollRoot] = useState<HTMLDivElement | null>(null);
 
@@ -177,6 +180,8 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
     const displayFavoriteIds = isEditingFeatured ? draftFavoriteIds : (profile?.favoriteCardIds ?? []);
     const displayFeaturedCards = displayFavoriteIds.map((id) => cardsById.get(id)).filter(Boolean) as UserCard[];
 
+    const pickerArtistOptions = useMemo(() => buildArtistFilterOptions(collectionCards.map((c) => c.card_artist)), [collectionCards]);
+
     const filteredPickerCards = useMemo(() => {
         return collectionCards.filter((card) => {
             if (pickerSearch.trim()) {
@@ -189,9 +194,10 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
                 const lower = (card.card_rarity || "").trim().toLowerCase();
                 if (!lower.includes(pickerRarity)) return false;
             }
+            if (pickerArtist !== ALL_ARTISTS_FILTER && (card.card_artist || "").trim().toLowerCase() !== pickerArtist.toLowerCase()) return false;
             return true;
         });
-    }, [collectionCards, pickerSearch, pickerStatus, pickerLanguage, pickerRarity]);
+    }, [collectionCards, pickerSearch, pickerStatus, pickerLanguage, pickerRarity, pickerArtist]);
 
     const pickerResetKey = useMemo(
         () =>
@@ -200,8 +206,9 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
                 statusFilter: pickerStatus,
                 languageFilter: pickerLanguage,
                 rarityFilter: pickerRarity,
+                artistFilter: pickerArtist,
             }),
-        [pickerSearch, pickerStatus, pickerLanguage, pickerRarity],
+        [pickerSearch, pickerStatus, pickerLanguage, pickerRarity, pickerArtist],
     );
 
     const { visibleItems: visiblePickerCards, hasMore: pickerHasMore, loadMore: loadMorePickerCards } = useClientPagedWindow(filteredPickerCards, { resetKey: pickerResetKey });
@@ -594,10 +601,11 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
                                     </button>
                                 ) : null}
                             </div>
-                            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2">
                                 <Select<BinderStatusFilter> value={pickerStatus} onChange={setPickerStatus} options={PICKER_STATUS_OPTIONS} icon={<BookOpen size={13} />} ariaLabel="Filtrar por status no binder" size="sm" className="min-w-0 w-full" />
                                 <Select<string> value={pickerLanguage} onChange={setPickerLanguage} options={PICKER_LANGUAGE_OPTIONS} icon={<Globe size={13} />} ariaLabel="Filtrar por idioma" size="sm" className="min-w-0 w-full" />
-                                <Select<string> value={pickerRarity} onChange={setPickerRarity} options={RARITY_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar por raridade" size="sm" className="min-w-0 w-full" />
+                                <Select<string> value={pickerRarity} onChange={setPickerRarity} options={RARITY_FILTER_OPTIONS} icon={<Gem size={13} />} ariaLabel="Filtrar por raridade" size="sm" className="min-w-0 w-full" />
+                                <Select<string> value={pickerArtist} onChange={setPickerArtist} options={pickerArtistOptions} icon={<Palette size={13} />} ariaLabel="Filtrar por ilustrador" size="sm" className="min-w-0 w-full" />
                             </div>
                         </div>
 
@@ -622,6 +630,7 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
                                             setPickerStatus("all");
                                             setPickerLanguage("all");
                                             setPickerRarity("all");
+                                            setPickerArtist(ALL_ARTISTS_FILTER);
                                         }}
                                         className="mt-2 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-white/10"
                                     >
@@ -639,7 +648,10 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
                                                     <div className="relative aspect-[8/11] w-full">
                                                         <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill unoptimized sizes="100px" className="object-contain" />
                                                     </div>
-                                                    <span className="mt-1 truncate text-[9px] font-semibold text-white">{card.card_name}</span>
+                                                    <div className="mt-1 flex items-center justify-between gap-1 w-full">
+                                                        <span className="truncate text-[9px] font-semibold text-white">{card.card_name}</span>
+                                                        {card.card_condition && <ConditionBadge condition={card.card_condition} size="xs" />}
+                                                    </div>
                                                 </button>
                                             );
                                         })}

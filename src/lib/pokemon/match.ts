@@ -71,9 +71,9 @@ export function isCardMatchingPokemon(cardName: string | undefined | null, dexId
 
     const cleanBaseName = pokemon.name.toLowerCase().replace(/[♀♂]/g, "").trim();
 
-    if (cleanBaseName.includes("'")) {
-        const stripped = cleanBaseName.replace(/'/g, "");
-        const cardStripped = trimmed.toLowerCase().replace(/'/g, "");
+    if (cleanBaseName.includes("'") || cleanBaseName.includes("’")) {
+        const stripped = cleanBaseName.replace(/['’]/g, "");
+        const cardStripped = trimmed.toLowerCase().replace(/['’]/g, "");
         return cardStripped.includes(stripped);
     }
 

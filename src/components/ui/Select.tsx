@@ -180,7 +180,7 @@ export function Select<T extends string = string>({ value, onChange, options, pl
                 aria-haspopup="listbox"
                 aria-expanded={isOpen}
                 aria-label={ariaLabel}
-                className={`group flex w-full items-center justify-between shadow-sm backdrop-blur-sm transition-all duration-200 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${isSm ? "h-7 sm:h-9 gap-1 sm:gap-2 rounded-lg sm:rounded-xl border px-2 sm:px-3 text-[11px] sm:text-xs font-semibold" : "h-9 gap-1.5 sm:gap-2.5 rounded-xl border px-2.5 sm:px-3 text-xs font-semibold"} ${
+                className={`group flex w-full items-center justify-between shadow-sm backdrop-blur-sm transition-all duration-200 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${isSm ? "h-7 sm:h-9 gap-1 sm:gap-2 rounded-lg sm:rounded-xl border px-1.5 sm:px-3 text-[11px] sm:text-xs font-semibold" : "h-9 gap-1.5 sm:gap-2.5 rounded-xl border px-2.5 sm:px-3 text-xs font-semibold"} ${
                     selectedOption?.triggerClassName ? selectedOption.triggerClassName : `border-white/10 bg-white/5 text-slate-200 ${disabled ? "" : "hover:border-poke-blue/40 hover:bg-white/[0.08]"} focus:border-poke-blue focus:ring-1 focus:ring-poke-blue/40`
                 } ${isOpen ? (selectedOption?.triggerClassName ? "ring-1 ring-current/40" : "border-poke-blue ring-1 ring-poke-blue/30 bg-white/[0.08]") : ""}`}
             >

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { ALL_CARD_VARIANTS, isCardVariant } from "@/lib/pokemon/variant";
+import { isCardCondition } from "@/lib/pokemon/condition";
 import { revalidatePublicProfileForUserId } from "@/lib/profile/publicCache";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -58,6 +59,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
             is_in_binder?: boolean;
             card_language?: string;
             card_variant?: string;
+            card_condition?: string;
         } = {};
 
         if (typeof body.card_language === "string") {
@@ -75,6 +77,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
                 return NextResponse.json({ error: "Versão inválida" }, { status: 400 });
             }
             updatePayload.card_variant = variant;
+        }
+
+        if (typeof body.card_condition === "string") {
+            if (!isCardCondition(body.card_condition)) {
+                return NextResponse.json({ error: "Condição da carta inválida" }, { status: 400 });
+            }
+            updatePayload.card_condition = body.card_condition;
         }
 
         if (typeof body.is_in_binder === "boolean") {

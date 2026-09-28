@@ -1,7 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { COLLECTION_PAGE_SIZE, buildCollectionFilterResetKey, buildExpansionFilterOptions, filterAndSortCollectionGroups, filterCatalogCards, groupCollectionCards, matchesCardNumber, slicePagedWindow } from "../src/lib/collection/listCards";
+import { ALL_ARTISTS_FILTER, COLLECTION_PAGE_SIZE, buildArtistFilterOptions, buildCollectionFilterResetKey, buildExpansionFilterOptions, filterAndSortCollectionGroups, filterCatalogCards, groupCollectionCards, matchesCardNumber, slicePagedWindow } from "../src/lib/collection/listCards";
+import { CARD_CONDITIONS, CONDITION_SLIDER_OPTIONS, formatConditionLabel, getConditionBadgeStyle, isCardCondition } from "../src/lib/pokemon/condition";
 import type { CollectionCardGroup, UserCard } from "../src/types/binder";
 
 function makeCard(overrides: Partial<UserCard> & Pick<UserCard, "id" | "tcgdex_card_id" | "card_name">): UserCard {
@@ -377,8 +378,8 @@ describe("slicePagedWindow + reset key", () => {
     it("initializes collection filters with SSR-safe defaults to prevent hydration mismatch", () => {
         const collectionPage = readFileSync(join(import.meta.dir, "../src/app/collection/page.tsx"), "utf8");
 
-        expect(collectionPage).toContain('const [sortField, setSortField] = useState<SortField>("dex");');
-        expect(collectionPage).toContain('const [sortDirection, setSortDirection] = useState<SortDirection>("asc");');
+        expect(collectionPage).toContain('const [sortField, setSortField] = useState<SortField>("recent");');
+        expect(collectionPage).toContain('const [sortDirection, setSortDirection] = useState<SortDirection>("desc");');
         expect(collectionPage).not.toContain('useState(() => {\n        if (typeof window !== "undefined")');
     });
 
@@ -472,5 +473,194 @@ describe("buildExpansionFilterOptions + filterCatalogCards", () => {
         expect(matchesCardNumber("58", "8/45")).toBe(false);
         expect(matchesCardNumber("80", "8/45")).toBe(false);
         expect(matchesCardNumber("88", "8/45")).toBe(false);
+    });
+});
+
+describe("buildArtistFilterOptions + artist filtering", () => {
+    it("builds unique sorted artist options with an all sentinel", () => {
+        const options = buildArtistFilterOptions(["Mitsuhiro Arita", "Ken Sugimori", " mitsuhiro arita ", "", null, "Ken Sugimori", "Kouki Saitou"]);
+        expect(options[0]).toEqual({ value: ALL_ARTISTS_FILTER, label: "Todos os artistas" });
+        expect(options.slice(1).map((opt) => opt.value)).toEqual(["Ken Sugimori", "Kouki Saitou", "Mitsuhiro Arita"]);
+    });
+
+    it("filters catalog cards by artist filter and by search term matching artist", () => {
+        const cards = [
+            { id: "c1", localId: "1", name: "Bulbasaur", image: "a", artist: "Ken Sugimori" },
+            { id: "c2", localId: "2", name: "Ivysaur", image: "b", artist: "Mitsuhiro Arita" },
+            { id: "c3", localId: "3", name: "Venusaur", image: "c", artist: "Mitsuhiro Arita" },
+        ];
+
+        expect(filterCatalogCards(cards, { searchTerm: "", rarityFilter: "all", expansionFilter: "all", artistFilter: "Mitsuhiro Arita" }).map((c) => c.id)).toEqual(["c2", "c3"]);
+        expect(filterCatalogCards(cards, { searchTerm: "sugimori", rarityFilter: "all", expansionFilter: "all" }).map((c) => c.id)).toEqual(["c1"]);
+    });
+
+    it("filters collection groups by artist filter and search term matching card_artist", () => {
+        const groups: CollectionCardGroup[] = groupCollectionCards([makeCard({ id: "1", tcgdex_card_id: "b1", card_name: "Bulbasaur", card_artist: "Ken Sugimori" }), makeCard({ id: "2", tcgdex_card_id: "p25", card_name: "Pikachu", card_artist: "Mitsuhiro Arita" }), makeCard({ id: "3", tcgdex_card_id: "m151", card_name: "Mew", card_artist: "Kouki Saitou" })]);
+
+        const filteredByArtist = filterAndSortCollectionGroups(groups, {
+            searchTerm: "",
+            statusFilter: "all",
+            languageFilter: "all",
+            rarityFilter: "all",
+            artistFilter: "Mitsuhiro Arita",
+            sortField: "dex",
+            sortDirection: "asc",
+        });
+        expect(filteredByArtist.map((g) => g.card.card_name)).toEqual(["Pikachu"]);
+
+        const searchByArtist = filterAndSortCollectionGroups(groups, {
+            searchTerm: "saitou",
+            statusFilter: "all",
+            languageFilter: "all",
+            rarityFilter: "all",
+            sortField: "dex",
+            sortDirection: "asc",
+        });
+        expect(searchByArtist.map((g) => g.card.card_name)).toEqual(["Mew"]);
+    });
+});
+
+describe("Card condition domain logic", () => {
+    it("validates all supported card condition codes and rejects invalid ones", () => {
+        expect(CARD_CONDITIONS).toEqual(["M", "NM", "SP", "MP", "HP", "D"]);
+
+        for (const condition of CARD_CONDITIONS) {
+            expect(isCardCondition(condition)).toBe(true);
+        }
+
+        expect(isCardCondition("POOR")).toBe(false);
+        expect(isCardCondition("MINT")).toBe(false);
+        expect(isCardCondition("")).toBe(false);
+        expect(isCardCondition(null)).toBe(false);
+        expect(isCardCondition(undefined)).toBe(false);
+    });
+
+    it("returns correct labels for all condition codes", () => {
+        expect(formatConditionLabel("M")).toBe("Mint (M)");
+        expect(formatConditionLabel("NM")).toBe("Near Mint (NM)");
+        expect(formatConditionLabel("SP")).toBe("Slightly Played (SP)");
+        expect(formatConditionLabel("MP")).toBe("Moderately Played (MP)");
+        expect(formatConditionLabel("HP")).toBe("Heavily Played (HP)");
+        expect(formatConditionLabel("D")).toBe("Damaged (D)");
+
+        expect(getConditionBadgeStyle("M").fullLabel).toBe("Mint");
+        expect(getConditionBadgeStyle("NM").fullLabel).toBe("Near Mint");
+        expect(getConditionBadgeStyle("SP").fullLabel).toBe("Slightly Played");
+        expect(getConditionBadgeStyle("MP").fullLabel).toBe("Moderately Played");
+        expect(getConditionBadgeStyle("HP").fullLabel).toBe("Heavily Played");
+        expect(getConditionBadgeStyle("D").fullLabel).toBe("Damaged");
+    });
+
+    it("assigns distinct, non-repeating colors in a smooth degradation spectrum", () => {
+        const styles = CARD_CONDITIONS.map((c) => getConditionBadgeStyle(c));
+        const colorClasses = styles.map((s) => s.badgeClasses);
+        const uniqueColors = new Set(colorClasses);
+        expect(uniqueColors.size).toBe(CARD_CONDITIONS.length);
+
+        expect(styles.find((s) => s.code === "M")?.badgeClasses).toContain("emerald");
+        expect(styles.find((s) => s.code === "NM")?.badgeClasses).toContain("lime");
+        expect(styles.find((s) => s.code === "SP")?.badgeClasses).toContain("yellow");
+        expect(styles.find((s) => s.code === "MP")?.badgeClasses).toContain("amber");
+        expect(styles.find((s) => s.code === "HP")?.badgeClasses).toContain("orange");
+        expect(styles.find((s) => s.code === "D")?.badgeClasses).toContain("rose");
+    });
+
+    it("configures condition slider options with icons, titles in English, and active colors", () => {
+        expect(CONDITION_SLIDER_OPTIONS).toHaveLength(6);
+        for (const opt of CONDITION_SLIDER_OPTIONS) {
+            expect(opt.icon).toBeDefined();
+            expect(opt.title).toBeDefined();
+            expect(opt.activeIconClassName).toBeDefined();
+            expect(opt.inactiveIconClassName).toBeDefined();
+        }
+
+        const mintOpt = CONDITION_SLIDER_OPTIONS.find((o) => o.value === "M");
+        expect(mintOpt?.title).toBe("Mint");
+        expect(mintOpt?.activeIconClassName).toContain("emerald");
+
+        const nearMintOpt = CONDITION_SLIDER_OPTIONS.find((o) => o.value === "NM");
+        expect(nearMintOpt?.title).toBe("Near Mint");
+        expect(nearMintOpt?.activeIconClassName).toContain("lime");
+
+        const damagedOpt = CONDITION_SLIDER_OPTIONS.find((o) => o.value === "D");
+        expect(damagedOpt?.title).toBe("Damaged");
+        expect(damagedOpt?.activeIconClassName).toContain("rose");
+    });
+
+    it("configures ConditionBadge with letters by default and both icon + letters in edit page", () => {
+        const badgeFile = readFileSync(join(import.meta.dir, "../src/components/ui/ConditionBadge.tsx"), "utf8");
+        const cardDetailPage = readFileSync(join(import.meta.dir, "../src/app/cards/[id]/page.tsx"), "utf8");
+        const trainerProfileView = readFileSync(join(import.meta.dir, "../src/components/profile/TrainerProfileView.tsx"), "utf8");
+
+        expect(badgeFile).toContain("title={badge.fullLabel}");
+        expect(badgeFile).toContain("aria-label={badge.fullLabel}");
+        expect(badgeFile).toContain("ShieldAlert");
+        expect(badgeFile).toContain("ShieldCheck");
+        expect(badgeFile).toContain("{badge.label}");
+        expect(cardDetailPage).toContain('variant="both"');
+        expect(trainerProfileView).not.toContain('ConditionBadge condition={card.card_condition} size="sm" className="absolute top-2 left-2');
+    });
+});
+
+describe("Sort direction button icons and filter counter exclusion", () => {
+    it("uses directional ArrowUp and ArrowDown icons in sort toggle buttons", () => {
+        const collectionPage = readFileSync(join(import.meta.dir, "../src/app/collection/page.tsx"), "utf8");
+        const publicCollectionView = readFileSync(join(import.meta.dir, "../src/components/profile/PublicCollectionView.tsx"), "utf8");
+        const binderModal = readFileSync(join(import.meta.dir, "../src/components/modal/BinderSlotSelectModal.tsx"), "utf8");
+
+        expect(collectionPage).toContain('{sortDirection === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />}');
+        expect(publicCollectionView).toContain('{sortDirection === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />}');
+        expect(binderModal).toContain('{sortDirection === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />}');
+    });
+
+    it("does not count sorting changes in activeFilterCount across views", () => {
+        const collectionPage = readFileSync(join(import.meta.dir, "../src/app/collection/page.tsx"), "utf8");
+        const publicCollectionView = readFileSync(join(import.meta.dir, "../src/components/profile/PublicCollectionView.tsx"), "utf8");
+        const binderModal = readFileSync(join(import.meta.dir, "../src/components/modal/BinderSlotSelectModal.tsx"), "utf8");
+
+        expect(collectionPage).not.toContain('sortField !== "dex"');
+        expect(collectionPage).not.toContain('sortField !== "recent"');
+        expect(publicCollectionView).not.toContain('sortField !== "dex"');
+        expect(binderModal).not.toContain('sortField !== "name"');
+    });
+
+    it("uses balanced 2-column mobile and 3-column desktop layout for filters in BinderSlotSelectModal minimizing vertical space without truncation", () => {
+        const binderModal = readFileSync(join(import.meta.dir, "../src/components/modal/BinderSlotSelectModal.tsx"), "utf8");
+        const selectComponent = readFileSync(join(import.meta.dir, "../src/components/ui/Select.tsx"), "utf8");
+        expect(binderModal).toContain('className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 sm:gap-2.5 w-full pt-0.5"');
+        expect(selectComponent).toContain("px-1.5 sm:px-3");
+    });
+
+    it("uses compact 2-column mobile and 3-column desktop layout for filters in CardSearchModal and collection views", () => {
+        const cardSearchModal = readFileSync(join(import.meta.dir, "../src/components/modal/CardSearchModal.tsx"), "utf8");
+        const collectionPage = readFileSync(join(import.meta.dir, "../src/app/collection/page.tsx"), "utf8");
+        const publicCollectionView = readFileSync(join(import.meta.dir, "../src/components/profile/PublicCollectionView.tsx"), "utf8");
+
+        expect(cardSearchModal).toContain('className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 sm:gap-2.5 pt-0.5 w-full"');
+        expect(cardSearchModal).not.toContain("sm:w-40");
+        expect(cardSearchModal).not.toContain("sm:w-52");
+        expect(cardSearchModal).not.toContain("sm:w-48");
+
+        expect(collectionPage).toContain('className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5 w-full"');
+        expect(collectionPage).not.toContain('expansionFilter" options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar coleção por expansão" className="w-full col-span-2');
+        expect(publicCollectionView).toContain('className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5 w-full"');
+    });
+
+    it("uses distinct icons for rarity and variant filters to avoid icon repetition", () => {
+        const collectionPage = readFileSync(join(import.meta.dir, "../src/app/collection/page.tsx"), "utf8");
+        const publicCollectionView = readFileSync(join(import.meta.dir, "../src/components/profile/PublicCollectionView.tsx"), "utf8");
+        const binderModal = readFileSync(join(import.meta.dir, "../src/components/modal/BinderSlotSelectModal.tsx"), "utf8");
+        const cardSearchModal = readFileSync(join(import.meta.dir, "../src/components/modal/CardSearchModal.tsx"), "utf8");
+
+        expect(collectionPage).toContain("rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Gem size={13} />}");
+        expect(collectionPage).toContain("variantFilter} onChange={setVariantFilter} options={VARIANT_FILTER_OPTIONS} icon={<Sparkles size={13} />}");
+
+        expect(publicCollectionView).toContain("rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Gem size={13} />}");
+        expect(publicCollectionView).toContain("variantFilter} onChange={setVariantFilter} options={VARIANT_FILTER_OPTIONS} icon={<Sparkles size={13} />}");
+
+        expect(binderModal).toContain("rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Gem size={13} />}");
+        expect(binderModal).toContain("variantFilter} onChange={setVariantFilter} options={VARIANT_FILTER_OPTIONS} icon={<Sparkles size={13} />}");
+
+        expect(cardSearchModal).toContain("rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Gem size={13} />}");
     });
 });

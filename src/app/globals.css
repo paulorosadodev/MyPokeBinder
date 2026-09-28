@@ -571,21 +571,53 @@ body {
 }
 
 ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-    background: #0d1117;
+    background: transparent;
+}
+
+::-webkit-scrollbar-track:hover {
+    background: rgba(255, 255, 255, 0.02);
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #242c3d;
-    border-radius: 4px;
+    background-color: color-mix(in srgb, var(--theme-primary, #ef4444) 38%, #202738);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    transition:
+        background-color 0.2s ease,
+        box-shadow 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #37435c;
+    background-color: color-mix(in srgb, var(--theme-primary, #ef4444) 82%, #ffffff 15%);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+    box-shadow: 0 0 10px var(--theme-primary-glow, rgba(239, 68, 68, 0.45));
+}
+
+::-webkit-scrollbar-thumb:active {
+    background-color: var(--theme-primary, #ef4444);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+    box-shadow: 0 0 14px var(--theme-primary-glow, rgba(239, 68, 68, 0.6));
+}
+
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+@supports (-moz-appearance: none) {
+    html,
+    body,
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: color-mix(in srgb, var(--theme-primary, #ef4444) 42%, #202738) transparent;
+    }
 }
 
 @keyframes pokeball-spin {

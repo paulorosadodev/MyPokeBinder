@@ -29,7 +29,6 @@ A TCGdex expõe, por edição de carta, quais acabamentos existem (`variants.nor
    - A transição interpola individualmente cada eixo na lista de funções (`perspective(...) rotateX(0deg) rotateY(0deg) translate3d(0px,0px,0) scale3d(1,1,1)`), definindo `CARD_3D_REST_TRANSFORM` (`none`) apenas após o término do movimento para preservar a compatibilidade com a composição de camadas do PageFlip.
    - O brilho e reflexo (`.holo-sheen`, `.foil-sheen`, `.card-glare`) desvanecem suavemente (`opacity`) sincronizados ao retorno físico, mantendo transição rápida (60ms linear) apenas enquanto o cursor está ativamente em hover sobre a carta.
 8. **Persistência do tipo elemental**: a busca preserva `types` retornado pela TCGdex e o cadastro grava até dois valores oficiais em `user_cards.card_types`. O `POST /api/cards` e a restrição do banco validam a mesma lista. Cartas anteriores à migração recebem um tipo compatível por Pokédex, enquanto novas cartas usam o tipo exato da impressão.
-9. **Validação visual**: a rota `/teste/reverse-foil` reúne uma carta de cada tipo oficial com o mesmo componente usado no restante da aplicação, permitindo comparar recorte, símbolo, cor, hover e interação por toque.
 
 ## Consequências
 

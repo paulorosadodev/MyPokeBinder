@@ -10,12 +10,14 @@ import { CardLightbox } from "@/components/ui/CardLightbox";
 import { formatTcgdexImageUrl } from "@/lib/pokemon/tcgdex";
 import { useCardDetails } from "@/lib/swr";
 import { useSWRConfig } from "swr";
-import { CardLanguage, CardVariant, UserCard } from "@/types/binder";
+import { CardLanguage, CardVariant, CardCondition, UserCard } from "@/types/binder";
 import { getRarityBadgeStyle } from "@/lib/pokemon/rarity";
 import { VARIANT_SLIDER_OPTIONS, formatVariantLabel, isCardVariant, resolveCardShine } from "@/lib/pokemon/variant";
+import { CONDITION_SLIDER_OPTIONS, formatConditionLabel, getConditionBadgeStyle, isCardCondition } from "@/lib/pokemon/condition";
+import { ConditionBadge } from "@/components/ui/ConditionBadge";
 import { resolveCardElementTypes } from "@/lib/pokemon/cardTypes";
 import { toast } from "sonner";
-import { ArrowLeft, Sparkles, BookOpen, Trash2, Plus, Minus, Check, AlertCircle, Calendar, Layers, Loader2, X, Search, RefreshCw, Circle } from "lucide-react";
+import { ArrowLeft, Sparkles, BookOpen, Trash2, Plus, Minus, Check, AlertCircle, Calendar, Layers, Loader2, X, Search, RefreshCw, Circle, Palette } from "lucide-react";
 
 export default function CardDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = use(params);
@@ -35,6 +37,8 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
     const [optimisticLang, setOptimisticLang] = useState<CardLanguage | null>(null);
     const [updatingVariant, setUpdatingVariant] = useState<CardVariant | null>(null);
     const [optimisticVariant, setOptimisticVariant] = useState<CardVariant | null>(null);
+    const [updatingCondition, setUpdatingCondition] = useState<CardCondition | null>(null);
+    const [optimisticCondition, setOptimisticCondition] = useState<CardCondition | null>(null);
     const [isUpdatingCopies, setIsUpdatingCopies] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -48,6 +52,10 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
     useEffect(() => {
         setOptimisticVariant(null);
     }, [card?.card_variant]);
+
+    useEffect(() => {
+        setOptimisticCondition(null);
+    }, [card?.card_condition]);
 
     const handleBack = () => {
         if (fromParam === "binder") {
@@ -226,6 +234,79 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
         }
     };
 
+    const handleChangeCondition = async (newCondition: CardCondition) => {
+        const currentCondition = optimisticCondition ?? (isCardCondition(card?.card_condition) ? card!.card_condition : "NM");
+        if (!card || currentCondition === newCondition || updatingCondition !== null) return;
+        setOptimisticCondition(newCondition);
+        setUpdatingCondition(newCondition);
+        const targetDexId = card.pokemon_dex_id;
+        const collectionKey = `/api/cards?pokemon_dex_id=${targetDexId}`;
+        try {
+            setActionError(null);
+
+            if (card.is_in_binder) {
+                globalMutate(
+                    "/api/binder",
+                    (prev?: { cards: UserCard[]; availableCounts?: Record<number, number> }) => {
+                        if (!prev) return prev;
+                        return {
+                            ...prev,
+                            cards: prev.cards.map((c) => (c.id === card.id ? { ...c, card_condition: newCondition } : c)),
+                        };
+                    },
+                    false,
+                );
+            }
+
+            globalMutate(
+                collectionKey,
+                (prev?: { cards: UserCard[] }) => {
+                    if (!prev) return prev;
+                    return {
+                        cards: prev.cards.map((c) => (c.id === card.id ? { ...c, card_condition: newCondition } : c)),
+                    };
+                },
+                false,
+            );
+
+            const res = await fetch(`/api/cards/${card.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ card_condition: newCondition }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Erro ao atualizar estado");
+
+            await mutate();
+            if (card.is_in_binder) {
+                globalMutate("/api/binder");
+            }
+            globalMutate(collectionKey);
+            globalMutate("/api/cards");
+            router.refresh();
+
+            toast.success("Estado atualizado", {
+                description: `Estado alterado para ${formatConditionLabel(newCondition)}.`,
+            });
+        } catch (err: unknown) {
+            setOptimisticCondition(null);
+            await mutate();
+            if (card.is_in_binder) {
+                globalMutate("/api/binder");
+            }
+            globalMutate(collectionKey);
+            globalMutate("/api/cards");
+            const msg = err instanceof Error ? err.message : "Erro ao atualizar estado";
+            setActionError(msg);
+            toast.error("Erro ao atualizar estado", {
+                description: msg,
+            });
+        } finally {
+            setUpdatingCondition(null);
+        }
+    };
+
     const handleToggleBinder = async () => {
         if (!card || isUpdatingBinder) return;
         const nextIsInBinder = !card.is_in_binder;
@@ -370,6 +451,8 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
                     card_image_url: card.card_image_url,
                     card_set_name: card.card_set_name,
                     card_rarity: card.card_rarity,
+                    card_artist: card.card_artist || "",
+                    card_condition: card.card_condition || "NM",
                     card_types: card.card_types,
                     card_language: card.card_language,
                     card_variant: card.card_variant || "normal",
@@ -587,7 +670,9 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
     const hasAnyInBinder = copies.some((c) => c.is_in_binder) || Boolean(card?.is_in_binder);
     const storedCopiesCount = copies.filter((c) => !c.is_in_binder).length;
     const currentVariant = optimisticVariant ?? (card && isCardVariant(card.card_variant) ? card.card_variant : "normal");
-    const shineMode = card ? resolveCardShine(currentVariant, card.card_rarity) : "none";
+    const currentCondition = optimisticCondition ?? (card && isCardCondition(card.card_condition) ? card.card_condition : "NM");
+    const conditionBadge = getConditionBadgeStyle(currentCondition);
+    const shineMode = card ? resolveCardShine(currentVariant, card.card_rarity, card.card_image_url) : "none";
     const cardElementTypes = card ? resolveCardElementTypes(card.card_types, card.pokemon_dex_id) : undefined;
 
     return (
@@ -651,10 +736,21 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
 
                                 <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs text-slate-400">
                                     <span>{card.card_set_name || "Coleção Base"}</span>
+                                    {card.card_artist && (
+                                        <>
+                                            <span className="text-white/20">·</span>
+                                            <span className="inline-flex items-center gap-1 text-slate-300">
+                                                <Palette size={12} className="text-slate-400" />
+                                                <span>{card.card_artist}</span>
+                                            </span>
+                                        </>
+                                    )}
                                 </div>
 
                                 <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
                                     {card.card_rarity && <span className={`inline-flex items-center rounded-lg border px-2.5 py-1 text-xs font-bold ${getRarityBadgeStyle(card.card_rarity).badgeClasses}`}>{getRarityBadgeStyle(card.card_rarity).label}</span>}
+
+                                    <ConditionBadge condition={currentCondition} size="md" variant="both" />
 
                                     {currentVariant === "holo" && (
                                         <span className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/15 px-2.5 py-1 text-xs font-bold text-amber-200 shadow-sm">
@@ -737,6 +833,14 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
                                     <label className="text-xs font-medium text-slate-400">Versão física (acabamento):</label>
                                     <LanguageSlider<CardVariant> value={currentVariant} onChange={handleChangeVariant} options={VARIANT_SLIDER_OPTIONS} size="md" fullWidth ariaLabel="Versão física (acabamento)" loadingValue={updatingVariant} disabled={updatingVariant !== null} />
                                 </div>
+
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-xs font-medium text-slate-400">Estado de conservação (Condição):</label>
+                                        <span className="text-[11px] font-semibold text-slate-300">{formatConditionLabel(currentCondition)}</span>
+                                    </div>
+                                    <LanguageSlider<CardCondition> value={currentCondition} onChange={handleChangeCondition} options={CONDITION_SLIDER_OPTIONS} size="md" fullWidth ariaLabel="Estado de conservação da sua carta física" loadingValue={updatingCondition} disabled={updatingCondition !== null} />
+                                </div>
                             </div>
 
                             <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-[#121520]/90 p-5 shadow-lg backdrop-blur-md">
@@ -777,7 +881,7 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
                                     </div>
                                 </div>
 
-                                {totalCopiesCount <= 1 && <p className="text-[11px] text-slate-500">A quantidade mínima é 1. Para remover completamente a carta da sua coleção, utilize a ação de exclusão abaixo.</p>}
+                                <p className="text-[11px] text-slate-500">A quantidade mínima é 1. Para remover completamente a carta da sua coleção, utilize a ação de exclusão abaixo.</p>
                             </div>
 
                             <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-[#121520]/90 p-5 shadow-lg backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">

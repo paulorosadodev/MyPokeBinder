@@ -11,6 +11,7 @@ export interface LanguageSliderOption<T extends string = string> {
     shortLabel?: string;
     country?: CardLanguage;
     icon?: React.ReactNode;
+    title?: string;
     indicatorClassName?: string;
     activeClassName?: string;
     activeIconClassName?: string;
@@ -124,6 +125,8 @@ export function LanguageSlider<T extends string = CardLanguage>({ value, onChang
                             }}
                             type="button"
                             role="radio"
+                            title={option.title || option.label}
+                            aria-label={option.title || option.label}
                             aria-checked={isSelected}
                             disabled={disabled || isLoading}
                             onClick={() => {
@@ -131,7 +134,7 @@ export function LanguageSlider<T extends string = CardLanguage>({ value, onChang
                                     onChange(option.value);
                                 }
                             }}
-                            className={`group relative flex items-center justify-center rounded-lg font-semibold tracking-tight transition-all duration-200 select-none active:scale-95 disabled:cursor-not-allowed min-w-0 ${fullWidth ? "flex-1" : ""} ${isCompact ? "px-1 sm:px-2.5 py-1 text-[10px] sm:text-xs gap-1 sm:gap-1.5" : "px-3.5 py-2 text-xs sm:text-sm gap-1.5"} ${isSelected ? option.activeClassName || "text-white font-bold" : "text-slate-400 hover:text-slate-200"}`}
+                            className={`group relative flex items-center justify-center rounded-lg font-semibold tracking-tight transition-all duration-200 select-none active:scale-95 disabled:cursor-not-allowed min-w-0 ${fullWidth ? "flex-1" : ""} ${isCompact ? (options.length > 4 ? "px-0.5 sm:px-1.5 py-1 text-[10px] sm:text-xs gap-0.5 sm:gap-1" : "px-1 sm:px-2.5 py-1 text-[10px] sm:text-xs gap-1 sm:gap-1.5") : "px-3.5 py-2 text-xs sm:text-sm gap-1.5"} ${isSelected ? option.activeClassName || "text-white font-bold" : "text-slate-400 hover:text-slate-200"}`}
                         >
                             {isLoading ? (
                                 <Loader2 size={isCompact ? 11 : 14} className="shrink-0 animate-spin text-poke-blue" />
