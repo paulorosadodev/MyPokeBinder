@@ -1,4 +1,6 @@
 import { describe, it, expect } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { CARD_3D_REST_TRANSFORM } from "@/components/ui/Card3DTilt";
 
 describe("Card Fullscreen Touch and Mobile Scroll Lock", () => {
@@ -88,5 +90,96 @@ describe("Card Fullscreen Touch and Mobile Scroll Lock", () => {
         }
 
         expect(prevented).toBe(true);
+    });
+
+    it("should prevent synthetic mouseleave from interrupting active touch interaction", () => {
+        let isTouching = false;
+        let isHovering = false;
+        let tiltReset = false;
+
+        const onTouchStart = () => {
+            isTouching = true;
+            isHovering = true;
+            tiltReset = false;
+        };
+
+        const onMouseLeave = () => {
+            if (isTouching) return;
+            isHovering = false;
+            tiltReset = true;
+        };
+
+        const onTouchMove = () => {
+            isTouching = true;
+            isHovering = true;
+        };
+
+        const onTouchEnd = () => {
+            isTouching = false;
+            isHovering = false;
+            tiltReset = true;
+        };
+
+        onTouchStart();
+        expect(isHovering).toBe(true);
+        expect(isTouching).toBe(true);
+
+        onMouseLeave();
+        expect(isHovering).toBe(true);
+        expect(tiltReset).toBe(false);
+
+        onTouchMove();
+        expect(isHovering).toBe(true);
+
+        onTouchEnd();
+        expect(isHovering).toBe(false);
+        expect(tiltReset).toBe(true);
+    });
+
+    it("should prioritize static parent bounds over transformed element bounds", () => {
+        const parentRect = { left: 40, top: 80, width: 320, height: 440 };
+        const transformedRect = { left: 48, top: 72, width: 345, height: 462 };
+
+        const resolveReferenceRect = (el: { parentElement?: { getBoundingClientRect: () => typeof parentRect }; getBoundingClientRect: () => typeof transformedRect }) => {
+            const host = el.parentElement ?? el;
+            return host.getBoundingClientRect();
+        };
+
+        const resolvedWithParent = resolveReferenceRect({
+            parentElement: { getBoundingClientRect: () => parentRect },
+            getBoundingClientRect: () => transformedRect,
+        });
+
+        expect(resolvedWithParent.left).toBe(40);
+        expect(resolvedWithParent.width).toBe(320);
+
+        const resolvedWithoutParent = resolveReferenceRect({
+            getBoundingClientRect: () => transformedRect,
+        });
+
+        expect(resolvedWithoutParent.left).toBe(48);
+        expect(resolvedWithoutParent.width).toBe(345);
+    });
+
+    it("should omit preserve-3d to keep reverse foil layers co-planar without depth fighting", () => {
+        const source = readFileSync(join(import.meta.dir, "../src/components/ui/Card3DTilt.tsx"), "utf8");
+        expect(source).not.toContain('transformStyle: "preserve-3d"');
+    });
+
+    it("should guard mouse handlers against trailing touch cooldown", () => {
+        let lastTouchTime = Date.now();
+        let mouseEntered = false;
+
+        const handleMouseEnter = () => {
+            if (Date.now() - lastTouchTime < 500) return;
+            mouseEntered = true;
+        };
+
+        handleMouseEnter();
+        expect(mouseEntered).toBe(false);
+
+        lastTouchTime = Date.now() - 600;
+        handleMouseEnter();
+        expect(mouseEntered).toBe(true);
     });
 });

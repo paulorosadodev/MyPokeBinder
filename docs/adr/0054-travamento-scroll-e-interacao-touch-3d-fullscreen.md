@@ -14,6 +14,10 @@ Ao visualizar uma carta em tela cheia (fullscreen / lightbox) em dispositivos m�
    - Implementados os handlers `onTouchStart`, `onTouchMove`, `onTouchEnd` e `onTouchCancel`.
    - O cálculo das coordenadas relativas normalizadas (`nx`, `ny`) agora é compartilhado entre mouse e touch via `requestAnimationFrame`, mantendo limites estritos entre -1 e 1 mesmo quando o dedo ultrapassa a borda da carta.
    - Ao soltar o dedo, a carta retorna com amortecimento suave à sua posição neutra de repouso.
+   - **Blindagem do ciclo tátil contra mouse sintético**: navegadores móveis disparam eventos sintéticos de `mouseleave` ao arrastar o dedo para fora dos limites projetados da carta inclinada. O componente rastreia ativamente o estado de toque (`isTouchingRef`) e ignora qualquer `handleMouseLeave`, `handleMouseEnter` ou `handleMouseMove` durante o gesto e em janela de cooldown pós-toque, impedindo que o tilt e o hover sejam redefinidos prematuramente.
+   - **Continuidade do estado de hover no arraste**: o `handleTouchMove` preserva explicitamente `isHovering = true` e cancela comportamentos padrão (`e.cancelable && e.preventDefault()`), garantindo que o acabamento de cartas especiais (como o padrão elemental do Reverse Foil) não oscile entre opacidades de repouso (0.22) e hover (0.76).
+   - **Referência estável de medidas (`parentElement`)**: o cálculo do centro e do deslocamento relativo afere os limites do container pai estático (`el.parentElement ?? el`), eliminando o loop de retroalimentação e trepidação (jitter) causado por medir a própria carta já distorcida em 3D por `rotateX`/`rotateY`.
+   - **Composição coplanar sem Z-fighting**: remoção de `transformStyle: "preserve-3d"` no container da carta, permitindo que todas as camadas 2D (arte, padrão elemental, lamination sheen e glare) sejam compostas normalmente via empilhamento CSS (`z-index`) na superfície da carta antes do tilt de perspectiva, eliminando cintilações (flickering) provocadas pelo teste de profundidade em GPUs móveis.
 
 2. **Travamento Rígido de Scroll em Telas Móveis (`CardLightbox`)**:
    - Bloqueio completo de `overflow: hidden` e `touch-action: none` em `document.body` e `document.documentElement` enquanto a carta estiver ampliada.
@@ -28,5 +32,6 @@ Ao visualizar uma carta em tela cheia (fullscreen / lightbox) em dispositivos m�
 
 ## Consequências
 
-- Experiência tátil imersiva em smartphones e tablets, permitindo aos colecionadores examinar detalhes e reflexos holográficos/foil deslizando o dedo sobre a carta sem qualquer interferência de rolagem de página.
+- Experiência tátil imersiva em smartphones e tablets, permitindo aos colecionadores examinar detalhes e reflexos holográficos/foil deslizando o dedo sobre a carta sem qualquer interferência de rolagem de página ou piscamento/cintilação de camadas.
 - Eliminação de fechamentos acidentais durante a manipulação da carta 3D.
+- Estabilidade total dos efeitos Reverse Foil, Holo e Prismáticos sob manipulação com dedo em telas cheias e modais.

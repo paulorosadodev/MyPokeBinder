@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { memo, useId } from "react";
 import type { CardElementType } from "@/types/binder";
 
 function ElementSymbol({ type }: { type: CardElementType }) {
@@ -65,7 +65,7 @@ function ElementSymbol({ type }: { type: CardElementType }) {
     return null;
 }
 
-export function CardElementPattern({ type }: { type: CardElementType }) {
+export const CardElementPattern = memo(function CardElementPattern({ type }: { type: CardElementType }) {
     const patternId = `card-element-${useId().replaceAll(":", "")}`;
 
     return (
@@ -83,4 +83,4 @@ export function CardElementPattern({ type }: { type: CardElementType }) {
             <rect width="100%" height="100%" fill={`url(#${patternId})`} />
         </svg>
     );
-}
+});

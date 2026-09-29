@@ -53,6 +53,8 @@ export function Card3DTilt({ children, className = "", glareOpacity = 0.25, maxT
     const isTiltDisabled = paused || !animationsEnabled;
 
     const containerRef = useRef<HTMLDivElement>(null);
+    const isTouchingRef = useRef(false);
+    const lastTouchTimeRef = useRef(0);
     const rafRef = useRef<number | null>(null);
     const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [isHovering, setIsHovering] = useState(false);
@@ -125,7 +127,8 @@ export function Card3DTilt({ children, className = "", glareOpacity = 0.25, maxT
             if (rafRef.current) cancelAnimationFrame(rafRef.current);
 
             rafRef.current = requestAnimationFrame(() => {
-                const rect = el.getBoundingClientRect();
+                const hostEl = el.parentElement ?? el;
+                const rect = hostEl.getBoundingClientRect();
                 const x = clientX - rect.left;
                 const y = clientY - rect.top;
                 const centerX = rect.width / 2;
@@ -162,13 +165,14 @@ export function Card3DTilt({ children, className = "", glareOpacity = 0.25, maxT
 
     const handleMouseMove = useCallback(
         (e: MouseEvent<HTMLDivElement>) => {
+            if (isTouchingRef.current || Date.now() - lastTouchTimeRef.current < 500) return;
             updateTiltAt(e.clientX, e.clientY);
         },
         [updateTiltAt],
     );
 
     const handleMouseEnter = useCallback(() => {
-        if (isTiltDisabled) return;
+        if (isTiltDisabled || isTouchingRef.current || Date.now() - lastTouchTimeRef.current < 500) return;
         if (resetTimerRef.current) {
             clearTimeout(resetTimerRef.current);
             resetTimerRef.current = null;
@@ -177,12 +181,14 @@ export function Card3DTilt({ children, className = "", glareOpacity = 0.25, maxT
     }, [isTiltDisabled]);
 
     const handleMouseLeave = useCallback(() => {
+        if (isTouchingRef.current || Date.now() - lastTouchTimeRef.current < 500) return;
         resetTilt();
     }, [resetTilt]);
 
     const handleTouchStart = useCallback(
         (e: React.TouchEvent<HTMLDivElement>) => {
             if (isTiltDisabled || !enableTouch) return;
+            isTouchingRef.current = true;
             if (resetTimerRef.current) {
                 clearTimeout(resetTimerRef.current);
                 resetTimerRef.current = null;
@@ -198,8 +204,17 @@ export function Card3DTilt({ children, className = "", glareOpacity = 0.25, maxT
     const handleTouchMove = useCallback(
         (e: React.TouchEvent<HTMLDivElement>) => {
             if (isTiltDisabled || !enableTouch) return;
+            if (e.cancelable) {
+                e.preventDefault();
+            }
+            isTouchingRef.current = true;
+            if (resetTimerRef.current) {
+                clearTimeout(resetTimerRef.current);
+                resetTimerRef.current = null;
+            }
             const touch = e.touches[0];
             if (!touch) return;
+            setIsHovering((prev) => (prev ? prev : true));
             updateTiltAt(touch.clientX, touch.clientY);
         },
         [isTiltDisabled, enableTouch, updateTiltAt],
@@ -207,11 +222,15 @@ export function Card3DTilt({ children, className = "", glareOpacity = 0.25, maxT
 
     const handleTouchEnd = useCallback(() => {
         if (!enableTouch) return;
+        isTouchingRef.current = false;
+        lastTouchTimeRef.current = Date.now();
         resetTilt();
     }, [enableTouch, resetTilt]);
 
     const handleTouchCancel = useCallback(() => {
         if (!enableTouch) return;
+        isTouchingRef.current = false;
+        lastTouchTimeRef.current = Date.now();
         resetTilt();
     }, [enableTouch, resetTilt]);
 
@@ -224,7 +243,6 @@ export function Card3DTilt({ children, className = "", glareOpacity = 0.25, maxT
 
     const shellStyle: CSSProperties = {
         transition: isTiltDisabled ? "none" : activeHover ? "transform 45ms linear" : `transform ${transitionDuration}ms cubic-bezier(0.23, 1, 0.32, 1), z-index 0s linear ${transitionDuration}ms`,
-        transformStyle: "preserve-3d",
         willChange: isTiltDisabled ? "auto" : "transform",
         zIndex: activeHover ? 20 : "auto",
         pointerEvents: paused ? "none" : undefined,
