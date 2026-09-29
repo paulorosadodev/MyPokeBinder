@@ -102,7 +102,7 @@ function LoginForm() {
             </div>
 
             <div className="relative z-20 flex min-h-[100dvh] w-full shrink-0 flex-col items-center justify-center border-t border-white/10 bg-[#0c101a] p-8 sm:p-12 lg:w-[500px] lg:border-t-0 lg:border-l lg:p-14 xl:w-[560px]">
-                <div className="flex w-full max-w-md flex-col items-center text-center">
+                <div className="profile-enter flex w-full max-w-md flex-col items-center text-center">
                     <div className="mb-6 flex justify-center">
                         <PokeballLogo size="lg" animated color="#ef4444" />
                     </div>

@@ -15,6 +15,7 @@ import { getRarityBadgeStyle } from "@/lib/pokemon/rarity";
 import { VARIANT_SLIDER_OPTIONS, formatVariantLabel, isCardVariant, resolveCardShine } from "@/lib/pokemon/variant";
 import { CONDITION_SLIDER_OPTIONS, formatConditionLabel, getConditionBadgeStyle, isCardCondition } from "@/lib/pokemon/condition";
 import { ConditionBadge } from "@/components/ui/ConditionBadge";
+import { applyCollectionCardMutation, isGroupedCollectionListRequestKey, type CollectionCachedPage, type CollectionCardMutation } from "@/lib/collection/cache";
 import { resolveCardElementTypes } from "@/lib/pokemon/cardTypes";
 import { toast } from "sonner";
 import { ArrowLeft, Sparkles, BookOpen, Trash2, Plus, Minus, Check, AlertCircle, Calendar, Layers, Loader2, X, Search, RefreshCw, Circle, Palette } from "lucide-react";
@@ -30,7 +31,24 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
     const dexIdParam = searchParams.get("dexId");
 
     const { card, copies, isLoading, isError, mutate } = useCardDetails(cardId);
-    const { mutate: globalMutate } = useSWRConfig();
+    const { mutate: globalMutate, cache } = useSWRConfig();
+
+    const syncCachedCollection = (mutation: CollectionCardMutation) => {
+        const snapshots = new Map<string, CollectionCachedPage>();
+        for (const key of cache.keys()) {
+            if (!isGroupedCollectionListRequestKey(key)) continue;
+            const previous = cache.get(key)?.data as CollectionCachedPage | undefined;
+            if (!previous) continue;
+            snapshots.set(key, previous);
+            void globalMutate(key, applyCollectionCardMutation(key, previous, mutation), false);
+        }
+
+        return () => {
+            for (const [key, snapshot] of snapshots) {
+                void globalMutate(key, snapshot, false);
+            }
+        };
+    };
 
     const [isUpdatingBinder, setIsUpdatingBinder] = useState(false);
     const [updatingLang, setUpdatingLang] = useState<CardLanguage | null>(null);
@@ -94,6 +112,7 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
         setUpdatingLang(newLang);
         const targetDexId = card.pokemon_dex_id;
         const collectionKey = `/api/cards?pokemon_dex_id=${targetDexId}`;
+        const rollbackCollection = syncCachedCollection({ updatedCards: [{ ...card, card_language: newLang }] });
         try {
             setActionError(null);
 
@@ -131,26 +150,21 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Erro ao atualizar idioma");
 
-            await mutate();
-            if (card.is_in_binder) {
-                globalMutate("/api/binder");
-            }
-            globalMutate(collectionKey);
-            globalMutate("/api/cards");
-            router.refresh();
+            syncCachedCollection({ updatedCards: [data.card] });
+            void mutate();
 
             const langLabels: Record<string, string> = { "pt-br": "Português", en: "Inglês", ja: "Japonês" };
             toast.success("Idioma atualizado", {
                 description: `Idioma alterado para ${langLabels[newLang] || newLang.toUpperCase()}.`,
             });
         } catch (err: unknown) {
+            rollbackCollection();
             setOptimisticLang(null);
-            await mutate();
+            void mutate();
             if (card.is_in_binder) {
-                globalMutate("/api/binder");
+                void globalMutate("/api/binder");
             }
-            globalMutate(collectionKey);
-            globalMutate("/api/cards");
+            void globalMutate(collectionKey);
             const msg = err instanceof Error ? err.message : "Erro ao atualizar idioma";
             setActionError(msg);
             toast.error("Erro ao atualizar idioma", {
@@ -168,6 +182,7 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
         setUpdatingVariant(newVariant);
         const targetDexId = card.pokemon_dex_id;
         const collectionKey = `/api/cards?pokemon_dex_id=${targetDexId}`;
+        const rollbackCollection = syncCachedCollection({ updatedCards: [{ ...card, card_variant: newVariant }] });
         try {
             setActionError(null);
 
@@ -205,25 +220,20 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Erro ao atualizar versão");
 
-            await mutate();
-            if (card.is_in_binder) {
-                globalMutate("/api/binder");
-            }
-            globalMutate(collectionKey);
-            globalMutate("/api/cards");
-            router.refresh();
+            syncCachedCollection({ updatedCards: [data.card] });
+            void mutate();
 
             toast.success("Versão atualizada", {
                 description: `Versão alterada para ${formatVariantLabel(newVariant)}.`,
             });
         } catch (err: unknown) {
+            rollbackCollection();
             setOptimisticVariant(null);
-            await mutate();
+            void mutate();
             if (card.is_in_binder) {
-                globalMutate("/api/binder");
+                void globalMutate("/api/binder");
             }
-            globalMutate(collectionKey);
-            globalMutate("/api/cards");
+            void globalMutate(collectionKey);
             const msg = err instanceof Error ? err.message : "Erro ao atualizar versão";
             setActionError(msg);
             toast.error("Erro ao atualizar versão", {
@@ -241,6 +251,7 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
         setUpdatingCondition(newCondition);
         const targetDexId = card.pokemon_dex_id;
         const collectionKey = `/api/cards?pokemon_dex_id=${targetDexId}`;
+        const rollbackCollection = syncCachedCollection({ updatedCards: [{ ...card, card_condition: newCondition }] });
         try {
             setActionError(null);
 
@@ -278,25 +289,20 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Erro ao atualizar estado");
 
-            await mutate();
-            if (card.is_in_binder) {
-                globalMutate("/api/binder");
-            }
-            globalMutate(collectionKey);
-            globalMutate("/api/cards");
-            router.refresh();
+            syncCachedCollection({ updatedCards: [data.card] });
+            void mutate();
 
             toast.success("Estado atualizado", {
                 description: `Estado alterado para ${formatConditionLabel(newCondition)}.`,
             });
         } catch (err: unknown) {
+            rollbackCollection();
             setOptimisticCondition(null);
-            await mutate();
+            void mutate();
             if (card.is_in_binder) {
-                globalMutate("/api/binder");
+                void globalMutate("/api/binder");
             }
-            globalMutate(collectionKey);
-            globalMutate("/api/cards");
+            void globalMutate(collectionKey);
             const msg = err instanceof Error ? err.message : "Erro ao atualizar estado";
             setActionError(msg);
             toast.error("Erro ao atualizar estado", {
@@ -312,6 +318,7 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
         const nextIsInBinder = !card.is_in_binder;
         const targetDexId = card.pokemon_dex_id;
         const collectionKey = `/api/cards?pokemon_dex_id=${targetDexId}`;
+        const rollbackCollection = syncCachedCollection({ updatedCards: [{ ...card, is_in_binder: nextIsInBinder }], clearBinderForPokemonDexId: nextIsInBinder ? targetDexId : undefined });
         try {
             setIsUpdatingBinder(true);
             setActionError(null);
@@ -391,21 +398,18 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Erro ao alterar exibição no binder");
 
-            await mutate();
-            globalMutate("/api/binder");
-            globalMutate(collectionKey);
-            globalMutate("/api/cards");
-            globalMutate("/api/dashboard");
-            router.refresh();
+            syncCachedCollection({ updatedCards: [data.card], clearBinderForPokemonDexId: nextIsInBinder ? targetDexId : undefined });
+            void mutate();
+            void globalMutate("/api/dashboard");
 
             toast.success(nextIsInBinder ? "Adicionada ao Binder!" : "Removida do Binder", {
                 description: `${card.card_name} foi ${nextIsInBinder ? "colocada em exibição" : "guardada na coleção"}.`,
             });
         } catch (err: unknown) {
-            await mutate();
-            globalMutate("/api/binder");
-            globalMutate(collectionKey);
-            globalMutate("/api/cards");
+            rollbackCollection();
+            void mutate();
+            void globalMutate("/api/binder");
+            void globalMutate(collectionKey);
             const msg = err instanceof Error ? err.message : "Erro ao alterar exibição no binder";
             setActionError(msg);
             toast.error("Erro ao alterar exibição no binder", {
@@ -463,21 +467,19 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Erro ao adicionar cópia idêntica");
 
-            await mutate();
-            globalMutate("/api/binder");
-            globalMutate(collectionKey);
-            globalMutate("/api/cards");
-            globalMutate("/api/dashboard");
-            router.refresh();
+            syncCachedCollection({ addedCards: [data.card] });
+            void mutate();
+            void globalMutate("/api/binder");
+            void globalMutate(collectionKey);
+            void globalMutate("/api/dashboard");
 
             toast.success("Cópia adicionada!", {
                 description: `Mais um exemplar de ${card.card_name} adicionado à coleção.`,
             });
         } catch (err: unknown) {
-            await mutate();
-            globalMutate("/api/binder");
-            globalMutate(collectionKey);
-            globalMutate("/api/cards");
+            void mutate();
+            void globalMutate("/api/binder");
+            void globalMutate(collectionKey);
             const msg = err instanceof Error ? err.message : "Erro ao adicionar cópia";
             setActionError(msg);
             toast.error("Erro ao adicionar cópia", {
@@ -494,6 +496,7 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
         const targetDexId = card.pokemon_dex_id;
         const collectionKey = `/api/cards?pokemon_dex_id=${targetDexId}`;
         const isCopyInBinder = Boolean(copyToDelete.is_in_binder);
+        const rollbackCollection = syncCachedCollection({ deletedCardIds: [copyToDelete.id] });
         try {
             setIsUpdatingCopies(true);
             setActionError(null);
@@ -548,11 +551,10 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
                 description: `Um exemplar de ${card.card_name} foi removido da coleção.`,
             });
 
-            globalMutate("/api/binder");
-            globalMutate(collectionKey);
-            globalMutate("/api/cards");
-            globalMutate("/api/dashboard");
-            router.refresh();
+            syncCachedCollection({ deletedCardIds: [copyToDelete.id] });
+            void globalMutate("/api/binder");
+            void globalMutate(collectionKey);
+            void globalMutate("/api/dashboard");
 
             if (copyToDelete.id === card.id) {
                 const remaining = copies.filter((c) => c.id !== card.id);
@@ -562,12 +564,12 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
                 }
             }
 
-            await mutate();
+            void mutate();
         } catch (err: unknown) {
-            await mutate();
-            globalMutate("/api/binder");
-            globalMutate(collectionKey);
-            globalMutate("/api/cards");
+            rollbackCollection();
+            void mutate();
+            void globalMutate("/api/binder");
+            void globalMutate(collectionKey);
             const msg = err instanceof Error ? err.message : "Erro ao remover cópia";
             setActionError(msg);
             toast.error("Erro ao remover cópia", {
@@ -625,19 +627,18 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
                 false,
             );
 
-            for (const copy of copies) {
-                const res = await fetch(`/api/cards/${copy.id}`, { method: "DELETE" });
+            const responses = await Promise.all(copies.map((copy) => fetch(`/api/cards/${copy.id}`, { method: "DELETE" })));
+            for (const res of responses) {
                 if (!res.ok) {
                     const data = await res.json();
                     throw new Error(data.error || "Erro ao excluir cópia");
                 }
             }
 
-            globalMutate("/api/binder");
-            globalMutate(collectionKey);
-            globalMutate("/api/cards");
-            globalMutate("/api/dashboard");
-            router.refresh();
+            syncCachedCollection({ deletedCardIds: deletedIds });
+            void globalMutate("/api/binder");
+            void globalMutate(collectionKey);
+            void globalMutate("/api/dashboard");
 
             setIsDeleteModalOpen(false);
             toast.success("Exemplar excluído", {
@@ -653,10 +654,9 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
                 router.push("/collection");
             }
         } catch (err: unknown) {
-            await mutate();
-            globalMutate("/api/binder");
-            globalMutate(collectionKey);
-            globalMutate("/api/cards");
+            void mutate();
+            void globalMutate("/api/binder");
+            void globalMutate(collectionKey);
             const msg = err instanceof Error ? err.message : "Erro ao excluir carta";
             setActionError(msg);
             setIsDeleting(false);
@@ -691,7 +691,7 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
                         <PokeballLoader message="Carregando detalhes da carta..." size="lg" />
                     </div>
                 ) : isError || !card ? (
-                    <div className="flex h-96 flex-col items-center justify-center gap-4 text-center">
+                    <div className="profile-enter flex h-96 flex-col items-center justify-center gap-4 text-center">
                         <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-red-500/20 bg-red-500/10 text-red-400">
                             <AlertCircle size={28} />
                         </div>
@@ -716,19 +716,19 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
                                         setIsZoomed(true);
                                     }
                                 }}
-                                className="group/card relative z-0 aspect-[8/11] w-full max-w-[290px] cursor-pointer select-none isolate"
+                                className="card-list-appear group/card relative z-0 aspect-[8/11] w-full max-w-[290px] cursor-pointer select-none isolate"
                             >
                                 <Card3DTilt className="relative h-full w-full overflow-hidden rounded-2xl bg-[#0d1017]" maxTilt={10} scale={1.03} glareOpacity={0.3} perspective={1000} shineMode={shineMode} elementTypes={cardElementTypes}>
                                     <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill unoptimized sizes="(max-width: 768px) 80vw, 350px" className="object-contain drop-shadow-[0_16px_36px_rgba(0,0,0,0.85)] transition-all duration-300 group-hover/card:scale-[1.01]" priority />
                                 </Card3DTilt>
                             </div>
 
-                            <button type="button" onClick={() => setIsZoomed(true)} className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-slate-400 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white">
+                            <button type="button" onClick={() => setIsZoomed(true)} className="card-list-appear inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-slate-400 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white">
                                 <Search size={12} />
                                 <span>Toque na carta para ampliar</span>
                             </button>
 
-                            <div className="flex flex-col items-center gap-2.5 text-center">
+                            <div className="card-list-appear flex flex-col items-center gap-2.5 text-center">
                                 <div className="flex items-center gap-2.5">
                                     <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl">{card.card_name}</h1>
                                     <span className="rounded-lg border border-white/10 bg-white/10 px-2.5 py-0.5 font-mono text-xs font-bold text-slate-300">#{String(card.pokemon_dex_id).padStart(3, "0")}</span>
@@ -783,13 +783,13 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
 
                         <div className="flex flex-col gap-5 md:col-span-7 lg:col-span-8">
                             {actionError && (
-                                <div className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/15 p-3.5 text-xs text-red-200">
+                                <div className="profile-enter flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/15 p-3.5 text-xs text-red-200">
                                     <AlertCircle size={16} className="shrink-0 text-red-400" />
                                     <span>{actionError}</span>
                                 </div>
                             )}
 
-                            <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-[#121520]/90 p-5 shadow-lg backdrop-blur-md">
+                            <div className="profile-enter profile-enter-d1 flex flex-col gap-4 rounded-2xl border border-white/10 bg-[#121520]/90 p-5 shadow-lg backdrop-blur-md">
                                 <div className="flex items-center justify-between border-b border-white/5 pb-3">
                                     <div className="flex items-center gap-2 text-sm font-bold text-white">
                                         <BookOpen size={16} className="text-poke-blue" />
@@ -818,7 +818,7 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
                                 </button>
                             </div>
 
-                            <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-[#121520]/90 p-5 shadow-lg backdrop-blur-md">
+                            <div className="profile-enter profile-enter-d2 flex flex-col gap-4 rounded-2xl border border-white/10 bg-[#121520]/90 p-5 shadow-lg backdrop-blur-md">
                                 <div className="border-b border-white/5 pb-3">
                                     <h3 className="text-sm font-bold text-white">Metadados da Cópia Física</h3>
                                     <p className="mt-0.5 text-xs text-slate-400">Configure as características do seu exemplar real.</p>
@@ -843,7 +843,7 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
                                 </div>
                             </div>
 
-                            <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-[#121520]/90 p-5 shadow-lg backdrop-blur-md">
+                            <div className="profile-enter profile-enter-d3 flex flex-col gap-4 rounded-2xl border border-white/10 bg-[#121520]/90 p-5 shadow-lg backdrop-blur-md">
                                 <div className="flex items-center justify-between border-b border-white/5 pb-3">
                                     <div className="flex items-center gap-2 text-sm font-bold text-white">
                                         <Layers size={16} className="text-poke-blue" />
@@ -854,7 +854,7 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
                                 </div>
 
                                 <p className="text-xs text-slate-400">
-                                    Você possui {totalCopiesCount === 1 ? "1 exemplar 100% idêntico" : `${totalCopiesCount} exemplares 100% idênticos`} desta edição, idioma e versão ({hasAnyInBinder ? "1 no binder, " : "0 no binder, "}
+                                    Você possui {totalCopiesCount === 1 ? "1 exemplar 100% idêntico" : `${totalCopiesCount} exemplares 100% idênticos`} desta edição, idioma, versão e estado ({hasAnyInBinder ? "1 no binder, " : "0 no binder, "}
                                     {storedCopiesCount === 1 ? "1 guardada" : `${storedCopiesCount} guardadas`}).
                                 </p>
 
@@ -884,7 +884,7 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
                                 <p className="text-[11px] text-slate-500">A quantidade mínima é 1. Para remover completamente a carta da sua coleção, utilize a ação de exclusão abaixo.</p>
                             </div>
 
-                            <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-[#121520]/90 p-5 shadow-lg backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
+                            <div className="profile-enter profile-enter-d4 flex flex-col gap-4 rounded-2xl border border-white/10 bg-[#121520]/90 p-5 shadow-lg backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
                                 <div className="flex flex-col gap-1">
                                     <div className="flex items-center gap-2 text-xs text-slate-400">
                                         <Calendar size={14} />
@@ -914,7 +914,7 @@ export default function CardDetailPage({ params }: { params: Promise<{ id: strin
                         if (e.target === e.currentTarget && !isDeleting) setIsDeleteModalOpen(false);
                     }}
                 >
-                    <div className="flex w-full max-w-md flex-col gap-4 rounded-2xl border border-red-500/30 bg-[#141722] p-6 shadow-2xl">
+                    <div className="modal-enter flex w-full max-w-md flex-col gap-4 rounded-2xl border border-red-500/30 bg-[#141722] p-6 shadow-2xl">
                         <div className="flex items-center gap-3">
                             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-500/15 text-red-400">
                                 <Trash2 size={22} />

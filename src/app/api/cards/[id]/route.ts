@@ -30,8 +30,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     }
 
     const cardVariant = isCardVariant(card.card_variant) ? card.card_variant : "normal";
+    const cardCondition = isCardCondition(card.card_condition) ? card.card_condition : "NM";
 
-    const { data: copies, error: copiesError } = await supabase.from("user_cards").select("*").eq("user_id", user.id).eq("tcgdex_card_id", card.tcgdex_card_id).eq("card_language", card.card_language).eq("card_variant", cardVariant).order("created_at", { ascending: true });
+    const { data: copies, error: copiesError } = await supabase.from("user_cards").select("*").eq("user_id", user.id).eq("tcgdex_card_id", card.tcgdex_card_id).eq("card_language", card.card_language).eq("card_variant", cardVariant).eq("card_condition", cardCondition).order("created_at", { ascending: true });
 
     if (copiesError) {
         return NextResponse.json({ error: copiesError.message }, { status: 500 });

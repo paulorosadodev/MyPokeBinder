@@ -390,7 +390,7 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
                                 </button>
 
                                 {!isOwner ? (
-                                    <NextLink href={`/colecao/${user.username}`} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-poke-blue px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-poke-blue/25 transition-all hover:bg-poke-blue/90 hover:shadow-poke-blue/40 sm:flex-initial">
+                                    <NextLink href={`/colecao/${user.username}`} prefetch={true} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-poke-blue px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-poke-blue/25 transition-all hover:bg-poke-blue/90 hover:shadow-poke-blue/40 sm:flex-initial">
                                         <Layers size={15} />
                                         <span>Ver coleção</span>
                                     </NextLink>

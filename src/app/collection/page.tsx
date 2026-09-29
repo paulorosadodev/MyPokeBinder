@@ -284,7 +284,7 @@ export default function CollectionPage() {
                         </button>
                     </div>
                 ) : total === 0 && !activeFilterCount && !debouncedSearchTerm.trim() ? (
-                    <div className="flex h-64 flex-col items-center justify-center gap-3 text-center">
+                    <div className="profile-enter profile-enter-d2 flex h-64 flex-col items-center justify-center gap-3 text-center">
                         <Layers size={32} className="text-slate-600" />
                         <div>
                             <p className="text-sm font-semibold text-white">Sua coleção está vazia</p>
@@ -303,7 +303,7 @@ export default function CollectionPage() {
                         </button>
                     </div>
                 ) : visibleItems.length === 0 ? (
-                    <div className="flex h-64 flex-col items-center justify-center gap-3 text-center">
+                    <div className="profile-enter profile-enter-d2 flex h-64 flex-col items-center justify-center gap-3 text-center">
                         <Search size={32} className="text-slate-600" />
                         <div>
                             <p className="text-sm font-semibold text-white">Nenhuma carta encontrada</p>
@@ -415,7 +415,7 @@ export default function CollectionPage() {
                         if (e.target === e.currentTarget && window.matchMedia("(min-width: 640px)").matches) setIsPokemonPickerOpen(false);
                     }}
                 >
-                    <div className="flex h-dvh max-h-none w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-[#12151d] shadow-2xl sm:h-[85vh] sm:max-h-[820px] sm:max-w-2xl sm:rounded-2xl sm:border sm:border-white/10 md:max-w-4xl lg:max-w-5xl">
+                    <div className="modal-enter flex h-dvh max-h-none w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-[#12151d] shadow-2xl sm:h-[85vh] sm:max-h-[820px] sm:max-w-2xl sm:rounded-2xl sm:border sm:border-white/10 md:max-w-4xl lg:max-w-5xl">
                         <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
                             <div>
                                 <h3 className="text-lg font-bold text-white">Escolha um Pokémon</h3>

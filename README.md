@@ -58,7 +58,7 @@ O fluxo principal:
 - Ordenação por Pokédex, nome ou data de adição (crescente/decrescente)
 - Estado dos filtros persistido em `sessionStorage` ao navegar para detalhes
 - Grid responsivo (3 colunas no mobile)
-- Agrupamento de cópias idênticas (`tcgdex_card_id` + idioma + variante)
+- Agrupamento de cópias idênticas (`tcgdex_card_id` + idioma + variante + estado de conservação)
 
 ### Página da carta (`/cards/[id]`)
 

@@ -3,7 +3,7 @@ import { UserCard, CollectionCardGroup } from "../src/types/binder";
 import { cardCopyGroupKey } from "../src/lib/pokemon/variant";
 
 describe("Collection Card Grouping Logic", () => {
-    it("should group cards that are 100% identical in edition, language and variant", () => {
+    it("should group cards that are 100% identical in edition, language, variant and condition", () => {
         const mockCards: UserCard[] = [
             {
                 id: "uuid-1",
@@ -16,6 +16,7 @@ describe("Collection Card Grouping Logic", () => {
                 card_rarity: "Common",
                 card_language: "pt-br",
                 card_variant: "normal",
+                card_condition: "NM",
                 is_in_binder: true,
                 created_at: "2026-09-20T10:00:00Z",
                 updated_at: "2026-09-20T10:00:00Z",
@@ -31,6 +32,7 @@ describe("Collection Card Grouping Logic", () => {
                 card_rarity: "Common",
                 card_language: "pt-br",
                 card_variant: "normal",
+                card_condition: "NM",
                 is_in_binder: false,
                 created_at: "2026-09-20T10:05:00Z",
                 updated_at: "2026-09-20T10:05:00Z",
@@ -64,7 +66,7 @@ describe("Collection Card Grouping Logic", () => {
         expect(groups[0].copies.length).toBe(2);
     });
 
-    it("should separate cards when language, edition or variant differs", () => {
+    it("should separate cards when language, edition, variant or condition differs", () => {
         const mockCards: UserCard[] = [
             {
                 id: "uuid-1",
@@ -77,6 +79,7 @@ describe("Collection Card Grouping Logic", () => {
                 card_rarity: "Rare Holo",
                 card_language: "pt-br",
                 card_variant: "holo",
+                card_condition: "NM",
                 is_in_binder: true,
                 created_at: "2026-09-20T10:00:00Z",
                 updated_at: "2026-09-20T10:00:00Z",
@@ -92,6 +95,7 @@ describe("Collection Card Grouping Logic", () => {
                 card_rarity: "Rare Holo",
                 card_language: "en",
                 card_variant: "holo",
+                card_condition: "NM",
                 is_in_binder: false,
                 created_at: "2026-09-20T10:05:00Z",
                 updated_at: "2026-09-20T10:05:00Z",
@@ -107,6 +111,7 @@ describe("Collection Card Grouping Logic", () => {
                 card_rarity: "Ultra Rare",
                 card_language: "en",
                 card_variant: "normal",
+                card_condition: "NM",
                 is_in_binder: false,
                 created_at: "2026-09-20T10:10:00Z",
                 updated_at: "2026-09-20T10:10:00Z",
@@ -122,6 +127,7 @@ describe("Collection Card Grouping Logic", () => {
                 card_rarity: "Rare Holo",
                 card_language: "pt-br",
                 card_variant: "reverse",
+                card_condition: "NM",
                 is_in_binder: false,
                 created_at: "2026-09-20T10:15:00Z",
                 updated_at: "2026-09-20T10:15:00Z",
@@ -151,5 +157,56 @@ describe("Collection Card Grouping Logic", () => {
         const groups = Array.from(groupsMap.values());
         expect(groups.length).toBe(4);
         expect(groups.map((g) => g.totalCount)).toEqual([1, 1, 1, 1]);
+    });
+
+    it("should separate copies with distinct conditions", () => {
+        const mockCards: UserCard[] = [
+            {
+                id: "uuid-damaged",
+                user_id: "user-1",
+                pokemon_dex_id: 128,
+                tcgdex_card_id: "base1-47",
+                card_name: "Tauros",
+                card_image_url: "https://example.com/tauros.png",
+                card_set_name: "Base Set",
+                card_rarity: "Uncommon",
+                card_language: "pt-br",
+                card_variant: "holo",
+                card_condition: "D",
+                is_in_binder: false,
+                created_at: "2026-09-20T10:00:00Z",
+                updated_at: "2026-09-20T10:00:00Z",
+            },
+            {
+                id: "uuid-near-mint",
+                user_id: "user-1",
+                pokemon_dex_id: 128,
+                tcgdex_card_id: "base1-47",
+                card_name: "Tauros",
+                card_image_url: "https://example.com/tauros.png",
+                card_set_name: "Base Set",
+                card_rarity: "Uncommon",
+                card_language: "pt-br",
+                card_variant: "holo",
+                card_condition: "NM",
+                is_in_binder: false,
+                created_at: "2026-09-20T10:05:00Z",
+                updated_at: "2026-09-20T10:05:00Z",
+            },
+        ];
+
+        const groupsMap = new Map<string, CollectionCardGroup>();
+        mockCards.forEach((card) => {
+            const groupKey = cardCopyGroupKey(card);
+            groupsMap.set(groupKey, {
+                key: groupKey,
+                card,
+                copies: [card],
+                totalCount: 1,
+                hasInBinder: false,
+            });
+        });
+
+        expect(groupsMap.size).toBe(2);
     });
 });

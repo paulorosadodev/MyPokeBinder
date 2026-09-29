@@ -257,7 +257,7 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                 if (e.target === e.currentTarget && window.matchMedia("(min-width: 640px)").matches) onClose();
             }}
         >
-            <div className="flex h-dvh max-h-none w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-[#12151d] shadow-2xl sm:h-[85vh] sm:max-h-[820px] sm:max-w-3xl sm:rounded-2xl sm:border sm:border-white/10 md:max-w-5xl lg:max-w-6xl">
+            <div className="modal-enter flex h-dvh max-h-none w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-[#12151d] shadow-2xl sm:h-[85vh] sm:max-h-[820px] sm:max-w-3xl sm:rounded-2xl sm:border sm:border-white/10 md:max-w-5xl lg:max-w-6xl">
                 <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-2.5 sm:px-6 sm:py-3.5">
                     <div>
                         <div className="flex items-center gap-2 sm:gap-2.5">

@@ -26,7 +26,7 @@ Ao clicar no slot vazio, a aplicação abria diretamente a busca externa da API 
 3. **Suporte a Múltiplas Cópias e Regra de Agrupamento**:
     - A constraint `user_cards_user_card_unique` foi removida do banco de dados PostgreSQL via migração Supabase.
     - O índice parcial `user_cards_user_pokemon_binder_idx (user_id, pokemon_dex_id) WHERE is_in_binder = true` foi mantido para garantir integridade (máximo de 1 carta por Pokémon no Fichário).
-    - Na Coleção, cartas só são agrupadas com badge de contador (ex: `x2`, `x3`) se forem **100% idênticas** em edição, idioma e Full Art. Exemplares com qualquer divergência de idioma ou variante são exibidos como itens distintos.
+    - Na Coleção, cartas só são agrupadas com badge de contador (ex: `x2`, `x3`) se forem **100% idênticas** em edição, idioma, acabamento e estado de conservação. Exemplares com qualquer divergência nesses atributos são exibidos como itens distintos.
     - No controle de quantidade (+/-), o botão de decremento fica bloqueado em 1 exemplar, impedindo remoção acidental sem confirmação de exclusão.
 
 ## Consequências

@@ -57,22 +57,32 @@ describe("Card variant helpers", () => {
         expect(resolveCardShine("holo", "Rare", "https://assets.tcgdex.net/en/base/base1/44/high.webp")).toBe("holo");
     });
 
-    it("builds copy group keys including variant", () => {
+    it("builds copy group keys including variant and condition", () => {
         expect(
             cardCopyGroupKey({
                 tcgdex_card_id: "swsh3-136",
                 card_language: "pt-br",
                 card_variant: "reverse",
+                card_condition: "NM",
             }),
-        ).toBe("swsh3-136_pt-br_reverse");
+        ).toBe("swsh3-136_pt-br_reverse_NM");
 
         expect(
             cardCopyGroupKey({
                 tcgdex_card_id: "swsh3-136",
                 card_language: "en",
                 card_variant: null,
+                card_condition: "D",
             }),
-        ).toBe("swsh3-136_en_normal");
+        ).toBe("swsh3-136_en_normal_D");
+
+        expect(
+            cardCopyGroupKey({
+                tcgdex_card_id: "swsh3-136",
+                card_language: "en",
+                card_variant: "normal",
+            }),
+        ).toBe("swsh3-136_en_normal_NM");
     });
 
     it("provides variant select options with badge styling", () => {

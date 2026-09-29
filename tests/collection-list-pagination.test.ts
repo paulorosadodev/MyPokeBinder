@@ -33,6 +33,15 @@ describe("groupCollectionCards", () => {
         expect(bulba.hasInBinder).toBe(true);
         expect(bulba.card.id).toBe("b");
     });
+
+    it("separates copies with distinct conditions", () => {
+        const cards = [makeCard({ id: "damaged", tcgdex_card_id: "base1-1", card_name: "Bulbasaur", card_condition: "D" }), makeCard({ id: "near-mint", tcgdex_card_id: "base1-1", card_name: "Bulbasaur", card_condition: "NM" })];
+
+        const groups = groupCollectionCards(cards);
+
+        expect(groups).toHaveLength(2);
+        expect(groups.map((group) => group.card.card_condition).sort()).toEqual(["D", "NM"]);
+    });
 });
 
 describe("filterAndSortCollectionGroups", () => {

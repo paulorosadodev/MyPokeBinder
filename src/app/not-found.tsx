@@ -34,7 +34,7 @@ export default function NotFound() {
 
             <main className="flex-1 relative z-10 flex items-center justify-center px-4 py-8 sm:py-16">
                 <div className="w-full max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 lg:gap-16 items-center">
-                    <div className="md:col-span-5 flex flex-col items-center justify-center order-1">
+                    <div className="profile-enter md:col-span-5 flex flex-col items-center justify-center order-1">
                         <div className="relative flex items-center justify-center select-none" aria-label="Ilustração do Pokémon Psyduck confuso">
                             <div className="absolute w-56 h-56 sm:w-72 sm:h-72 rounded-full bg-amber-500/[0.05] border border-amber-500/10 pointer-events-none transition-transform duration-500 hover:scale-105" />
                             <div className="absolute w-44 h-44 sm:w-56 sm:h-56 rounded-full bg-yellow-500/[0.03] border border-yellow-500/10 pointer-events-none" />
@@ -45,7 +45,7 @@ export default function NotFound() {
                         </div>
                     </div>
 
-                    <div className="md:col-span-7 flex flex-col items-center md:items-start text-center md:text-left space-y-5 order-2">
+                    <div className="profile-enter profile-enter-d1 md:col-span-7 flex flex-col items-center md:items-start text-center md:text-left space-y-5 order-2">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 font-mono text-xs font-semibold">
                             <Compass size={14} className="text-amber-400 shrink-0" />
                             <span>Rota 404 · Não Encontrada</span>

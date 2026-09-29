@@ -7,7 +7,7 @@ import { safeDecodeParam } from "@/lib/profile/username";
 
 export default function PublicCollectionPage({ params }: { params: Promise<{ username: string }> }) {
     return (
-        <Suspense fallback={<ProfileRouteLoading message="Carregando coleção..." />}>
+        <Suspense fallback={<ProfileRouteLoading message="Carregando coleção..." type="collection" />}>
             <PublicCollectionPageContent params={params} />
         </Suspense>
     );

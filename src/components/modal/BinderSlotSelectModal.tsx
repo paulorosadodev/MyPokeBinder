@@ -241,7 +241,7 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
                 if (!editingCardId && e.target === e.currentTarget && window.matchMedia("(min-width: 640px)").matches) onClose();
             }}
         >
-            <div className="flex h-dvh max-h-none w-full max-w-none flex-col items-center justify-center gap-0 sm:h-[85vh] sm:max-h-[820px] sm:max-w-2xl sm:gap-5 lg:max-w-4xl lg:flex-row lg:items-center xl:max-w-5xl 2xl:max-w-6xl">
+            <div className="modal-enter flex h-dvh max-h-none w-full max-w-none flex-col items-center justify-center gap-0 sm:h-[85vh] sm:max-h-[820px] sm:max-w-2xl sm:gap-5 lg:max-w-4xl lg:flex-row lg:items-center xl:max-w-5xl 2xl:max-w-6xl">
                 <div className="hidden lg:flex lg:w-[240px] xl:w-[300px] 2xl:w-[340px] shrink-0 flex-col items-center justify-center transition-all duration-200">
                     {previewCard ? (
                         <>

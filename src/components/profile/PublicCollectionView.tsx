@@ -5,6 +5,7 @@ import Image from "next/image";
 import NextLink from "next/link";
 import { PokeballLoader } from "@/components/loading/PokeballLoader";
 import { TrainerNotFound } from "@/components/profile/TrainerNotFound";
+import { ProfileRouteLoading } from "@/components/profile/ProfileRouteLoading";
 import { Card3DTilt } from "@/components/ui/Card3DTilt";
 import { CardLightbox } from "@/components/ui/CardLightbox";
 import { FlagIcon } from "@/components/ui/FlagIcon";
@@ -200,13 +201,7 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
     }
 
     if (isLoading && !owner) {
-        return (
-            <div className="flex min-h-[calc(100dvh-4rem)] flex-col bg-[#0a0c10]">
-                <main className="flex flex-1 items-start justify-center pt-10 sm:pt-14 md:pt-18 pb-16">
-                    <PokeballLoader message="Carregando coleção..." size="lg" />
-                </main>
-            </div>
-        );
+        return <ProfileRouteLoading message="Carregando coleção..." type="collection" />;
     }
 
     if (!owner) {
@@ -222,7 +217,7 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
             <div style={themeStyle}>
                 <main key={username} className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8 pb-28 md:pb-16">
                     <header className="profile-enter flex flex-col gap-4">
-                        <NextLink href={`/perfil/${owner.username}`} className="inline-flex w-fit items-center gap-1.5 text-xs font-semibold text-slate-400 transition-colors hover:text-white">
+                        <NextLink href={`/perfil/${owner.username}`} prefetch={true} className="inline-flex w-fit items-center gap-1.5 text-xs font-semibold text-slate-400 transition-colors hover:text-white">
                             <ArrowLeft size={14} />
                             <span>Perfil</span>
                         </NextLink>

@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
         const totalFilteredCount = rawRows.length > 0 ? Number(rawRows[0].total_filtered_count) : 0;
 
         const groups = rawRows.map((row) => ({
-            key: `${row.tcgdex_card_id}::${row.card_language}::${row.card_variant}`,
+            key: `${row.tcgdex_card_id}::${row.card_language}::${row.card_variant}::${row.card_condition}`,
             card: {
                 id: row.representative_id,
                 user_id: row.user_id,

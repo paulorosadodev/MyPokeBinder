@@ -281,7 +281,7 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
-                <section className="rounded-2xl border border-white/10 bg-[#12151d]/90 p-4 shadow-xl backdrop-blur-md sm:p-6">
+                <section className="profile-enter rounded-2xl border border-white/10 bg-[#12151d]/90 p-4 shadow-xl backdrop-blur-md sm:p-6">
                     <div className="flex flex-col gap-4 border-b border-white/10 pb-4 sm:flex-row sm:items-center sm:justify-between sm:pb-5">
                         <div className="flex items-center gap-3">
                             <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-poke-blue/30 bg-poke-blue/10 text-poke-blue">
@@ -384,7 +384,7 @@ export default function SettingsPage() {
                     <span>{isLoggingOut ? "Saindo..." : "Sair da conta"}</span>
                 </button>
 
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="profile-enter profile-enter-d1 grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <section className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#12151d]/90 px-4 py-3.5 shadow-lg backdrop-blur-md">
                         <div className="flex items-center gap-3">
                             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-poke-blue/30 bg-poke-blue/10 text-poke-blue">{soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}</div>
@@ -416,7 +416,7 @@ export default function SettingsPage() {
                     </section>
                 </div>
 
-                <section className="rounded-2xl border border-white/10 bg-[#12151d]/90 p-4 shadow-xl backdrop-blur-md sm:p-6">
+                <section className="profile-enter profile-enter-d2 rounded-2xl border border-white/10 bg-[#12151d]/90 p-4 shadow-xl backdrop-blur-md sm:p-6">
                     <div className="flex items-center gap-2.5 border-b border-white/10 pb-3.5 sm:pb-4">
                         <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-poke-blue/30 bg-poke-blue/10 text-poke-blue">
                             <Palette size={18} />
@@ -432,7 +432,7 @@ export default function SettingsPage() {
                     </div>
                 </section>
 
-                <section className="rounded-2xl border border-rose-500/20 bg-[#12151d]/90 p-4 shadow-xl backdrop-blur-md sm:p-6">
+                <section className="profile-enter profile-enter-d3 rounded-2xl border border-rose-500/20 bg-[#12151d]/90 p-4 shadow-xl backdrop-blur-md sm:p-6">
                     <div className="flex items-center gap-2.5 border-b border-white/10 pb-3.5 sm:pb-4">
                         <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-400">
                             <Trash2 size={18} />
@@ -471,7 +471,7 @@ export default function SettingsPage() {
                         }
                     }}
                 >
-                    <div className="flex w-full max-w-md flex-col gap-4 rounded-2xl border border-rose-500/30 bg-[#141722] p-6 shadow-2xl">
+                    <div className="modal-enter flex w-full max-w-md flex-col gap-4 rounded-2xl border border-rose-500/30 bg-[#141722] p-6 shadow-2xl">
                         <div className="flex items-center gap-3">
                             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-500/15 text-rose-400">
                                 <Trash2 size={22} />

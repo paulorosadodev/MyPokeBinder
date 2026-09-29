@@ -12,7 +12,7 @@ A TCGdex expõe, por edição de carta, quais acabamentos existem (`variants.nor
 
 1. **Coluna `card_variant`** em `user_cards` (`normal` | `holo` | `reverse`, default `normal`), escolhida na adição e editável em `/cards/[id]`.
 2. **Opções sempre liberadas**: o select sempre oferece Normal / Holo / Reverse. Flags da TCGdex só sugerem o default (`defaultVariant`); não bloqueiam a escolha do colecionador.
-3. **Cópias idênticas** passam a exigir igualdade também em `card_variant`.
+3. **Cópias idênticas** exigem igualdade em `tcgdex_card_id`, `card_language`, `card_variant` e `card_condition`; exemplares em estados de conservação diferentes são itens separados.
 4. **`CardShineMode`**: `"none"` | `"foil"` | `"holo"` | `"prismatic"`.
 5. **Precedência e `Card3DTilt.shineMode`**:
    - `prismatic` em primeiro lugar quando a raridade é Full Art (`isFullArtRarity`) — prevalece sobre a variante física;

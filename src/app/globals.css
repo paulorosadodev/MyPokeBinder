@@ -210,24 +210,49 @@ body {
     }
 }
 
-.profile-enter {
+.profile-enter,
+.page-enter {
     animation: profile-enter 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.profile-enter-d1 {
+.profile-enter-d1,
+.page-enter-d1 {
     animation-delay: 0.05s;
 }
-.profile-enter-d2 {
+.profile-enter-d2,
+.page-enter-d2 {
     animation-delay: 0.1s;
 }
-.profile-enter-d3 {
+.profile-enter-d3,
+.page-enter-d3 {
     animation-delay: 0.16s;
 }
-.profile-enter-d4 {
+.profile-enter-d4,
+.page-enter-d4 {
     animation-delay: 0.22s;
 }
-.profile-enter-d5 {
+.profile-enter-d5,
+.page-enter-d5 {
     animation-delay: 0.28s;
+}
+.profile-enter-d6,
+.page-enter-d6 {
+    animation-delay: 0.34s;
+}
+
+@keyframes modal-enter {
+    from {
+        opacity: 0;
+        transform: scale(0.96) translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.modal-enter {
+    animation: modal-enter 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -236,7 +261,16 @@ body {
     .profile-enter-d2,
     .profile-enter-d3,
     .profile-enter-d4,
-    .profile-enter-d5 {
+    .profile-enter-d5,
+    .profile-enter-d6,
+    .page-enter,
+    .page-enter-d1,
+    .page-enter-d2,
+    .page-enter-d3,
+    .page-enter-d4,
+    .page-enter-d5,
+    .page-enter-d6,
+    .modal-enter {
         animation: none;
         opacity: 1;
         transform: none;

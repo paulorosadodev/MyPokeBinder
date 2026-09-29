@@ -2,6 +2,7 @@ import React from "react";
 import { Circle, Sparkles, RefreshCw } from "lucide-react";
 import { isFullArtRarity } from "@/lib/pokemon/rarity";
 import { hasCardImage } from "@/lib/pokemon/tcgdex";
+import { isCardCondition } from "@/lib/pokemon/condition";
 import type { CardShineMode, CardVariant, CardVariantsFlags } from "@/types/binder";
 import type { SelectOption } from "@/components/ui/Select";
 import type { LanguageSliderOption } from "@/components/ui/LanguageSlider";
@@ -154,7 +155,8 @@ export function resolveCardShine(variant?: CardVariant | string | null, rarity?:
     return "none";
 }
 
-export function cardCopyGroupKey(card: { tcgdex_card_id: string; card_language: string; card_variant?: string | null }): string {
+export function cardCopyGroupKey(card: { tcgdex_card_id: string; card_language: string; card_variant?: string | null; card_condition?: string | null }): string {
     const variant = isCardVariant(card.card_variant) ? card.card_variant : "normal";
-    return `${card.tcgdex_card_id}_${card.card_language}_${variant}`;
+    const condition = isCardCondition(card.card_condition) ? card.card_condition : "NM";
+    return `${card.tcgdex_card_id}_${card.card_language}_${variant}_${condition}`;
 }

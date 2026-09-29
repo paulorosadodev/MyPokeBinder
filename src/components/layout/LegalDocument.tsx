@@ -26,7 +26,7 @@ export function LegalDocument({ title, updatedAt, children }: LegalDocumentProps
                     <p className="mt-2 text-sm text-slate-500">{updatedAt}</p>
                 </header>
 
-                <div className="divide-y divide-white/10 text-sm leading-relaxed text-slate-300 sm:text-[15px]">{children}</div>
+                <div className="profile-enter divide-y divide-white/10 text-sm leading-relaxed text-slate-300 sm:text-[15px]">{children}</div>
             </main>
 
             <PublicFooter />
