@@ -11,7 +11,7 @@ export function PublicFooter() {
                             <PokeballLogo size="md" glow="subtle" color="#ef4444" />
                             <span className="text-xl font-bold tracking-tight text-white">MyPokeBinder</span>
                         </div>
-                        <p className="mt-4 max-w-sm text-sm leading-relaxed text-slate-400">Fichário digital 3×3 dos 151 Pokémon de Kanto. Registre suas cartas físicas e folheie o binder.</p>
+                        <p className="mt-4 max-w-sm text-sm leading-relaxed text-slate-400">Binder digital 3×3 dos 151 Pokémon de Kanto. Registre suas cartas físicas e folheie o binder.</p>
                     </div>
 
                     <div>

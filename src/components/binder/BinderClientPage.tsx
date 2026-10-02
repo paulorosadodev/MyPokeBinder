@@ -37,7 +37,7 @@ function BinderOpeningLoader() {
     return (
         <div className="binder-book-stage relative flex h-full w-full items-center justify-center">
             <div className={`binder-opening-loader ${showLoader ? "binder-opening-loader--visible" : ""}`} role="status" aria-hidden={!showLoader}>
-                <PokeballLoader size="lg" message="Carregando seu fichário..." />
+                <PokeballLoader size="lg" message="Carregando seu binder..." />
             </div>
         </div>
     );
@@ -102,6 +102,8 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
     const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const pendingHighlightDexIdRef = useRef<number | null>(null);
     const highlightRequestIdRef = useRef(0);
+    const selectReturnTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+    const catalogOpenTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
     const [isBookReady, setIsBookReady] = useState(false);
     const [isBookEngineReady, setIsBookEngineReady] = useState(false);
     const { showLoader, canReveal } = useBinderEntrance(isBookEngineReady, skipEntranceAnimation, isMobile);
@@ -132,6 +134,14 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
             if (highlightTimerRef.current) {
                 clearTimeout(highlightTimerRef.current);
                 highlightTimerRef.current = null;
+            }
+            if (selectReturnTimerRef.current) {
+                window.clearTimeout(selectReturnTimerRef.current);
+                selectReturnTimerRef.current = null;
+            }
+            if (catalogOpenTimerRef.current) {
+                window.clearTimeout(catalogOpenTimerRef.current);
+                catalogOpenTimerRef.current = null;
             }
         };
     }, []);
@@ -219,7 +229,7 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
     const cardsMap = useMemo(() => {
         const map = new Map<number, UserCard>();
         cards.forEach((c) => {
-            if (c.is_in_binder) {
+            if (c.is_in_binder && c.pokemon_dex_id !== null) {
                 map.set(c.pokemon_dex_id, c);
             }
         });
@@ -491,6 +501,8 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
 
     const handleSelectCardFromCollection = async (card: UserCard) => {
         if (selectActiveCardId === card.id) return;
+        const dexId = card.pokemon_dex_id;
+        if (dexId === null) return;
         const prevCardId = selectActiveCardId;
         const prevCard = selectActiveCard;
         setSelectActiveCardId(card.id);
@@ -500,12 +512,12 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
         const optimisticCard: UserCard = { ...card, is_in_binder: true };
         mutate((prev) => {
             const prevCounts = prev?.availableCounts ?? {};
-            const currentCount = prevCounts[card.pokemon_dex_id] || 0;
+            const currentCount = prevCounts[dexId] || 0;
             return {
                 cards: [...(prev?.cards ?? []).filter((c) => c.pokemon_dex_id !== card.pokemon_dex_id), optimisticCard],
                 availableCounts: {
                     ...prevCounts,
-                    [card.pokemon_dex_id]: Math.max(0, currentCount - 1),
+                    [dexId]: Math.max(0, currentCount - 1),
                 },
             };
         }, false);
@@ -541,6 +553,8 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
     };
 
     const handleRemoveCardFromCollection = async (card: UserCard) => {
+        const dexId = card.pokemon_dex_id;
+        if (dexId === null) return;
         const prevCardId = selectActiveCardId;
         const prevCard = selectActiveCard;
         pendingDropDexIdRef.current = null;
@@ -560,12 +574,12 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
 
         mutate((prev) => {
             const prevCounts = prev?.availableCounts ?? {};
-            const currentCount = prevCounts[card.pokemon_dex_id] || 0;
+            const currentCount = prevCounts[dexId] || 0;
             return {
                 cards: (prev?.cards ?? []).filter((c) => c.pokemon_dex_id !== card.pokemon_dex_id),
                 availableCounts: {
                     ...prevCounts,
-                    [card.pokemon_dex_id]: currentCount + 1,
+                    [dexId]: currentCount + 1,
                 },
             };
         }, false);
@@ -602,12 +616,20 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
         setSearchDexId(selectDexId);
         setSearchPokemonName(selectPokemonName);
         setSelectModalOpen(false);
-        setSearchModalOpen(true);
+        if (catalogOpenTimerRef.current) window.clearTimeout(catalogOpenTimerRef.current);
+        catalogOpenTimerRef.current = window.setTimeout(() => {
+            catalogOpenTimerRef.current = null;
+            setSearchModalOpen(true);
+        }, 300);
     };
 
-    const handleCloseSearchModal = () => {
+    const handleReturnToSelectModal = () => {
         setSearchModalOpen(false);
-        setSelectModalOpen(true);
+        if (selectReturnTimerRef.current) window.clearTimeout(selectReturnTimerRef.current);
+        selectReturnTimerRef.current = window.setTimeout(() => {
+            selectReturnTimerRef.current = null;
+            setSelectModalOpen(true);
+        }, 300);
     };
 
     const handleCloseSelectModal = () => {
@@ -622,6 +644,7 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
     };
 
     const handleCardAdded = (newCard: UserCard) => {
+        const newCardDexId = newCard.pokemon_dex_id;
         const collectionKey = `/api/cards?pokemon_dex_id=${newCard.pokemon_dex_id}`;
         globalMutate(
             collectionKey,
@@ -644,15 +667,15 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
             setPendingDropDexId(newCard.pokemon_dex_id);
             setSelectActiveCardId(newCard.id);
             setSelectActiveCard(newCard);
-        } else {
+        } else if (newCardDexId !== null) {
             mutate((prev) => {
                 const prevCounts = prev?.availableCounts ?? {};
-                const currentCount = prevCounts[newCard.pokemon_dex_id] || 0;
+                const currentCount = prevCounts[newCardDexId] || 0;
                 return {
                     cards: prev?.cards ?? [],
                     availableCounts: {
                         ...prevCounts,
-                        [newCard.pokemon_dex_id]: currentCount + 1,
+                        [newCardDexId]: currentCount + 1,
                     },
                 };
             }, false);
@@ -731,7 +754,7 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
                                     <div className="binder-book-stage" />
                                 )}
                                 <div className={`binder-opening-loader ${showLoader ? "binder-opening-loader--visible" : ""}`} role="status" aria-hidden={!showLoader}>
-                                    <PokeballLoader size="lg" message="Carregando seu fichário..." />
+                                    <PokeballLoader size="lg" message="Carregando seu binder..." />
                                 </div>
                             </div>
 
@@ -759,7 +782,7 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
                 )}
             </main>
 
-            <CardSearchModal isOpen={searchModalOpen} dexId={searchDexId} pokemonName={searchPokemonName} onClose={handleCloseSearchModal} onCardAdded={handleCardAdded} />
+            <CardSearchModal isOpen={searchModalOpen} dexId={searchDexId} pokemonName={searchPokemonName} onClose={handleReturnToSelectModal} onBack={handleReturnToSelectModal} onCardAdded={handleCardAdded} />
 
             <BinderSlotSelectModal key={selectDexId} isOpen={selectModalOpen} dexId={selectDexId} pokemonName={selectPokemonName} activeCardId={selectActiveCardId} activeCard={selectActiveCard} onClose={handleCloseSelectModal} onCardSelected={handleSelectCardFromCollection} onCardRemoved={handleRemoveCardFromCollection} onOpenCatalogSearch={handleOpenCatalogSearchFromSelect} />
         </div>

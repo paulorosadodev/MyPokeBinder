@@ -4,10 +4,10 @@
 
 **Blocked by:** 02: Catálogo Expandido e Adição Direta de Cartas na Coleção, 05: Visualizador de Binder (/binders/[id]) com Suporte a Grids 1x1, 2x2, 3x3 e 3x4
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Slots do tipo Livre vazios são renderizados com moldura de bolso escuro e contorno pontilhado limpo (sem mini Pokébola), e o clique abre a coleção do usuário para vinculação.
-- [ ] Slots do tipo Pokémon vazios exibem a silhueta escura oficial do Pokémon (#001 a #1025), e o clique abre as cartas que o usuário possui daquele Pokémon na coleção.
-- [ ] Slots do tipo Carta vazios exibem a arte da carta TCGdex desbotada e apagada no fundo. Ao clicar, se o usuário tiver a carta na coleção, coloca no slot com 1 toque; se não tiver, o modal exibe a mensagem de ausência e o botão para registrar a carta pelo catálogo.
-- [ ] Cartas alocadas cobrem 100% do slot com sua ilustração física de ponta a ponta sem poluição visual, exibindo animação física de descida suave e áudio de impacto caso ativado.
-- [ ] Os endpoints `POST /api/binders/[id]/slots/[slotId]/assign` e `DELETE /api/binders/[id]/slots/[slotId]/assign` realizam a alocação e desalocação atômica, impondo a posse física estrita e rejeitando cartas já alocadas em outro slot com HTTP 409.
+- [x] Slots do tipo Livre vazios são renderizados com moldura de bolso escuro e contorno pontilhado limpo (sem mini Pokébola), e o clique abre a coleção do usuário para vinculação.
+- [x] Slots do tipo Pokémon vazios exibem a silhueta escura oficial do Pokémon (#001 a #1025), e o clique abre as cartas que o usuário possui daquele Pokémon na coleção.
+- [x] Slots do tipo Carta vazios exibem a arte da carta TCGdex desbotada e apagada no fundo. Ao clicar, se o usuário tiver a carta na coleção, coloca no slot com 1 toque; se não tiver, o modal exibe a mensagem de ausência e o botão para registrar a carta pelo catálogo.
+- [x] Cartas alocadas cobrem 100% do slot com sua ilustração física de ponta a ponta sem poluição visual, exibindo animação física de descida suave e áudio de impacto caso ativado.
+- [x] Os endpoints `POST /api/binders/[id]/slots/[slotId]/assign` e `DELETE /api/binders/[id]/slots/[slotId]/assign` realizam a alocação e desalocação atômica, impondo a posse física estrita e rejeitando cartas já alocadas em outro slot com HTTP 409.

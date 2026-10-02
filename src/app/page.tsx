@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { BinderClientPage } from "@/components/binder/BinderClientPage";
+import { BinderShelf } from "@/components/shelf/BinderShelf";
 import { LandingPage } from "@/components/landing/LandingPage";
-import type { UserCard } from "@/types/binder";
+import { getBindersForShelf } from "@/lib/binder/shelfData";
 
 export const metadata: Metadata = {
-    title: "MyPokeBinder | Pokémon TCG",
-    description: "Seu fichário digital pessoal 3×3 para os 151 Pokémon originais de Kanto. Colecione, organize e complete sua coleção de cartas físicas.",
+    title: "Binders | MyPokeBinder",
+    description: "Gerencie seus Binders de Pokémon TCG com formatos e capas personalizadas.",
 };
 
 export default async function Page() {
@@ -19,21 +19,7 @@ export default async function Page() {
         return <LandingPage />;
     }
 
-    const [binderCardsRes, storedCardsRes] = await Promise.all([supabase.from("user_cards").select("*").eq("user_id", user.id).eq("is_in_binder", true).order("pokemon_dex_id", { ascending: true }), supabase.from("user_cards").select("pokemon_dex_id").eq("user_id", user.id).eq("is_in_binder", false)]);
+    const { binders } = await getBindersForShelf(supabase, user.id);
 
-    const initialAvailableCounts: Record<number, number> = {};
-    for (const item of storedCardsRes.data ?? []) {
-        initialAvailableCounts[item.pokemon_dex_id] = (initialAvailableCounts[item.pokemon_dex_id] || 0) + 1;
-    }
-
-    return (
-        <BinderClientPage
-            initialUser={{
-                email: user.email,
-                avatarUrl: user.user_metadata?.avatar_url || user.user_metadata?.picture,
-            }}
-            initialCards={(binderCardsRes.data as UserCard[] | null) ?? []}
-            initialAvailableCounts={initialAvailableCounts}
-        />
-    );
+    return <BinderShelf initialBinders={binders} />;
 }

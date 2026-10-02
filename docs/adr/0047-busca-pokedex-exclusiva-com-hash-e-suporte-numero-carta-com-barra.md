@@ -3,9 +3,9 @@
 ## Contexto
 
 Anteriormente, o comportamento de busca por número apresentava inconsistências entre as diferentes interfaces da aplicação:
-1. Na Coleção (`/collection`), no perfil público e no modal de alocação de cartas do fichário (`filterAndSortCollectionGroups`), digitar um número qualquer (ex.: `25` ou `151`) realizava a filtragem pelo número da Pokédex (`pokemon_dex_id`), sem permitir encontrar cartas pelo número da coleção/set.
+1. Na Coleção (`/collection`), no perfil público e no modal de alocação de cartas do binder (`filterAndSortCollectionGroups`), digitar um número qualquer (ex.: `25` ou `151`) realizava a filtragem pelo número da Pokédex (`pokemon_dex_id`), sem permitir encontrar cartas pelo número da coleção/set.
 2. No modal de adição do catálogo TCGDex (`CardSearchModal` via `filterCatalogCards`), digitar com barra (ex.: `025/165` ou `25/165`) não retornava resultados porque a API TCGDex armazena apenas o número isolado (`localId`, ex.: `"25"` ou `"025"`) e a comparação de texto falhava ao procurar a barra.
-3. No campo de busca do fichário (`BinderControls`), digitar um número sem hash também disparava busca por número da Pokédex.
+3. No campo de busca do binder (`BinderControls`), digitar um número sem hash também disparava busca por número da Pokédex.
 
 Fazia-se necessária uma regra de negócio clara, uniforme e previsível em todas as pesquisas do sistema.
 
@@ -25,7 +25,7 @@ Fazia-se necessária uma regra de negócio clara, uniforme e previsível em toda
    - Os campos de busca preservam visual minimalista, sem legendas ou dicas textuais intrusivas abaixo dos inputs, mantendo a experiência focada e direta.
 
 4. **Padronização nas Buscas**:
-   - As funções utilitárias `matchesCardSearch`, `matchesCardNumber`, `parseDexQuery` e `extractCardLocalId` foram centralizadas em `src/lib/collection/listCards.ts` e aplicadas na página de Coleção (`/collection`), no Perfil Público (`PublicCollectionView`), no seletor de cards do fichário (`BinderSlotSelectModal`), na vitrine de favoritos do perfil (`TrainerProfileView`), no controle do Binder (`BinderControls`) e no catálogo TCGDex (`CardSearchModal`).
+   - As funções utilitárias `matchesCardSearch`, `matchesCardNumber`, `parseDexQuery` e `extractCardLocalId` foram centralizadas em `src/lib/collection/listCards.ts` e aplicadas na página de Coleção (`/collection`), no Perfil Público (`PublicCollectionView`), no seletor de cards do binder (`BinderSlotSelectModal`), na vitrine de favoritos do perfil (`TrainerProfileView`), no controle do Binder (`BinderControls`) e no catálogo TCGDex (`CardSearchModal`).
 
 ## Consequências
 

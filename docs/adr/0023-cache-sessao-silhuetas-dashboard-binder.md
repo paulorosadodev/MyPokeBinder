@@ -23,7 +23,7 @@ As causas identificadas foram:
     - O cache persiste durante toda a sessão do usuário na Single Page Application (SPA), sobrevivendo às desmontagens e remontagens de rotas.
 
 2. **Registro Descentralizado de Carregamento**:
-    - `BinderSlot` (fichário), `BinderSlotSelectModal` (modal de seleção), `CollectionPage` (catálogo) e `DashboardMiniSlot` (mini-grid) registram as silhuetas carregadas via `markSilhouetteLoaded(dexId)`.
+    - `BinderSlot` (binder), `BinderSlotSelectModal` (modal de seleção), `CollectionPage` (catálogo) e `DashboardMiniSlot` (mini-grid) registram as silhuetas carregadas via `markSilhouetteLoaded(dexId)`.
 
 3. **Componente Memoizado `DashboardMiniSlot` com Estado Isolado**:
     - Conforme as regras `rerender-memo` e `rerender-split-combined-hooks`, cada slot do mini-grid foi extraído para o componente memoizado `DashboardMiniSlot`.

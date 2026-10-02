@@ -30,9 +30,9 @@ export function Header({ userEmail, userAvatar }: HeaderProps) {
     const navItems = [
         {
             href: "/",
-            label: "Binder",
+            label: "Binders",
             icon: BookOpen,
-            isActive: pathname === "/",
+            isActive: pathname === "/" || pathname.startsWith("/binders"),
         },
         {
             href: "/collection",
@@ -40,20 +40,14 @@ export function Header({ userEmail, userAvatar }: HeaderProps) {
             icon: Layers,
             isActive: pathname.startsWith("/collection") || pathname.startsWith("/cards"),
         },
-        {
-            href: "/dashboard",
-            label: "Dashboard",
-            icon: LayoutDashboard,
-            isActive: pathname.startsWith("/dashboard"),
-        },
     ];
 
     const isOwnSharedProfile = Boolean(authUser?.username && pathname === `/perfil/${authUser.username}`);
     const isProfileActive = pathname === "/perfil" || isOwnSharedProfile || pathname.startsWith("/configuracoes");
     const rawActiveIndex = navItems.findIndex((item) => item.isActive);
-    const targetNavIndex = isProfileActive ? 3 : rawActiveIndex;
+    const targetNavIndex = isProfileActive ? 2 : rawActiveIndex;
     const activeNavIndex = optimisticIndex !== null ? optimisticIndex : targetNavIndex;
-    const isSliderVisible = activeNavIndex >= 0 && activeNavIndex < 3;
+    const isSliderVisible = activeNavIndex >= 0 && activeNavIndex < 2;
     const profileHref = authUser?.username ? `/perfil/${authUser.username}` : "/perfil";
     const navLabel = authUser?.name || authUser?.username || resolvedUserEmail?.split("@")[0] || "Meu Perfil";
     const navInitial = (authUser?.name?.[0] || authUser?.username?.[0] || resolvedUserEmail?.[0] || "P").toUpperCase();
@@ -72,7 +66,7 @@ export function Header({ userEmail, userAvatar }: HeaderProps) {
                             <div
                                 style={{
                                     transform: `translate3d(${activeNavIndex >= 0 ? activeNavIndex * 100 : 0}%, 0, 0)`,
-                                    width: "calc((100% - 8px) / 3)",
+                                    width: "calc((100% - 8px) / 2)",
                                     opacity: isSliderVisible ? 1 : 0,
                                 }}
                                 className="pointer-events-none absolute top-1 bottom-1 left-1 rounded-xl border border-[var(--theme-primary)]/30 bg-[var(--theme-primary)]/20 shadow-[0_0_12px_var(--theme-primary-glow)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
@@ -82,7 +76,7 @@ export function Header({ userEmail, userAvatar }: HeaderProps) {
                                 const Icon = item.icon;
                                 const isHighlighted = activeNavIndex === index;
                                 return (
-                                    <NextLink key={item.href} href={item.href} onClick={() => setOptimisticIndex(index)} aria-current={isHighlighted ? "page" : undefined} className={`relative z-10 flex w-28 items-center justify-center gap-2 py-2 text-sm font-semibold transition-colors duration-200 select-none ${isHighlighted ? "text-white font-bold" : "text-slate-400 hover:text-slate-200"}`}>
+                                    <NextLink key={item.href} href={item.href} onClick={() => setOptimisticIndex(index)} aria-current={isHighlighted ? "page" : undefined} className={`relative z-10 flex w-32 items-center justify-center gap-2 py-2 text-sm font-semibold transition-colors duration-200 select-none ${isHighlighted ? "text-white font-bold" : "text-slate-400 hover:text-slate-200"}`}>
                                         <Icon size={16} className={`transition-transform duration-200 ${isHighlighted ? "scale-105 text-[var(--theme-primary)]" : "text-slate-400"}`} />
                                         <span>{item.label}</span>
                                     </NextLink>
@@ -102,12 +96,12 @@ export function Header({ userEmail, userAvatar }: HeaderProps) {
                                 href={profileHref}
                                 title="Meu Perfil"
                                 aria-label="Meu Perfil"
-                                onClick={() => setOptimisticIndex(3)}
-                                aria-current={activeNavIndex === 3 ? "page" : undefined}
-                                className={`group flex items-center gap-2 rounded-xl border px-2.5 py-1.5 transition-all duration-200 sm:gap-2.5 sm:px-3 ${activeNavIndex === 3 ? "border-[var(--theme-primary)]/30 bg-[var(--theme-primary)]/20 text-white font-bold shadow-[0_0_12px_var(--theme-primary-glow)]" : "border-transparent text-slate-300 hover:bg-white/10"}`}
+                                onClick={() => setOptimisticIndex(2)}
+                                aria-current={activeNavIndex === 2 ? "page" : undefined}
+                                className={`group flex items-center gap-2 rounded-xl border px-2.5 py-1.5 transition-all duration-200 sm:gap-2.5 sm:px-3 ${activeNavIndex === 2 ? "border-[var(--theme-primary)]/30 bg-[var(--theme-primary)]/20 text-white font-bold shadow-[0_0_12px_var(--theme-primary-glow)]" : "border-transparent text-slate-300 hover:bg-white/10"}`}
                             >
                                 <div className="flex flex-col items-end text-xs">
-                                    <span className={`max-w-[100px] truncate font-semibold transition-colors sm:max-w-[180px] ${activeNavIndex === 3 ? "text-white font-bold" : "text-slate-300 group-hover:text-white"}`}>{navLabel}</span>
+                                    <span className={`max-w-[100px] truncate font-semibold transition-colors sm:max-w-[180px] ${activeNavIndex === 2 ? "text-white font-bold" : "text-slate-300 group-hover:text-white"}`}>{navLabel}</span>
                                 </div>
 
                                 {resolvedUserAvatar && !avatarError ? (

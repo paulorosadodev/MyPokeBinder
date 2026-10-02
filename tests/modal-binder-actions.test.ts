@@ -1,5 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { UserCard } from "../src/types/binder";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 describe("Binder Slot Selection and Removal Logic", () => {
     const mockCard1: UserCard = {
@@ -33,6 +35,58 @@ describe("Binder Slot Selection and Removal Logic", () => {
         created_at: "2026-01-02T00:00:00Z",
         updated_at: "2026-01-02T00:00:00Z",
     };
+
+    it("mantém a localização do slot no cache ao editar pelo seletor universal", () => {
+        const selectorSource = readFileSync(join(import.meta.dir, "../src/components/modal/BinderSlotSelectModal.tsx"), "utf8");
+        const universalModalSource = readFileSync(join(import.meta.dir, "../src/components/modal/UniversalSlotModal.tsx"), "utf8");
+
+        expect(selectorSource).toContain("allocation: targetCard.id === activeCardId ? activeCardAllocation : null");
+        expect(universalModalSource).toContain("activeCardAllocation");
+        expect(universalModalSource).toContain('openSlot: "true"');
+    });
+
+    it("retorna ao seletor do binder ao usar Voltar no catálogo", () => {
+        const searchModalSource = readFileSync(join(import.meta.dir, "../src/components/modal/CardSearchModal.tsx"), "utf8");
+        const viewerSource = readFileSync(join(import.meta.dir, "../src/components/binder/UniversalBinderViewer.tsx"), "utf8");
+        const legacyBinderSource = readFileSync(join(import.meta.dir, "../src/components/binder/BinderClientPage.tsx"), "utf8");
+
+        expect(searchModalSource).toContain("onBack?: () => void");
+        expect(searchModalSource).toContain('aria-label="Voltar ao seletor do binder"');
+        expect(searchModalSource.indexOf('aria-label="Voltar ao seletor do binder"')).toBeLessThan(searchModalSource.indexOf("<h2"));
+        expect(viewerSource).toContain("handleReturnToSlotModal");
+        expect(legacyBinderSource).toContain("handleReturnToSelectModal");
+    });
+
+    it("exibe os binders como capas selecionáveis no modal de alocação", () => {
+        const allocateModalSource = readFileSync(join(import.meta.dir, "../src/components/modal/CardAllocateModal.tsx"), "utf8");
+
+        expect(allocateModalSource).toContain("BinderShelfBook");
+        expect(allocateModalSource).toContain("router.push(`/binders/${binder.id}`)");
+        expect(allocateModalSource).not.toContain("handleAssignSlot");
+        expect(allocateModalSource).not.toContain("hover:-translate-y-1");
+    });
+
+    it("aguarda o fechamento do seletor antes de abrir o catálogo do binder", () => {
+        const viewerSource = readFileSync(join(import.meta.dir, "../src/components/binder/UniversalBinderViewer.tsx"), "utf8");
+        const legacyBinderSource = readFileSync(join(import.meta.dir, "../src/components/binder/BinderClientPage.tsx"), "utf8");
+
+        expect(viewerSource).toContain("catalogOpenTimerRef");
+        expect(legacyBinderSource).toContain("catalogOpenTimerRef");
+    });
+
+    it("não exibe a navegação redundante na página de edição", () => {
+        const cardPageSource = readFileSync(join(import.meta.dir, "../src/app/cards/[id]/page.tsx"), "utf8");
+
+        expect(cardPageSource).not.toContain("Navegação do Binder");
+        expect(cardPageSource).toContain("returnToBinderModal");
+    });
+
+    it("redireciona o botão de alocar no binder diretamente para a página de Meus Binders (/)", () => {
+        const cardPageSource = readFileSync(join(import.meta.dir, "../src/app/cards/[id]/page.tsx"), "utf8");
+
+        expect(cardPageSource).toContain('onClick={() => router.push("/")}');
+        expect(cardPageSource).not.toContain("CardAllocateModal");
+    });
 
     it("should correctly identify current active card in binder", () => {
         const selectedCardId = mockCard1.id;
@@ -121,7 +175,7 @@ describe("Binder Slot Selection and Removal Logic", () => {
             availableCounts: { 1: 0 } as Record<number, number>,
         };
 
-        const targetDexId = mockCard1.pokemon_dex_id;
+        const targetDexId = mockCard1.pokemon_dex_id!;
         const nextIsInBinder = false;
 
         const updateBinderCache = (prev: typeof initialBinderState) => {

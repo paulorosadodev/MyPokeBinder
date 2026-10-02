@@ -4,11 +4,11 @@
 
 **Blocked by:** 05: Visualizador de Binder (/binders/[id]) com Suporte a Grids 1x1, 2x2, 3x3 e 3x4, 06: Três Tipos de Slots e Interação de Alocação
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A rota `/binders/[id]/edit` carrega os dados atuais do binder e permite editar nome, descrição e tema da capa.
-- [ ] O formato do grid (1x1, 2x2, 3x3 ou 3x4) permanece travado como imutável para proteger a consistência estrutural.
-- [ ] O usuário pode adicionar novas páginas de catálogo (com slots livres ou configuráveis) respeitando o limite máximo permitido (até 50 páginas).
-- [ ] O usuário pode remover páginas; se houver cartas alocadas nas páginas que serão excluídas, um modal de confirmação apresenta o resumo de impacto listando a quantidade de cartas que serão devolvidas à coleção como guardadas.
-- [ ] O endpoint `PATCH /api/binders/[id]` persiste as alterações de metadados e páginas, realizando a desalocação segura das cartas afetadas em transação atômica no banco de dados.
-- [ ] O usuário também pode excluir o binder definitivamente através do editor, devolvendo todas as cartas alocadas para a coleção como guardadas via rota `DELETE /api/binders/[id]`.
+- [x] A rota `/binders/[id]/edit` carrega os dados atuais do binder e permite editar nome, descrição e tema da capa.
+- [x] O formato do grid (1x1, 2x2, 3x3 ou 3x4) permanece travado como imutável para proteger a consistência estrutural.
+- [x] O usuário pode adicionar novas páginas de catálogo (com slots livres ou configuráveis) respeitando o limite máximo permitido (até 50 páginas).
+- [x] O usuário pode remover páginas; se houver cartas alocadas nas páginas que serão excluídas, um modal de confirmação apresenta o resumo de impacto listando a quantidade de cartas que serão devolvidas à coleção como guardadas.
+- [x] O endpoint `PATCH /api/binders/[id]` persiste as alterações de metadados e páginas, realizando a desalocação segura das cartas afetadas em transação atômica no banco de dados.
+- [x] O usuário também pode excluir o binder definitivamente através do editor, devolvendo todas as cartas alocadas para a coleção como guardadas via rota `DELETE /api/binders/[id]`.

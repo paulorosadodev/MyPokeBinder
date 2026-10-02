@@ -21,8 +21,8 @@ Usuários com dispositivos de entrada, aparelhos móveis com menor capacidade de
 2. **Desativação Centralizada no Componente `Card3DTilt`**:
    - Quando `animationsEnabled === false`, o componente bloqueia os cálculos no `requestAnimationFrame`, neutraliza o transform CSS (`rotateX(0deg) rotateY(0deg) translate3d(0,0,0) scale3d(1,1,1)`), remove reflexos dinâmicos (`opacity: 0`) e suprime as classes de brilho holográfico/foil.
 
-3. **Navegação Instantânea e Abertura no Fichário (`BinderBookFlip`)**:
-   - Quando `animationsEnabled === false`, o fichário desliga sombra e clique-vira (`drawShadow = false`, `disableFlipByClick = true`) e navega via `pageFlip.turnToPage(target)` em vez de `pageFlip.flip(target)`. O arraste nativo da lib (`useMouseEvents`) permanece sempre desligado; o swipe horizontal próprio continua virando uma página por gesto de forma instantânea.
+3. **Navegação Instantânea e Abertura no Binder (`BinderBookFlip`)**:
+   - Quando `animationsEnabled === false`, o binder desliga sombra e clique-vira (`drawShadow = false`, `disableFlipByClick = true`) e navega via `pageFlip.turnToPage(target)` em vez de `pageFlip.flip(target)`. O arraste nativo da lib (`useMouseEvents`) permanece sempre desligado; o swipe horizontal próprio continua virando uma página por gesto de forma instantânea.
    - Em **qualquer largura de tela** com animações desativadas, o álbum abre diretamente na Página 1 do catálogo por padrão, sem o efeito/atraso de abertura a partir da capa (mantendo a opção de voltar à capa manualmente caso o usuário queira).
    - Adaptação dinâmica contínua: redimensionar a tela entre desktop e mobile alterna fluidamente entre 2 páginas (landscape) e 1 página (portrait) sem necessidade de recarregar a página.
    - O comportamento respeita tanto a chave manual de configurações quanto a preferência do sistema operacional (`prefers-reduced-motion: reduce`).

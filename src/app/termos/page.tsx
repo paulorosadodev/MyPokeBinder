@@ -17,11 +17,11 @@ export default function TermosPage() {
             </LegalSection>
 
             <LegalSection title="2. Descrição e Finalidade do Serviço">
-                <p>O MyPokeBinder é uma plataforma web criada como um organizador digital e fichário pessoal 3×3 voltado aos 151 Pokémon originais da região de Kanto. A aplicação permite que colecionadores de cartas físicas de Pokémon Trading Card Game (TCG):</p>
+                <p>O MyPokeBinder é uma plataforma web criada como um organizador digital e binder pessoal 3×3 voltado aos 151 Pokémon originais da região de Kanto. A aplicação permite que colecionadores de cartas físicas de Pokémon Trading Card Game (TCG):</p>
                 <ul className="list-disc space-y-1.5 pl-5 text-slate-300">
                     <li>Pesquisem cartas físicas no catálogo público da API TCGdex.</li>
                     <li>Registrem os exemplares que possuem fisicamente em sua coleção, indicando idioma e quantidade.</li>
-                    <li>Vinculem cartas aos 151 slots fixos do fichário digital no formato 3×3 com física realista de páginas.</li>
+                    <li>Vinculem cartas aos 151 slots fixos do binder digital no formato 3×3 com física realista de páginas.</li>
                     <li>Visualizem seu progresso de coleção e personalizem o tema da interface.</li>
                 </ul>
             </LegalSection>
@@ -40,7 +40,7 @@ export default function TermosPage() {
 
             <LegalSection title="4. Conta do Usuário e Autenticação">
                 <p>
-                    Para acessar as funcionalidades de persistência do fichário, é necessária a autenticação por meio do <strong className="text-white">Google OAuth</strong>.
+                    Para acessar as funcionalidades de persistência do binder, é necessária a autenticação por meio do <strong className="text-white">Google OAuth</strong>.
                 </p>
                 <ul className="list-disc space-y-1.5 pl-5 text-slate-300">
                     <li>O usuário é o único responsável pela guarda e segurança de suas credenciais da conta Google.</li>

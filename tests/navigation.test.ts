@@ -3,14 +3,9 @@ import { describe, it, expect } from "bun:test";
 describe("Navigation and BottomNav Route Logic", () => {
     const getMobileNavItems = (currentPath: string) => [
         {
-            href: "/dashboard",
-            label: "Dashboard",
-            isActive: currentPath.startsWith("/dashboard"),
-        },
-        {
             href: "/",
-            label: "Binder",
-            isActive: currentPath === "/",
+            label: "Binders",
+            isActive: currentPath === "/" || currentPath.startsWith("/binders"),
         },
         {
             href: "/collection",
@@ -22,18 +17,13 @@ describe("Navigation and BottomNav Route Logic", () => {
     const getDesktopNavItems = (currentPath: string) => [
         {
             href: "/",
-            label: "Binder",
-            isActive: currentPath === "/",
+            label: "Binders",
+            isActive: currentPath === "/" || currentPath.startsWith("/binders"),
         },
         {
             href: "/collection",
             label: "Coleção",
             isActive: currentPath.startsWith("/collection") || currentPath.startsWith("/cards"),
-        },
-        {
-            href: "/dashboard",
-            label: "Dashboard",
-            isActive: currentPath.startsWith("/dashboard"),
         },
     ];
 
@@ -41,64 +31,69 @@ describe("Navigation and BottomNav Route Logic", () => {
         return items.findIndex((item) => item.isActive);
     };
 
-    it("should correctly activate Binder on root path as center item", () => {
+    it("should correctly activate Binders on root path as first item", () => {
         const items = getMobileNavItems("/");
-        expect(items[0].isActive).toBe(false);
-        expect(items[1].isActive).toBe(true);
-        expect(items[2].isActive).toBe(false);
-    });
-
-    it("should correctly activate Coleção on /collection as right item", () => {
-        const items = getMobileNavItems("/collection");
-        expect(items[0].isActive).toBe(false);
-        expect(items[1].isActive).toBe(false);
-        expect(items[2].isActive).toBe(true);
-    });
-
-    it("should correctly activate Dashboard on /dashboard as left item", () => {
-        const items = getMobileNavItems("/dashboard");
         expect(items[0].isActive).toBe(true);
         expect(items[1].isActive).toBe(false);
-        expect(items[2].isActive).toBe(false);
+    });
+
+    it("should correctly activate Binders on nested /binders/:id path", () => {
+        const items = getMobileNavItems("/binders/uuid-123");
+        expect(items[0].isActive).toBe(true);
+        expect(items[1].isActive).toBe(false);
+
+        const desktopItems = getDesktopNavItems("/binders/uuid-123");
+        expect(desktopItems[0].isActive).toBe(true);
+        expect(desktopItems[1].isActive).toBe(false);
+    });
+
+    it("should correctly activate Coleção on /collection as second item", () => {
+        const items = getMobileNavItems("/collection");
+        expect(items[0].isActive).toBe(false);
+        expect(items[1].isActive).toBe(true);
+    });
+
+    it("should not activate any tab for legacy /dashboard", () => {
+        const items = getMobileNavItems("/dashboard");
+        expect(items[0].isActive).toBe(false);
+        expect(items[1].isActive).toBe(false);
     });
 
     it("should correctly handle nested paths under collection", () => {
         const items = getMobileNavItems("/collection/filter");
-        expect(items[2].isActive).toBe(true);
+        expect(items[1].isActive).toBe(true);
     });
 
     it("should activate Coleção when viewing or editing a card under /cards/:id", () => {
         const mobileItems = getMobileNavItems("/cards/card-123");
         expect(mobileItems[0].isActive).toBe(false);
-        expect(mobileItems[1].isActive).toBe(false);
-        expect(mobileItems[2].isActive).toBe(true);
+        expect(mobileItems[1].isActive).toBe(true);
 
         const desktopItems = getDesktopNavItems("/cards/card-123");
         expect(desktopItems[0].isActive).toBe(false);
         expect(desktopItems[1].isActive).toBe(true);
-        expect(desktopItems[2].isActive).toBe(false);
     });
 
     it("should calculate correct slider active index for mobile nav", () => {
-        expect(calculateActiveIndex(getMobileNavItems("/dashboard"))).toBe(0);
-        expect(calculateActiveIndex(getMobileNavItems("/"))).toBe(1);
-        expect(calculateActiveIndex(getMobileNavItems("/collection"))).toBe(2);
-        expect(calculateActiveIndex(getMobileNavItems("/cards/swsh4-25"))).toBe(2);
+        expect(calculateActiveIndex(getMobileNavItems("/"))).toBe(0);
+        expect(calculateActiveIndex(getMobileNavItems("/binders/123"))).toBe(0);
+        expect(calculateActiveIndex(getMobileNavItems("/collection"))).toBe(1);
+        expect(calculateActiveIndex(getMobileNavItems("/cards/swsh4-25"))).toBe(1);
         expect(calculateActiveIndex(getMobileNavItems("/perfil"))).toBe(-1);
         expect(calculateActiveIndex(getMobileNavItems("/unknown"))).toBe(-1);
     });
 
     it("should calculate correct slider active index for desktop nav", () => {
         expect(calculateActiveIndex(getDesktopNavItems("/"))).toBe(0);
+        expect(calculateActiveIndex(getDesktopNavItems("/binders/123"))).toBe(0);
         expect(calculateActiveIndex(getDesktopNavItems("/collection"))).toBe(1);
         expect(calculateActiveIndex(getDesktopNavItems("/cards/swsh4-25"))).toBe(1);
-        expect(calculateActiveIndex(getDesktopNavItems("/dashboard"))).toBe(2);
         expect(calculateActiveIndex(getDesktopNavItems("/perfil"))).toBe(-1);
         expect(calculateActiveIndex(getDesktopNavItems("/unknown"))).toBe(-1);
     });
 
     it("should identify profile active route without selecting binder", () => {
-        const path = "/perfil";
+        const path: string = "/perfil";
         const isProfileActive = path === "/perfil" || path.startsWith("/configuracoes");
         const desktopItems = getDesktopNavItems(path);
         const activeNavIndex = calculateActiveIndex(desktopItems);
@@ -110,7 +105,7 @@ describe("Navigation and BottomNav Route Logic", () => {
 
     it("should identify own shared profile route as profile active", () => {
         const ownUsername = "ashketchum";
-        const path = `/perfil/${ownUsername}`;
+        const path: string = `/perfil/${ownUsername}`;
         const isOwnSharedProfile = path === `/perfil/${ownUsername}`;
         const isProfileActive = path === "/perfil" || isOwnSharedProfile || path.startsWith("/configuracoes");
         expect(isProfileActive).toBe(true);
@@ -118,14 +113,14 @@ describe("Navigation and BottomNav Route Logic", () => {
 
     it("should not mark another trainer profile as own profile active route", () => {
         const ownUsername = "ashketchum";
-        const path = "/perfil/misty";
+        const path: string = "/perfil/misty";
         const isOwnSharedProfile = path === `/perfil/${ownUsername}`;
         const isProfileActive = path === "/perfil" || isOwnSharedProfile || path.startsWith("/configuracoes");
         expect(isProfileActive).toBe(false);
     });
 
     it("should identify settings route (/configuracoes) as profile active route", () => {
-        const path = "/configuracoes";
+        const path: string = "/configuracoes";
         const isProfileActive = path === "/perfil" || path.startsWith("/configuracoes");
         const desktopItems = getDesktopNavItems(path);
         const activeNavIndex = calculateActiveIndex(desktopItems);
@@ -146,27 +141,26 @@ describe("Navigation and BottomNav Route Logic", () => {
         expect(getNavLabel({})).toBe("Meu Perfil");
     });
 
-    it("should calculate target index 3 and hide slider for profile routes to allow smooth direction slider transition", () => {
+    it("should calculate target index 2 and hide slider for profile routes to allow smooth direction slider transition", () => {
         const getDesktopTargetIndex = (path: string, ownUsername?: string) => {
             const isOwnSharedProfile = Boolean(ownUsername && path === `/perfil/${ownUsername}`);
             const isProfileActive = path === "/perfil" || isOwnSharedProfile || path.startsWith("/configuracoes");
             const rawIndex = getDesktopNavItems(path).findIndex((item) => item.isActive);
-            return isProfileActive ? 3 : rawIndex;
+            return isProfileActive ? 2 : rawIndex;
         };
 
         expect(getDesktopTargetIndex("/")).toBe(0);
+        expect(getDesktopTargetIndex("/binders/123")).toBe(0);
         expect(getDesktopTargetIndex("/collection")).toBe(1);
-        expect(getDesktopTargetIndex("/dashboard")).toBe(2);
-        expect(getDesktopTargetIndex("/perfil")).toBe(3);
-        expect(getDesktopTargetIndex("/perfil/ashketchum", "ashketchum")).toBe(3);
+        expect(getDesktopTargetIndex("/perfil")).toBe(2);
+        expect(getDesktopTargetIndex("/perfil/ashketchum", "ashketchum")).toBe(2);
         expect(getDesktopTargetIndex("/perfil/misty", "ashketchum")).toBe(-1);
-        expect(getDesktopTargetIndex("/configuracoes")).toBe(3);
+        expect(getDesktopTargetIndex("/configuracoes")).toBe(2);
 
-        const isSliderVisible = (index: number) => index >= 0 && index < 3;
+        const isSliderVisible = (index: number) => index >= 0 && index < 2;
         expect(isSliderVisible(0)).toBe(true);
         expect(isSliderVisible(1)).toBe(true);
-        expect(isSliderVisible(2)).toBe(true);
-        expect(isSliderVisible(3)).toBe(false);
+        expect(isSliderVisible(2)).toBe(false);
     });
 
     it("should structure active navigation indicator with theme primary CSS variables", () => {
@@ -180,7 +174,7 @@ describe("Navigation and BottomNav Route Logic", () => {
             const items = getDesktopNavItems(pathname);
             const isProfileActive = pathname.startsWith("/perfil") || pathname.startsWith("/configuracoes");
             const rawActiveIndex = items.findIndex((item) => item.isActive);
-            const targetNavIndex = isProfileActive ? 3 : rawActiveIndex;
+            const targetNavIndex = isProfileActive ? 2 : rawActiveIndex;
             const activeNavIndex = optimisticIndex !== null ? optimisticIndex : targetNavIndex;
 
             return items.map((_, index) => activeNavIndex === index);
@@ -191,7 +185,7 @@ describe("Navigation and BottomNav Route Logic", () => {
         expect(whileLeavingBinder[0]).toBe(false);
         expect(whileLeavingBinder[1]).toBe(true);
 
-        const whileGoingToProfile = getHighlightedIndexes("/dashboard", 3);
+        const whileGoingToProfile = getHighlightedIndexes("/", 2);
         expect(whileGoingToProfile.every(Boolean)).toBe(false);
     });
 

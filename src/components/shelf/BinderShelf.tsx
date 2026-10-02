@@ -1,0 +1,208 @@
+"use client";
+
+import { useCallback, useMemo, useRef, useState } from "react";
+import NextLink from "next/link";
+import { useRouter } from "next/navigation";
+import { Plus, Globe, Lock, ArrowRight, Settings2, Search, X, Layers } from "lucide-react";
+import { PokeballLoader } from "@/components/loading/PokeballLoader";
+import { BinderShelfBook } from "@/components/shelf/BinderShelfBook";
+import { SearchInput } from "@/components/ui/SearchInput";
+import { useBinders } from "@/lib/swr";
+import { getCoverTheme } from "@/lib/binder/themes";
+
+import type { Binder } from "@/types/binder";
+
+interface BinderShelfProps {
+    initialBinders?: Binder[];
+}
+
+export function BinderShelf({ initialBinders = [] }: BinderShelfProps) {
+    const router = useRouter();
+    const { binders, isLoading, isError } = useBinders({ binders: initialBinders });
+    const [searchTerm, setSearchTerm] = useState("");
+    const [activeBinderId, setActiveBinderId] = useState<string | null>(null);
+    const normalizedSearchTerm = searchTerm.trim().toLocaleLowerCase();
+    const visibleBinders = useMemo(() => {
+        if (!normalizedSearchTerm) return binders;
+        return binders.filter((binder) => `${binder.name} ${binder.description ?? ""}`.toLocaleLowerCase().includes(normalizedSearchTerm));
+    }, [binders, normalizedSearchTerm]);
+    const totalCollectionCardsInBinders = useMemo(() => binders.reduce((total, binder) => total + (binder.total_cards || 0), 0), [binders]);
+
+    const cardElemsRef = useRef<Map<string, HTMLDivElement>>(new Map());
+    const onReadyCallbacksRef = useRef<Map<string, () => void>>(new Map());
+
+    const addBinderBtnRef = useRef<HTMLAnchorElement>(null);
+    const readyCountRef = useRef(0);
+
+    const getOnReady = useCallback((binderId: string, appearDelay: number, total: number) => {
+        const cached = onReadyCallbacksRef.current.get(binderId);
+        if (cached) return cached;
+        const cb = () => {
+            const el = cardElemsRef.current.get(binderId);
+            if (el) {
+                el.style.animationDelay = `${appearDelay}ms`;
+                el.classList.remove("binder-shelf-card--pending");
+                el.classList.add("card-list-appear");
+            }
+            readyCountRef.current += 1;
+            if (readyCountRef.current >= total) {
+                const btn = addBinderBtnRef.current;
+                if (btn) {
+                    btn.style.animationDelay = `${Math.min(total * 40, 480)}ms`;
+                    btn.classList.remove("binder-shelf-card--pending");
+                    btn.classList.add("card-list-appear");
+                }
+            }
+        };
+        onReadyCallbacksRef.current.set(binderId, cb);
+        return cb;
+    }, []);
+
+    return (
+        <div className="flex min-h-screen flex-col">
+            <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-6 pb-28 sm:px-6 sm:py-8 md:pb-16">
+                <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+                    <div>
+                        <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">Meus Binders</h1>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300">
+                            <Layers size={14} className="text-slate-400" />
+                            <span>
+                                <strong className="text-white">{binders.length}</strong> {binders.length === 1 ? "Binder" : "Binders"}
+                            </span>
+                            <span className="text-white/20">|</span>
+                            <span>
+                                <strong className="text-white">{totalCollectionCardsInBinders}</strong> cartas alocadas
+                            </span>
+                        </div>
+
+                        <NextLink href="/binders/new" className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-poke-blue px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-opacity hover:opacity-90">
+                            <Plus size={18} />
+                            <span>Criar Binder</span>
+                        </NextLink>
+                    </div>
+                </div>
+
+                <div className="relative z-20 rounded-2xl border border-white/10 bg-[#121520]/80 p-2.5 shadow-xl backdrop-blur-md sm:p-3.5">
+                    <div className="relative">
+                        <Search size={15} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-500 sm:left-3.5 sm:h-4 sm:w-4" />
+                        <SearchInput type="search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar por nome ou descrição..." placeholderClassName="left-8.5 right-8 text-xs sm:left-10 sm:right-9 sm:text-sm" className="h-9 w-full rounded-xl border border-white/10 bg-white/5 py-2 pr-9 pl-8.5 text-xs text-white transition-colors focus:border-poke-blue/60 focus:bg-white/[0.08] focus:outline-none sm:h-10 sm:py-2.5 sm:pr-10 sm:pl-10 sm:text-sm" />
+                        {searchTerm && (
+                            <button type="button" onClick={() => setSearchTerm("")} aria-label="Limpar busca" className="absolute top-1/2 right-2.5 z-20 -translate-y-1/2 text-slate-500 transition-colors hover:text-white sm:right-3">
+                                <X size={14} className="sm:h-[15px] sm:w-[15px]" />
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {isLoading && binders.length === 0 ? (
+                    <div className="flex h-64 flex-col items-center justify-center">
+                        <PokeballLoader message="Organizando estante..." size="lg" />
+                    </div>
+                ) : isError && binders.length === 0 ? (
+                    <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-8 text-center">
+                        <p className="text-sm text-red-400">Não foi possível carregar seus binders no momento.</p>
+                        <button type="button" onClick={() => window.location.reload()} className="rounded-xl bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/20">
+                            Recarregar página
+                        </button>
+                    </div>
+                ) : (
+                    <div className="relative">
+                        {visibleBinders.length === 0 && normalizedSearchTerm ? (
+                            <div className="flex h-64 flex-col items-center justify-center gap-3 text-center">
+                                <Search size={32} className="text-slate-600" />
+                                <div>
+                                    <p className="text-sm font-semibold text-white">Nenhum Binder encontrado</p>
+                                    <p className="mt-1 text-xs text-slate-400">Tente buscar por outro nome ou descrição.</p>
+                                </div>
+                                <button type="button" onClick={() => setSearchTerm("")} className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-semibold text-slate-300 transition-colors hover:bg-white/10 hover:text-white">
+                                    Limpar busca
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                                {visibleBinders.map((binder, index) => {
+                                    const theme = getCoverTheme(binder.cover_theme);
+                                    const totalSlots = binder.total_slots ?? binder.total_pages * 9;
+                                    const completion = binder.completion_percentage ?? 0;
+                                    const filledCount = binder.total_cards ?? 0;
+                                    const appearDelay = Math.min(index * 40, 480);
+
+                                    return (
+                                        <div
+                                            key={binder.id}
+                                            ref={(el) => {
+                                                if (el) cardElemsRef.current.set(binder.id, el);
+                                                else cardElemsRef.current.delete(binder.id);
+                                            }}
+                                            role="link"
+                                            tabIndex={0}
+                                            onClick={() => router.push(`/binders/${binder.id}`)}
+                                            onKeyDown={(event) => {
+                                                if (event.key === "Enter" || event.key === " ") {
+                                                    event.preventDefault();
+                                                    router.push(`/binders/${binder.id}`);
+                                                }
+                                            }}
+                                            onMouseEnter={() => setActiveBinderId(binder.id)}
+                                            onMouseLeave={() => setActiveBinderId((current) => (current === binder.id ? null : current))}
+                                            onFocus={() => setActiveBinderId(binder.id)}
+                                            onBlur={(event) => {
+                                                if (!event.currentTarget.contains(event.relatedTarget)) setActiveBinderId((current) => (current === binder.id ? null : current));
+                                            }}
+                                            aria-label={`Abrir Binder ${binder.name}`}
+                                            className="binder-shelf-card binder-shelf-card--pending group relative flex cursor-pointer flex-col rounded-[20px] border border-white/10 bg-[#10131b]/70 p-3 outline-none transition-[border-color,background-color] duration-300 hover:border-white/20 hover:bg-[#131722] focus-visible:ring-2 focus-visible:ring-poke-blue/80"
+                                        >
+                                            <BinderShelfBook key={`${binder.id}-${binder.updated_at}`} binder={binder} active={activeBinderId === binder.id} onReady={getOnReady(binder.id, appearDelay, visibleBinders.length)} />
+
+                                            <div className="flex flex-1 flex-col justify-between px-1 pt-4">
+                                                <div>
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div className="min-w-0">
+                                                            <h2 className="truncate text-[15px] font-bold tracking-tight text-white sm:text-base">{binder.name}</h2>
+                                                            <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-400">
+                                                                {binder.is_public ? <Globe size={13} className="shrink-0 text-emerald-300" aria-label="Binder público" /> : <Lock size={12} className="shrink-0 text-slate-500" aria-label="Binder privado" />}
+                                                                <span>{binder.is_public ? "Público" : "Privado"}</span>
+                                                            </div>
+                                                        </div>
+                                                        <NextLink href={`/binders/${binder.id}/edit`} onClick={(e) => e.stopPropagation()} title="Editar estrutura do Binder" className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-400 transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white">
+                                                            <Settings2 size={13} />
+                                                        </NextLink>
+                                                    </div>
+
+                                                    {binder.description && <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-slate-400">{binder.description}</p>}
+                                                </div>
+
+                                                <div className="mt-4 flex items-end justify-between border-t border-white/[0.07] pt-3">
+                                                    <span className="font-mono text-[11px] text-slate-400">
+                                                        <strong className="font-semibold text-slate-200">{filledCount}</strong>/{totalSlots} cartas
+                                                    </span>
+                                                    <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-400">
+                                                        <span style={{ color: theme.primaryColor }}>{completion}%</span>
+                                                        <ArrowRight size={13} className="transition-transform duration-300 lg:group-hover:translate-x-0.5 lg:group-focus:translate-x-0.5" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+
+                                {!normalizedSearchTerm && (
+                                    <NextLink ref={addBinderBtnRef} href="/binders/new" className="binder-shelf-card--pending group flex min-h-[320px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/15 bg-white/[0.015] p-6 text-center transition-all duration-300 hover:border-poke-blue/60 hover:bg-poke-blue/[0.03] hover:shadow-[0_0_30px_rgba(59,130,246,0.15)] select-none">
+                                        <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-slate-400 shadow-inner transition-all duration-300 group-hover:border-poke-blue/50 group-hover:bg-poke-blue/20 group-hover:text-white">
+                                            <Plus size={28} />
+                                        </div>
+                                        <h3 className="mt-4 text-base font-bold text-white transition-colors group-hover:text-poke-blue">Criar Binder</h3>
+                                        <p className="mt-1 max-w-[220px] text-xs text-slate-400">Escolha uma capa, o formato da grade e a quantidade de páginas.</p>
+                                    </NextLink>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </main>
+        </div>
+    );
+}

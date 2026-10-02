@@ -1,7 +1,7 @@
 import useSWR, { SWRConfiguration } from "swr";
 import useSWRInfinite from "swr/infinite";
 import { useMemo, useCallback } from "react";
-import type { CardVariant, UserCard, DashboardData, CollectionCardGroup, BinderStatusFilter } from "@/types/binder";
+import type { CardVariant, UserCard, DashboardData, CollectionCardGroup, BinderStatusFilter, Binder, BinderDetailResponse, CardDetailsResponse } from "@/types/binder";
 import { ALL_ARTISTS_FILTER, ALL_EXPANSIONS_FILTER, COLLECTION_PAGE_SIZE, type CollectionSortDirection, type CollectionSortField } from "@/lib/collection/listCards";
 
 export const defaultSWRConfig: SWRConfiguration = {
@@ -251,8 +251,8 @@ export function useBinderCards(fallbackData?: { cards: UserCard[]; availableCoun
     };
 }
 
-export function useCollectionCards(dexId?: number | null) {
-    const key = dexId ? `/api/cards?pokemon_dex_id=${dexId}` : null;
+export function useCollectionCards(dexId?: number | null, loadAll = false) {
+    const key = dexId ? `/api/cards?pokemon_dex_id=${dexId}` : loadAll ? "/api/cards" : null;
     const { data, error, isLoading, mutate } = useSWR<{ cards: UserCard[] }>(key, fetcher, defaultSWRConfig);
     return {
         cards: data?.cards ?? [],
@@ -274,11 +274,12 @@ export function useAllCollectionCards() {
 
 export function useCardDetails(id?: string | null) {
     const key = id ? `/api/cards/${id}` : null;
-    const { data, error, isLoading, mutate } = useSWR<{ card: UserCard; copies: UserCard[]; availableVariants: CardVariant[] }>(key, fetcher, defaultSWRConfig);
+    const { data, error, isLoading, mutate } = useSWR<CardDetailsResponse>(key, fetcher, defaultSWRConfig);
     return {
         card: data?.card ?? null,
         copies: data?.copies ?? [],
         availableVariants: data?.availableVariants ?? ["normal", "holo", "reverse"],
+        allocation: data?.allocation ?? null,
         isLoading: isLoading && !data,
         isError: error,
         mutate,
@@ -290,6 +291,33 @@ export function useDashboardData() {
     return {
         data: data ?? null,
         isLoading,
+        isError: error,
+        mutate,
+    };
+}
+
+export function useBinders(fallbackData?: { binders: Binder[] }) {
+    const { data, error, isLoading, mutate } = useSWR<{ binders: Binder[] }>("/api/binders", fetcher, {
+        ...defaultSWRConfig,
+        fallbackData,
+        revalidateOnMount: true,
+    });
+    return {
+        binders: data?.binders ?? fallbackData?.binders ?? [],
+        isLoading: isLoading && !data,
+        isError: error,
+        mutate,
+    };
+}
+
+export function useBinder(id?: string | null) {
+    const key = id ? `/api/binders/${id}` : null;
+    const { data, error, isLoading, mutate } = useSWR<BinderDetailResponse>(key, fetcher, defaultSWRConfig);
+    return {
+        binder: data?.binder ?? null,
+        slots: data?.slots ?? [],
+        otherBinders: data?.otherBinders ?? [],
+        isLoading: isLoading && !data,
         isError: error,
         mutate,
     };

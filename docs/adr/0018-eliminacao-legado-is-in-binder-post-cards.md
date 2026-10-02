@@ -11,7 +11,7 @@ Na arquitetura inicial da aplicação (anterior à ADR 0007), a rota `POST /api/
 A análise de multitenancy e integridade transacional revelou que:
 
 1. **Falta de Atomicidade Transacional:** As duas chamadas HTTP separadas (`UPDATE` e depois `INSERT`) não ocorriam dentro de uma mesma transação atômica no banco de dados. Em cenários de concorrência ou falha parcial de rede, havia risco de violar o índice parcial único `user_cards_user_pokemon_binder_idx (user_id, pokemon_dex_id) WHERE is_in_binder = true`, resultando em erro HTTP 500 ou inconsistência no slot.
-2. **Código Morto / Legado:** Desde a consolidação da separação entre Coleção (inventário físico) e Fichário (vitrine de 151 slots) documentada na ADR 0007 e no `docs/CONTEXT.md`, o frontend não envia mais `is_in_binder = true` ao cadastrar cartas. Todas as cartas novas entram obrigatoriamente no inventário físico com `is_in_binder = false`, e a promoção para exibição no Fichário é uma ação posterior e explícita do usuário via `PATCH /api/cards/[id]` utilizando a RPC atômica `set_card_in_binder`.
+2. **Código Morto / Legado:** Desde a consolidação da separação entre Coleção (inventário físico) e Binder (vitrine de 151 slots) documentada na ADR 0007 e no `docs/CONTEXT.md`, o frontend não envia mais `is_in_binder = true` ao cadastrar cartas. Todas as cartas novas entram obrigatoriamente no inventário físico com `is_in_binder = false`, e a promoção para exibição no Binder é uma ação posterior e explícita do usuário via `PATCH /api/cards/[id]` utilizando a RPC atômica `set_card_in_binder`.
 3. **Props e Estados Obsoletos:** Componentes como `CardSearchModal` e a página principal `page.tsx` ainda mantinham referências e props residuais (`defaultIsInBinder`, `searchDefaultIsInBinder`) sem uso prático.
 
 ## Decisões
@@ -22,7 +22,7 @@ A análise de multitenancy e integridade transacional revelou que:
     - Definida a invariante estrita: todo `INSERT` realizado por `POST /api/cards` grava `is_in_binder: false`.
 
 2. **Garantia de Atomicidade Restrita à RPC:**
-    - A vinculação de qualquer carta ao Fichário permanece delegada exclusivamente à rota `PATCH /api/cards/[id]`, que invoca a função RPC `set_card_in_binder` do PostgreSQL, executada de forma atômica e segura com `auth.uid()`.
+    - A vinculação de qualquer carta ao Binder permanece delegada exclusivamente à rota `PATCH /api/cards/[id]`, que invoca a função RPC `set_card_in_binder` do PostgreSQL, executada de forma atômica e segura com `auth.uid()`.
 
 3. **Limpeza do Frontend:**
     - Removida a propriedade `defaultIsInBinder` de [CardSearchModal.tsx](file:///home/paulo_rosado/MyPokeBinder/src/components/modal/CardSearchModal.tsx).

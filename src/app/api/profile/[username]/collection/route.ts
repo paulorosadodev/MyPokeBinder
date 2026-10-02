@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createPublicClient } from "@/lib/supabase/public";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { safeDecodeParam, isValidProfileParam, UUID_REGEX } from "@/lib/profile/username";
 
 export async function GET(request: NextRequest, context: { params: Promise<{ username: string }> }) {
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ use
     const cleanParam = param.startsWith("@") ? param.slice(1) : param;
     const username = cleanParam.toLowerCase();
 
-    const publicClient = createPublicClient();
+    const publicClient = process.env.SUPABASE_SERVICE_ROLE_KEY ? createAdminClient() : createPublicClient();
 
     let profileQuery = publicClient.from("profiles").select("id, username, display_name, avatar_url, theme_color");
     if (UUID_REGEX.test(cleanParam)) {

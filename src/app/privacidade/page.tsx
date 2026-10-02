@@ -13,7 +13,7 @@ export default function PrivacidadePage() {
                 <p>
                     A presente Política de Privacidade tem por objetivo fornecer total transparência a você (&quot;Usuário&quot; ou &quot;Colecionador&quot;) a respeito de quais dados são coletados, como são utilizados, armazenados e protegidos ao utilizar a aplicação web <strong className="text-white">MyPokeBinder</strong>.
                 </p>
-                <p>O MyPokeBinder é uma aplicação web criada para fins de organização pessoal de coleções de cartas físicas de Pokémon Trading Card Game (TCG). Nosso compromisso é respeitar a privacidade dos usuários e tratar apenas o volume mínimo de dados estritamente necessário para o funcionamento dos recursos de sincronização e gerenciamento do fichário.</p>
+                <p>O MyPokeBinder é uma aplicação web criada para fins de organização pessoal de coleções de cartas físicas de Pokémon Trading Card Game (TCG). Nosso compromisso é respeitar a privacidade dos usuários e tratar apenas o volume mínimo de dados estritamente necessário para o funcionamento dos recursos de sincronização e gerenciamento do binder.</p>
             </LegalSection>
 
             <LegalSection id="google-scope" title="2. Autenticação e Dados Recebidos do Google">
@@ -45,13 +45,13 @@ export default function PrivacidadePage() {
             </LegalSection>
 
             <LegalSection title="3. Dados Gerados na Aplicação">
-                <p>Ao interagir com o MyPokeBinder, são armazenadas exclusivamente as informações relacionadas à sua experiência com o fichário de cartas:</p>
+                <p>Ao interagir com o MyPokeBinder, são armazenadas exclusivamente as informações relacionadas à sua experiência com o binder de cartas:</p>
                 <ul className="list-disc space-y-1.5 pl-5 text-slate-300">
                     <li>
                         <strong className="text-white">Cartas cadastradas na coleção</strong>: Identificador da carta na API pública TCGdex, número da Pokédex (1 a 151), nome do Pokémon, URL da ilustração da carta, idioma físico selecionado (PT-BR, EN, JA) e quantidade de exemplares possuídos.
                     </li>
                     <li>
-                        <strong className="text-white">Vínculo no Binder</strong>: Marcação de qual carta está ativa em cada um dos 151 slots fixos do fichário.
+                        <strong className="text-white">Vínculo no Binder</strong>: Marcação de qual carta está ativa em cada um dos 151 slots fixos do binder.
                     </li>
                     <li>
                         <strong className="text-white">Preferências de configuração</strong>: Preferência de cor do tema visual da interface e ativação/desativação de efeitos sonoros procedurais.

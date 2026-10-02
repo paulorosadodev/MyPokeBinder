@@ -6,7 +6,7 @@ Aceito
 
 ## Contexto
 
-Ao recarregar a página inicial do Binder (`/`) através de refresh (F5), observou-se que a animação de abertura do fichário (`react-pageflip`) abria com as páginas completamente vazias de cartas. Pouco tempo depois (após 1 a 2 segundos), todas as cartas apareciam repentinamente ao mesmo tempo ("pop-in" em massa).
+Ao recarregar a página inicial do Binder (`/`) através de refresh (F5), observou-se que a animação de abertura do binder (`react-pageflip`) abria com as páginas completamente vazias de cartas. Pouco tempo depois (após 1 a 2 segundos), todas as cartas apareciam repentinamente ao mesmo tempo ("pop-in" em massa).
 
 A investigação identificou três fatores causais:
 
@@ -36,12 +36,12 @@ A investigação identificou três fatores causais:
 3. **Disparo da Abertura do Binder Conectado ao `readyToOpen`**:
    - Adicionada a prop `readyToOpen={!showLoading}` ao `BinderBookFlip`.
    - O livro mantém-se fechado na Capa Frontal enquanto o loading de tela inteira estiver visível.
-   - Quando o loading se encerra e a tela é revelada, um temporizador suave de 200ms aciona a dobra e abertura do fichário.
+   - Quando o loading se encerra e a tela é revelada, um temporizador suave de 200ms aciona a dobra e abertura do binder.
    - Como todos os arquivos de imagem daquele spread já foram baixados durante a permanência do `PokeballLoader`, cada carta já se encontra pintada no DOM: as ilustrações e efeitos 3D são exibidos imediatamente durante todo o movimento de rotação da folha, com zero slots vazios e zero pop-in.
 
 ## Consequências
 
-- **Experiência Visual Imersiva**: O usuário nunca visualiza o fichário abrindo com slots em branco. A virada revela instantaneamente as cartas físicas em seus devidos lugares.
+- **Experiência Visual Imersiva**: O usuário nunca visualiza o binder abrindo com slots em branco. A virada revela instantaneamente as cartas físicas em seus devidos lugares.
 - **Carregamento Honesto**: A Pokébola de loading só é ocultada quando os assets visuais estão de fato prontos para apresentação na tela.
 - **Resiliência a Conexões Lentas**: O timeout de segurança (4s a 5s) impede que falhas de rede em alguma imagem travem a aplicação indefinidamente.
 - **Conformidade de Testes e Qualidade**: 118 testes unitários passando, 0 erros no linter e conformidade estrita com a regra de ausência de comentários no código.

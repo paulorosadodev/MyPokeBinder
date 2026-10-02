@@ -11,6 +11,8 @@ import { PokemonThemeSelector } from "@/components/theme/PokemonThemeSelector";
 import { PokeballLoader } from "@/components/loading/PokeballLoader";
 import { getPokemonThemeSelectorSpriteUrl } from "@/lib/pokemon/constants";
 import { BIO_MAX_LENGTH, DISPLAY_NAME_MAX_LENGTH, USERNAME_MAX_LENGTH, validateBio, validateDisplayName, validateUsername } from "@/lib/profile/username";
+import { useDismissibleOverlay } from "@/lib/hooks/useDismissibleOverlay";
+import { useOverlayPresence } from "@/lib/hooks/useOverlayPresence";
 
 export default function SettingsPage() {
     const router = useRouter();
@@ -29,6 +31,16 @@ export default function SettingsPage() {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [deleteConfirmText, setDeleteConfirmText] = useState("");
     const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+    useDismissibleOverlay(
+        isDeleteModalOpen,
+        () => {
+            setIsDeleteModalOpen(false);
+            setDeleteConfirmText("");
+        },
+        isDeletingAccount,
+    );
+    const { isPresent: isDeleteModalPresent, state: deleteModalOverlayState } = useOverlayPresence(isDeleteModalOpen);
 
     useEffect(() => {
         if (!isLoading && !user) {
@@ -251,7 +263,7 @@ export default function SettingsPage() {
     if (!isAssetsLoaded || isLoading || !profileHydrated) {
         return (
             <div className="flex min-h-screen flex-col">
-                <main className="flex flex-1 items-center justify-center">
+                <main className="flex flex-1 items-start justify-center bg-[#0a0c10] pt-10 pb-16 sm:pt-14 md:pt-18">
                     <PokeballLoader size="lg" message="Carregando configurações..." />
                 </main>
             </div>
@@ -461,9 +473,13 @@ export default function SettingsPage() {
                 </section>
             </main>
 
-            {isDeleteModalOpen && (
+            {isDeleteModalPresent && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+                    className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-0 sm:p-4 backdrop-blur-sm"
+                    data-overlay-state={deleteModalOverlayState}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Confirmar exclusão da conta"
                     onClick={(e) => {
                         if (e.target === e.currentTarget && !isDeletingAccount) {
                             setIsDeleteModalOpen(false);
@@ -471,7 +487,7 @@ export default function SettingsPage() {
                         }
                     }}
                 >
-                    <div className="modal-enter flex w-full max-w-md flex-col gap-4 rounded-2xl border border-rose-500/30 bg-[#141722] p-6 shadow-2xl">
+                    <div className="modal-surface flex h-dvh max-h-none w-full max-w-none flex-col gap-4 overflow-y-auto rounded-none border-0 bg-[#141722] p-6 shadow-2xl sm:h-auto sm:max-w-md sm:rounded-2xl sm:border sm:border-rose-500/30">
                         <div className="flex items-center gap-3">
                             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-500/15 text-rose-400">
                                 <Trash2 size={22} />

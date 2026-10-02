@@ -40,7 +40,63 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ us
         data: { user: viewer },
     } = await supabase.auth.getUser();
 
+    const isOwner = Boolean(viewer?.id && viewer.id === cached.owner.id);
+    let profile = hydratePublicProfile(buildCachedPublicProfile(cached), viewer);
+
+    if (isOwner && viewer) {
+        const { data: ownerBinders } = await supabase.from("binders").select("*").eq("user_id", viewer.id).order("created_at", { ascending: true });
+
+        const binderIds = (ownerBinders ?? []).map((b) => b.id);
+        let allSlots: any[] = [];
+        if (binderIds.length > 0) {
+            const { data: slotsData } = await supabase.from("binder_slots").select("*").in("binder_id", binderIds).order("page_number", { ascending: true }).order("slot_index", { ascending: true });
+            allSlots = slotsData ?? [];
+        }
+
+        const userCardIds = allSlots.map((s) => s.user_card_id).filter((cid): cid is string => typeof cid === "string" && Boolean(cid));
+
+        const userCardsMap = new Map<string, any>();
+        if (userCardIds.length > 0) {
+            const { data: uCards } = await supabase.from("user_cards").select("*").in("id", userCardIds);
+            for (const card of uCards ?? []) {
+                userCardsMap.set(card.id, card);
+            }
+        }
+
+        const slotsByBinder = new Map<string, any[]>();
+        for (const slot of allSlots) {
+            const list = slotsByBinder.get(slot.binder_id) || [];
+            list.push({
+                ...slot,
+                card: slot.user_card_id ? userCardsMap.get(slot.user_card_id) || null : null,
+            });
+            slotsByBinder.set(slot.binder_id, list);
+        }
+
+        const bindersWithStats = (ownerBinders ?? []).map((b) => {
+            const slots = slotsByBinder.get(b.id) || [];
+            const total = slots.length;
+            const filled = slots.filter((s) => Boolean(s.user_card_id)).length;
+            return {
+                ...b,
+                total_slots: total,
+                total_cards: filled,
+                completion_percentage: total > 0 ? Math.round((filled / total) * 100) : 0,
+            };
+        });
+
+        const featured = bindersWithStats.find((b) => b.is_featured) || bindersWithStats[0] || null;
+        const featuredSlots = featured ? slotsByBinder.get(featured.id) || [] : [];
+
+        profile = {
+            ...profile,
+            binders: bindersWithStats,
+            featuredBinder: featured,
+            featuredBinderSlots: featuredSlots,
+        };
+    }
+
     return NextResponse.json({
-        profile: hydratePublicProfile(buildCachedPublicProfile(cached), viewer),
+        profile,
     });
 }

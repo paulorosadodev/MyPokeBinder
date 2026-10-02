@@ -11,16 +11,10 @@ export function BottomNav() {
 
     const items = [
         {
-            href: "/dashboard",
-            label: "Dashboard",
-            icon: LayoutDashboard,
-            isActive: pathname.startsWith("/dashboard"),
-        },
-        {
             href: "/",
-            label: "Binder",
+            label: "Binders",
             icon: BookOpen,
-            isActive: pathname === "/",
+            isActive: pathname === "/" || pathname.startsWith("/binders"),
         },
         {
             href: "/collection",
@@ -43,7 +37,7 @@ export function BottomNav() {
                     <div
                         style={{
                             transform: `translate3d(${activeIndex >= 0 ? activeIndex * 100 : 0}%, 0, 0)`,
-                            width: "calc((100% - 8px) / 3)",
+                            width: "calc((100% - 8px) / 2)",
                             opacity: activeIndex >= 0 ? 1 : 0,
                         }}
                         className="pointer-events-none absolute top-1 bottom-1 left-1 rounded-xl border border-[var(--theme-primary)]/30 bg-[var(--theme-primary)]/20 shadow-[0_0_12px_var(--theme-primary-glow)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"

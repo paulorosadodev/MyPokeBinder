@@ -85,7 +85,7 @@ function LoginForm() {
                 <div className="w-full max-w-2xl xl:max-w-3xl">
                     <div className="max-w-xl text-left">
                         <p className={`landing-enter landing-enter-d1 text-5xl font-extrabold tracking-tight xl:text-6xl ${brandHeroGradientClass}`}>MyPokeBinder</p>
-                        <h1 className="landing-enter landing-enter-d2 mt-4 text-3xl font-semibold tracking-tight text-white xl:text-4xl">Seu fichário 3×3 dos 151 de Kanto</h1>
+                        <h1 className="landing-enter landing-enter-d2 mt-4 text-3xl font-semibold tracking-tight text-white xl:text-4xl">Seu binder 3×3 dos 151 de Kanto</h1>
                         <p className="landing-enter landing-enter-d3 mt-4 max-w-[40ch] text-base leading-relaxed text-slate-400 xl:text-lg">Entre para sincronizar cartas e folhear o binder em qualquer dispositivo.</p>
                     </div>
 

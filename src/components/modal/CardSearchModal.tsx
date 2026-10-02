@@ -17,14 +17,17 @@ import { Card3DTilt } from "@/components/ui/Card3DTilt";
 import { Spinner } from "@/components/ui/Spinner";
 import { ModalSearchFilters } from "@/components/ui/ModalSearchFilters";
 import { getCardAppearProps } from "@/lib/ui/cardAppear";
+import { useDismissibleOverlay } from "@/lib/hooks/useDismissibleOverlay";
+import { useOverlayPresence } from "@/lib/hooks/useOverlayPresence";
 import { toast } from "sonner";
-import { X, Search, Plus, Circle, Sparkles, Gem, RefreshCw, Layers, Globe, Palette } from "lucide-react";
+import { ArrowLeft, X, Search, Plus, Circle, Sparkles, Gem, RefreshCw, Layers, Globe, Palette } from "lucide-react";
 
 interface CardSearchModalProps {
     isOpen: boolean;
-    dexId: number;
-    pokemonName: string;
+    dexId?: number | null;
+    pokemonName?: string;
     onClose: () => void;
+    onBack?: () => void;
     onCardAdded: (newCard: UserCard) => void;
 }
 
@@ -42,7 +45,7 @@ const LANGUAGE_SELECT_OPTIONS: SelectOption<CardLanguage>[] = [
     { value: "ja", label: "JA", icon: <FlagIcon country="ja" /> },
 ];
 
-export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdded }: CardSearchModalProps) {
+export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onBack, onCardAdded }: CardSearchModalProps) {
     const [lang, setLang] = useState<CardLanguage>("pt-br");
     const [variant, setVariant] = useState<CardVariant>("normal");
     const [condition, setCondition] = useState<CardCondition>("NM");
@@ -60,6 +63,9 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
     const [artistFilter, setArtistFilter] = useState(ALL_ARTISTS_FILTER);
     const [showFilters, setShowFilters] = useState(false);
 
+    useDismissibleOverlay(isOpen, onClose, submittingCardId !== null);
+    const { isPresent, state } = useOverlayPresence(isOpen);
+
     useEffect(() => {
         if (isOpen) {
             setLang("pt-br");
@@ -70,17 +76,22 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
             setExpansionFilter(ALL_EXPANSIONS_FILTER);
             setArtistFilter(ALL_ARTISTS_FILTER);
             setShowFilters(false);
+            if (!pokemonName) {
+                setCards([]);
+                setHasMore(false);
+                setInitialLoading(false);
+            }
         }
-    }, [isOpen]);
+    }, [isOpen, pokemonName]);
 
     useEffect(() => {
-        if (!isOpen) return;
+        if (!isOpen || !pokemonName) return;
 
         let isMounted = true;
         async function loadFirstPage() {
             try {
-                const queryName = pokemonName.replace(/[♀♂]/g, "").trim();
-                const cacheKey = `${dexId}_${queryName}_page_1`;
+                const queryName = pokemonName!.replace(/[♀♂]/g, "").trim();
+                const cacheKey = `${dexId ?? 0}_${queryName}_page_1`;
                 const cached = clientSearchCache.get(cacheKey);
 
                 if (cached) {
@@ -97,7 +108,8 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                 setSubmittingCardId(null);
                 setPage(1);
 
-                const res = await fetch(`/api/search?name=${encodeURIComponent(queryName)}&dexId=${dexId}&page=1&pageSize=${COLLECTION_PAGE_SIZE}`);
+                const dexParam = dexId ? `&dexId=${dexId}` : "";
+                const res = await fetch(`/api/search?name=${encodeURIComponent(queryName)}${dexParam}&page=1&pageSize=${COLLECTION_PAGE_SIZE}`);
                 const data: SearchResponse = await res.json();
 
                 if (!res.ok) {
@@ -131,14 +143,81 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
         };
     }, [isOpen, pokemonName, dexId]);
 
+    useEffect(() => {
+        if (!isOpen || pokemonName) return;
+
+        const term = searchTerm.trim();
+        if (!term) {
+            setCards([]);
+            setHasMore(false);
+            setInitialLoading(false);
+            return;
+        }
+
+        let isMounted = true;
+        const timer = setTimeout(async () => {
+            try {
+                const cacheKey = `catalog_${term}_page_1`;
+                const cached = clientSearchCache.get(cacheKey);
+
+                if (cached) {
+                    setCards(cached.cards ?? []);
+                    setHasMore(cached.hasMore ?? false);
+                    setPage(1);
+                    setError(null);
+                    setInitialLoading(false);
+                    return;
+                }
+
+                setInitialLoading(true);
+                setError(null);
+                setSubmittingCardId(null);
+                setPage(1);
+
+                const res = await fetch(`/api/search?name=${encodeURIComponent(term)}&page=1&pageSize=${COLLECTION_PAGE_SIZE}`);
+                const data: SearchResponse = await res.json();
+
+                if (!res.ok) {
+                    const errorMsg = (data as unknown as { error?: string }).error || "Erro ao buscar cartas";
+                    throw new Error(errorMsg);
+                }
+
+                clientSearchCache.set(cacheKey, data);
+
+                if (isMounted) {
+                    setCards(data.cards ?? []);
+                    setHasMore(data.hasMore ?? false);
+                }
+            } catch (err: unknown) {
+                if (isMounted) {
+                    const msg = err instanceof Error ? err.message : "Falha na busca";
+                    setError(msg);
+                    setCards([]);
+                    setHasMore(false);
+                }
+            } finally {
+                if (isMounted) {
+                    setInitialLoading(false);
+                }
+            }
+        }, 300);
+
+        return () => {
+            isMounted = false;
+            clearTimeout(timer);
+        };
+    }, [isOpen, pokemonName, searchTerm]);
+
     const loadNextPage = useCallback(async () => {
         if (loadingMore || initialLoading || !hasMore) return;
+
+        const effectiveQuery = pokemonName ? pokemonName.replace(/[♀♂]/g, "").trim() : searchTerm.trim();
+        if (!effectiveQuery) return;
 
         try {
             setLoadingMore(true);
             const nextPage = page + 1;
-            const queryName = pokemonName.replace(/[♀♂]/g, "").trim();
-            const cacheKey = `${dexId}_${queryName}_page_${nextPage}`;
+            const cacheKey = pokemonName ? `${dexId ?? 0}_${effectiveQuery}_page_${nextPage}` : `catalog_${effectiveQuery}_page_${nextPage}`;
             const cached = clientSearchCache.get(cacheKey);
 
             if (cached) {
@@ -149,7 +228,8 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                 return;
             }
 
-            const res = await fetch(`/api/search?name=${encodeURIComponent(queryName)}&dexId=${dexId}&page=${nextPage}&pageSize=${COLLECTION_PAGE_SIZE}`);
+            const dexParam = pokemonName && dexId ? `&dexId=${dexId}` : "";
+            const res = await fetch(`/api/search?name=${encodeURIComponent(effectiveQuery)}${dexParam}&page=${nextPage}&pageSize=${COLLECTION_PAGE_SIZE}`);
             const data: SearchResponse = await res.json();
 
             if (!res.ok) {
@@ -168,18 +248,18 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
         } finally {
             setLoadingMore(false);
         }
-    }, [page, hasMore, loadingMore, initialLoading, pokemonName, dexId]);
+    }, [page, hasMore, loadingMore, initialLoading, pokemonName, dexId, searchTerm]);
 
     const filteredCards = useMemo(
         () =>
             filterCatalogCards(cards, {
-                searchTerm,
+                searchTerm: pokemonName ? searchTerm : "",
                 rarityFilter,
                 expansionFilter,
                 artistFilter,
-                dexId,
+                dexId: dexId ?? undefined,
             }),
-        [cards, searchTerm, rarityFilter, expansionFilter, artistFilter, dexId],
+        [cards, searchTerm, rarityFilter, expansionFilter, artistFilter, dexId, pokemonName],
     );
     const expansionOptions = useMemo(() => buildExpansionFilterOptions(cards.map((card) => card.setName)), [cards]);
     const artistOptions = useMemo(() => buildArtistFilterOptions(cards.map((card) => card.artist)), [cards]);
@@ -211,7 +291,7 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     tcgdex_card_id: card.id,
-                    pokemon_dex_id: dexId,
+                    pokemon_dex_id: card.dexId !== undefined ? card.dexId : dexId || null,
                     card_name: card.name,
                     card_image_url: formatTcgdexImageUrl(card.image),
                     card_set_name: card.setName || "",
@@ -231,7 +311,11 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
             }
 
             onCardAdded(data.card);
-            onClose();
+            if (onBack) {
+                onBack();
+            } else {
+                onClose();
+            }
             toast.success("Carta adicionada à Coleção!", {
                 description: `${card.name} (${formatVariantLabel(variant)}) cadastrada com sucesso.`,
             });
@@ -246,28 +330,51 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
         }
     };
 
-    if (!isOpen) return null;
+    if (!isPresent) return null;
 
     const activeFilterCount = (rarityFilter !== "all" ? 1 : 0) + (expansionFilter !== ALL_EXPANSIONS_FILTER ? 1 : 0) + (artistFilter !== ALL_ARTISTS_FILTER ? 1 : 0);
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-0 sm:p-4 backdrop-blur-sm"
+            className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-0 sm:p-4 backdrop-blur-sm"
+            data-overlay-state={state}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Buscar carta"
             onClick={(e) => {
-                if (e.target === e.currentTarget && window.matchMedia("(min-width: 640px)").matches) onClose();
+                if (e.target === e.currentTarget && !submittingCardId) onClose();
             }}
         >
-            <div className="modal-enter flex h-dvh max-h-none w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-[#12151d] shadow-2xl sm:h-[85vh] sm:max-h-[820px] sm:max-w-3xl sm:rounded-2xl sm:border sm:border-white/10 md:max-w-5xl lg:max-w-6xl">
-                <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-2.5 sm:px-6 sm:py-3.5">
-                    <div>
-                        <div className="flex items-center gap-2 sm:gap-2.5">
-                            <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">{pokemonName}</h2>
-                            <span className="rounded-md border border-white/10 bg-white/10 px-2 py-0.5 font-mono text-[11px] sm:text-xs font-semibold text-slate-300">#{String(dexId).padStart(3, "0")}</span>
+            <div className="modal-surface flex h-dvh max-h-none w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-[#12151d] shadow-2xl sm:h-[85vh] sm:max-h-[820px] sm:max-w-3xl sm:rounded-2xl sm:border sm:border-white/10 md:max-w-5xl lg:max-w-6xl">
+                <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 py-2.5 sm:px-6 sm:py-3.5">
+                    <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+                        {onBack ? (
+                            <button type="button" onClick={onBack} aria-label="Voltar ao seletor do binder" className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 text-xs font-semibold text-slate-300 transition-colors hover:bg-white/10 hover:text-white sm:h-9 sm:rounded-xl">
+                                <ArrowLeft size={15} />
+                                <span className="hidden sm:inline">Voltar</span>
+                            </button>
+                        ) : null}
+                        <div className="min-w-0">
+                            {pokemonName ? (
+                                <>
+                                    <div className="flex items-center gap-2 sm:gap-2.5">
+                                        <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">{pokemonName}</h2>
+                                        {dexId && <span className="rounded-md border border-white/10 bg-white/10 px-2 py-0.5 font-mono text-[11px] sm:text-xs font-semibold text-slate-300">#{String(dexId).padStart(3, "0")}</span>}
+                                    </div>
+                                    <p className="hidden sm:block mt-0.5 text-xs text-slate-400">Escolha o idioma e a versão física, depois adicione à coleção</p>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="flex items-center gap-2 sm:gap-2.5">
+                                        <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">Adicionar Carta à Coleção</h2>
+                                    </div>
+                                    <p className="hidden sm:block mt-0.5 text-xs text-slate-400">Busque no catálogo oficial do Pokémon TCG físico (Pokémon, Treinadores e Energias)</p>
+                                </>
+                            )}
                         </div>
-                        <p className="hidden sm:block mt-0.5 text-xs text-slate-400">Escolha o idioma e a versão física, depois adicione à coleção</p>
                     </div>
 
-                    <button onClick={onClose} aria-label="Fechar" className="flex h-8 w-8 sm:h-9 sm:w-9 cursor-pointer items-center justify-center rounded-lg sm:rounded-xl bg-white/5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white">
+                    <button type="button" onClick={onClose} aria-label="Fechar" className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-white/5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white sm:h-9 sm:w-9 sm:rounded-xl">
                         <X size={18} />
                     </button>
                 </div>
@@ -281,7 +388,7 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                         </div>
                     </ModalSearchFilters>
 
-                    <div className="flex flex-col gap-1.5 sm:gap-2 border-t border-white/10 pt-2 sm:pt-2.5">
+                    <div className="modal-transient-content flex flex-col gap-1.5 sm:gap-2 border-t border-white/10 pt-2 sm:pt-2.5">
                         <div className="flex items-center gap-1.5 text-slate-400">
                             <Sparkles size={11} className="text-poke-blue shrink-0" />
                             <span className="text-[11px] sm:text-xs font-semibold tracking-wide text-slate-300">Sua carta</span>
@@ -307,10 +414,18 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                             <PokeballLoader message="Carregando cartas..." size="md" />
                         </div>
                     ) : cards.length === 0 ? (
-                        <div className="flex h-full min-h-[250px] flex-col items-center justify-center gap-2 text-slate-500">
-                            <Search size={32} className="text-slate-600" />
-                            <span className="text-sm">Nenhuma carta com imagem encontrada.</span>
-                        </div>
+                        !pokemonName && !searchTerm.trim() ? (
+                            <div className="flex h-full min-h-[250px] flex-col items-center justify-center gap-2 text-center text-slate-500">
+                                <Search size={32} className="text-slate-600" />
+                                <span className="text-sm font-semibold text-white">Pesquise no catálogo do Pokémon TCG</span>
+                                <span className="text-xs text-slate-400 max-w-sm">Digite o nome da carta, Pokémon, Treinador, Energia, Pokédex (#001 a #1025) ou número da carta (ex: 25/165).</span>
+                            </div>
+                        ) : (
+                            <div className="flex h-full min-h-[250px] flex-col items-center justify-center gap-2 text-slate-500">
+                                <Search size={32} className="text-slate-600" />
+                                <span className="text-sm">Nenhuma carta com imagem encontrada.</span>
+                            </div>
+                        )
                     ) : filteredCards.length === 0 ? (
                         <div className="flex h-full min-h-[250px] flex-col items-center justify-center gap-3 text-center text-slate-500">
                             <Search size={32} className="text-slate-600" />
@@ -335,8 +450,8 @@ export function CardSearchModal({ isOpen, dexId, pokemonName, onClose, onCardAdd
                                 {filteredCards.map((card, index) => {
                                     const isSubmittingThis = submittingCardId === card.id;
                                     const appear = getCardAppearProps(index);
-                                    const rarityInfo = card.rarity ? getRarityBadgeStyle(card.rarity) : null;
-                                    const shineMode = resolveCardShine(variant, card.rarity, card.image);
+                                    const rarityInfo = card.rarity ? getRarityBadgeStyle(card.rarity, card.name) : null;
+                                    const shineMode = resolveCardShine(variant, card.rarity, card.image, card.name);
 
                                     return (
                                         <div key={card.id} className={`group relative flex h-full flex-col justify-between gap-1.5 sm:gap-2 rounded-xl border p-2 sm:p-2.5 transition-all duration-200 ${isSubmittingThis ? "border-poke-blue bg-poke-blue/15 ring-2 ring-poke-blue/40" : "border-white/10 bg-white/[0.03] hover:border-poke-blue/50 hover:bg-white/[0.07]"} ${appear.className}`} style={appear.style}>

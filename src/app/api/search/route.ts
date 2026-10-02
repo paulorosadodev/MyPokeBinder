@@ -1,10 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
-import { formatTcgdexImageUrl, isPocketCard, POKEMON_CARD_BACK_URL } from "@/lib/pokemon/tcgdex";
+import { formatTcgdexImageUrl, hasCardImage, isPocketCard, POKEMON_CARD_BACK_URL } from "@/lib/pokemon/tcgdex";
+import { resolveCardImageFallback } from "@/lib/pokemon/imageFallback";
 import { coalesceRequest, getFromMemoryCache, setToMemoryCache } from "@/lib/pokemon/coalesce";
 import { normalizeVariantsFlags } from "@/lib/pokemon/variant";
 import { normalizeCardElementTypes } from "@/lib/pokemon/cardTypes";
-import { POKEMON_151 } from "@/lib/pokemon/constants";
+import { POKEMON_1025, getPokemonByDexId } from "@/lib/pokemon/constants";
 import { isCardMatchingPokemon } from "@/lib/pokemon/match";
 import type { CardElementType, CardVariantsFlags } from "@/types/binder";
 
@@ -22,6 +23,7 @@ interface TcgDexCardDetail {
     rarity?: string;
     illustrator?: string;
     types?: string[];
+    dexIds?: number[];
     set?: {
         id?: string;
         name?: string;
@@ -35,6 +37,8 @@ interface CachedCardDetail {
     artist?: string;
     types: CardElementType[];
     variants: CardVariantsFlags;
+    dexId: number | null;
+    image?: string;
 }
 
 export async function GET(request: NextRequest) {
@@ -52,18 +56,35 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "O parâmetro name é obrigatório e deve ter no máximo 50 caracteres" }, { status: 400 });
     }
 
+    const trimmedName = name.trim();
     let targetDexId: number | undefined;
+
     if (dexIdParam) {
         const parsed = parseInt(dexIdParam, 10);
         if (isNaN(parsed) || parsed < 1 || parsed > 1025) {
             return NextResponse.json({ error: "O parâmetro dexId deve ser um número entre 1 e 1025" }, { status: 400 });
         }
         targetDexId = parsed;
+    } else if (trimmedName.startsWith("#")) {
+        const parsed = parseInt(trimmedName.replace(/^#\s*/, ""), 10);
+        if (!isNaN(parsed) && parsed >= 1 && parsed <= 1025) {
+            targetDexId = parsed;
+        }
     } else {
-        const cleanName = name.replace(/[♀♂]/g, "").trim().toLowerCase();
-        const matched = POKEMON_151.find((p) => p.name.toLowerCase().replace(/[♀♂]/g, "").trim() === cleanName);
+        const cleanName = trimmedName.replace(/[♀♂]/g, "").trim().toLowerCase();
+        const matched = POKEMON_1025.find((p) => p.name.toLowerCase().replace(/[♀♂]/g, "").trim() === cleanName);
         if (matched) {
             targetDexId = matched.dexId;
+        }
+    }
+
+    const isSlashSearch = trimmedName.includes("/");
+    let slashLocalId: string | null = null;
+    if (isSlashSearch) {
+        const [numPart] = trimmedName.split("/");
+        const cleaned = numPart.trim();
+        if (/^\d+$/.test(cleaned)) {
+            slashLocalId = cleaned;
         }
     }
 
@@ -73,7 +94,7 @@ export async function GET(request: NextRequest) {
     const pageSize = !isNaN(parsedPageSize) && parsedPageSize > 0 && parsedPageSize <= 100 ? parsedPageSize : 36;
 
     try {
-        const encodedName = encodeURIComponent(name.trim());
+        const encodedName = encodeURIComponent(trimmedName);
         const searchCacheKey = targetDexId ? `search_dex_${targetDexId}_${encodedName}` : `search_${encodedName}`;
 
         const data = await coalesceRequest<unknown>(searchCacheKey, async () => {
@@ -90,8 +111,15 @@ export async function GET(request: NextRequest) {
             };
 
             if (targetDexId) {
-                const [nameCards, dexCards] = await Promise.all([fetchCards(`https://api.tcgdex.net/v2/en/cards?name=${encodedName}`), fetchCards(`https://api.tcgdex.net/v2/en/cards?dexId=eq:${targetDexId}`)]);
+                const dexPokemon = getPokemonByDexId(targetDexId);
+                const queryName = dexPokemon ? encodeURIComponent(dexPokemon.name) : encodedName;
+                const [nameCards, dexCards] = await Promise.all([fetchCards(`https://api.tcgdex.net/v2/en/cards?name=${queryName}`), fetchCards(`https://api.tcgdex.net/v2/en/cards?dexId=eq:${targetDexId}`)]);
                 return [...nameCards, ...dexCards];
+            }
+
+            if (slashLocalId) {
+                const [localCards, nameCards] = await Promise.all([fetchCards(`https://api.tcgdex.net/v2/en/cards?localId=${encodeURIComponent(slashLocalId)}`), fetchCards(`https://api.tcgdex.net/v2/en/cards?name=${encodedName}`)]);
+                return [...localCards, ...nameCards];
             }
 
             return await fetchCards(`https://api.tcgdex.net/v2/en/cards?name=${encodedName}`);
@@ -112,13 +140,27 @@ export async function GET(request: NextRequest) {
         const seenIds = new Set<string>();
 
         for (const card of data as TcgDexCardSummary[]) {
-            if (!isPocketCard(card) && !seenIds.has(card.id) && (!targetDexId || isCardMatchingPokemon(card.name, targetDexId))) {
-                seenIds.add(card.id);
-                validCards.push({
-                    ...card,
-                    image: typeof card.image === "string" && card.image.trim().length > 0 ? card.image : POKEMON_CARD_BACK_URL,
-                });
+            if (isPocketCard(card) || seenIds.has(card.id)) {
+                continue;
             }
+
+            if (targetDexId && !isCardMatchingPokemon(card.name, targetDexId)) {
+                continue;
+            }
+
+            if (slashLocalId) {
+                const unpadded = slashLocalId.replace(/^0+/, "") || "0";
+                const matchesLocal = card.localId === slashLocalId || card.localId === unpadded || card.id.endsWith(`-${slashLocalId}`) || card.id.endsWith(`-${unpadded}`);
+                if (!matchesLocal) {
+                    continue;
+                }
+            }
+
+            seenIds.add(card.id);
+            validCards.push({
+                ...card,
+                image: typeof card.image === "string" && card.image.trim().length > 0 ? card.image : POKEMON_CARD_BACK_URL,
+            });
         }
 
         const totalCount = validCards.length;
@@ -134,12 +176,13 @@ export async function GET(request: NextRequest) {
                         id: card.id,
                         localId: card.localId,
                         name: card.name,
-                        image: formatTcgdexImageUrl(card.image),
+                        image: formatTcgdexImageUrl(cachedDetail.image || card.image),
                         setName: cachedDetail.setName,
                         rarity: cachedDetail.rarity,
                         artist: cachedDetail.artist || "",
                         types: cachedDetail.types ?? [],
                         variants: cachedDetail.variants,
+                        dexId: cachedDetail.dexId,
                     };
                 }
 
@@ -149,6 +192,7 @@ export async function GET(request: NextRequest) {
                 let types: CardElementType[] = [];
                 let variants = normalizeVariantsFlags({ normal: true });
                 let cardImage = card.image;
+                let resolvedDexId: number | null = null;
 
                 try {
                     const detail = await coalesceRequest<TcgDexCardDetail | null>(`fetch_detail_${card.id}`, async () => {
@@ -171,12 +215,33 @@ export async function GET(request: NextRequest) {
                         if (!variants.normal && !variants.holo && !variants.reverse) {
                             variants = normalizeVariantsFlags({ normal: true });
                         }
-                        if ((!cardImage || cardImage === POKEMON_CARD_BACK_URL) && typeof detail.image === "string" && detail.image.trim().length > 0) {
+                        if (!hasCardImage(cardImage) && typeof detail.image === "string" && detail.image.trim().length > 0) {
                             cardImage = detail.image;
                         }
-                        setToMemoryCache(`detail_${card.id}`, { setName, rarity, artist, types, variants } satisfies CachedCardDetail, 86400000);
+
+                        if (Array.isArray(detail.dexIds) && typeof detail.dexIds[0] === "number" && detail.dexIds[0] >= 1 && detail.dexIds[0] <= 1025) {
+                            resolvedDexId = detail.dexIds[0];
+                        }
                     }
                 } catch {}
+
+                if (!hasCardImage(cardImage)) {
+                    const fallbackImage = await resolveCardImageFallback(card.id);
+                    if (fallbackImage) {
+                        cardImage = fallbackImage;
+                    }
+                }
+
+                if (!resolvedDexId) {
+                    if (targetDexId) {
+                        resolvedDexId = targetDexId;
+                    } else {
+                        const found = POKEMON_1025.find((p) => isCardMatchingPokemon(card.name, p.dexId));
+                        resolvedDexId = found ? found.dexId : null;
+                    }
+                }
+
+                setToMemoryCache(`detail_${card.id}`, { setName, rarity, artist, types, variants, dexId: resolvedDexId, image: cardImage } satisfies CachedCardDetail, 86400000);
 
                 return {
                     id: card.id,
@@ -188,6 +253,7 @@ export async function GET(request: NextRequest) {
                     artist,
                     types,
                     variants,
+                    dexId: resolvedDexId,
                 };
             }),
         );

@@ -2,49 +2,118 @@ import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const complexModalFiles = ["../src/components/modal/CardSearchModal.tsx", "../src/components/modal/BinderSlotSelectModal.tsx", "../src/app/collection/page.tsx", "../src/components/profile/TrainerProfileView.tsx"];
+const fullscreenModalFiles = ["../src/components/modal/CardSearchModal.tsx", "../src/components/modal/BinderSlotSelectModal.tsx", "../src/components/modal/CardAllocateModal.tsx", "../src/components/profile/TrainerProfileView.tsx", "../src/app/cards/[id]/page.tsx", "../src/app/configuracoes/page.tsx", "../src/app/binders/[id]/edit/BinderEditClient.tsx"];
+
+const dismissibleOverlayFiles = [
+    "../src/components/modal/CardSearchModal.tsx",
+    "../src/components/modal/BinderSlotSelectModal.tsx",
+    "../src/components/modal/CardAllocateModal.tsx",
+    "../src/components/binder/BinderStatisticsDrawer.tsx",
+    "../src/components/binder/CoverPokemonSelector.tsx",
+    "../src/components/profile/TrainerProfileView.tsx",
+    "../src/app/cards/[id]/page.tsx",
+    "../src/app/configuracoes/page.tsx",
+    "../src/app/binders/[id]/edit/BinderEditClient.tsx",
+    "../src/components/ui/CardLightbox.tsx",
+];
+
+const animatedOverlayFiles = [
+    "../src/components/modal/CardSearchModal.tsx",
+    "../src/components/modal/BinderSlotSelectModal.tsx",
+    "../src/components/modal/CardAllocateModal.tsx",
+    "../src/components/binder/BinderStatisticsDrawer.tsx",
+    "../src/components/binder/CoverPokemonSelector.tsx",
+    "../src/components/profile/TrainerProfileView.tsx",
+    "../src/app/cards/[id]/page.tsx",
+    "../src/app/configuracoes/page.tsx",
+    "../src/app/binders/[id]/edit/BinderEditClient.tsx",
+    "../src/components/ui/CardLightbox.tsx",
+];
 
 describe("Modais complexos no mobile", () => {
+    it("reutiliza o seletor clássico nos compartimentos universais", () => {
+        const source = readFileSync(join(import.meta.dir, "../src/components/modal/UniversalSlotModal.tsx"), "utf8");
+
+        expect(source).toContain("BinderSlotSelectModal");
+        expect(source).toContain("onlyUnallocatedCards");
+        expect(source).toContain("matchesDexIdExactly");
+    });
+
     it("ocupa toda a viewport e recupera o painel flutuante a partir do breakpoint sm", () => {
-        complexModalFiles.forEach((relativePath) => {
+        fullscreenModalFiles.forEach((relativePath) => {
             const source = readFileSync(join(import.meta.dir, relativePath), "utf8");
 
             expect(source).toContain("h-dvh max-h-none w-full max-w-none");
             expect(source).toContain("rounded-none border-0");
-            expect(source).toContain("sm:h-[85vh] sm:max-h-[820px]");
             expect(source).toContain("sm:rounded-2xl sm:border");
         });
     });
 
-    it("ignora o clique no backdrop abaixo do breakpoint sm", () => {
-        complexModalFiles.forEach((relativePath) => {
+    it("fecha pelo backdrop ou Escape em qualquer breakpoint", () => {
+        dismissibleOverlayFiles.forEach((relativePath) => {
             const source = readFileSync(join(import.meta.dir, relativePath), "utf8");
 
-            expect(source).toContain('e.target === e.currentTarget && window.matchMedia("(min-width: 640px)").matches');
+            expect(source).toContain("useDismissibleOverlay");
+            expect(source).not.toContain('window.matchMedia("(min-width: 640px)").matches');
         });
     });
 
-    it("ignora a tecla Escape nos fluxos que oferecem esse atalho no desktop", () => {
-        const binderModalSource = readFileSync(join(import.meta.dir, "../src/components/modal/BinderSlotSelectModal.tsx"), "utf8");
+    it("escuta Escape em um único hook reutilizável", () => {
+        const hookSource = readFileSync(join(import.meta.dir, "../src/lib/hooks/useDismissibleOverlay.ts"), "utf8");
 
-        expect(binderModalSource).toContain('e.key === "Escape" && !editingCardId && window.matchMedia("(min-width: 640px)").matches');
+        expect(hookSource).toContain('event.key !== "Escape"');
+        expect(hookSource).toContain('window.addEventListener("keydown", handleKeyDown)');
     });
 
-    it("mantém os modais simples de confirmação compactos", () => {
-        const settingsSource = readFileSync(join(import.meta.dir, "../src/app/configuracoes/page.tsx"), "utf8");
-        const cardDetailsSource = readFileSync(join(import.meta.dir, "../src/app/cards/[id]/page.tsx"), "utf8");
+    it("anima a abertura e preserva o painel durante o fechamento", () => {
+        animatedOverlayFiles.forEach((relativePath) => {
+            const source = readFileSync(join(import.meta.dir, relativePath), "utf8");
 
-        expect(settingsSource).not.toContain("h-dvh max-h-none");
-        expect(cardDetailsSource).not.toContain("h-dvh max-h-none");
-        expect(settingsSource).toContain("max-w-md");
-        expect(cardDetailsSource).toContain("max-w-md");
+            expect(source).toContain("useOverlayPresence");
+            expect(source).toContain("modal-backdrop");
+            expect(source).toContain("data-overlay-state");
+        });
+
+        const hookSource = readFileSync(join(import.meta.dir, "../src/lib/hooks/useOverlayPresence.ts"), "utf8");
+        const styles = readFileSync(join(import.meta.dir, "../src/app/globals.css"), "utf8");
+
+        expect(hookSource).toContain("OVERLAY_ENTER_DURATION");
+        expect(hookSource).toContain("OVERLAY_EXIT_DURATION");
+        expect(hookSource).not.toContain("requestAnimationFrame");
+        expect(hookSource).toContain('setState("closing")');
+        expect(styles).toContain("@keyframes modal-surface-enter");
+        expect(styles).toContain("@keyframes modal-surface-exit");
     });
 
-    it("fecha o lightbox no mobile somente pelo botão interno", () => {
+    it("mede os sliders sem herdar a escala visual do modal", () => {
+        const sliderSource = readFileSync(join(import.meta.dir, "../src/components/ui/LanguageSlider.tsx"), "utf8");
+
+        expect(sliderSource).toContain("activeItem.offsetLeft");
+        expect(sliderSource).toContain("activeItem.offsetWidth");
+        expect(sliderSource).not.toContain("getBoundingClientRect");
+    });
+
+    it("oculta os sliders assim que a animação de fechamento começa", () => {
+        const modalSource = readFileSync(join(import.meta.dir, "../src/components/modal/CardSearchModal.tsx"), "utf8");
+        const styles = readFileSync(join(import.meta.dir, "../src/app/globals.css"), "utf8");
+
+        expect(modalSource).toContain("modal-transient-content");
+        expect(styles).toContain('.modal-backdrop[data-overlay-state="closing"] .modal-transient-content');
+        expect(styles).toContain("visibility: hidden");
+    });
+
+    it("abre as estatísticas do binder em tela cheia no mobile", () => {
+        const source = readFileSync(join(import.meta.dir, "../src/components/binder/BinderStatisticsDrawer.tsx"), "utf8");
+
+        expect(source).toContain("h-[100dvh] w-screen max-w-none");
+        expect(source).toContain("md:w-full md:max-w-md");
+        expect(source).toContain("md:border-l md:border-white/10");
+    });
+
+    it("fecha o lightbox pelo backdrop também no mobile", () => {
         const source = readFileSync(join(import.meta.dir, "../src/components/ui/CardLightbox.tsx"), "utf8");
-        const desktopCloseGuard = 'window.matchMedia("(min-width: 640px)").matches';
 
-        expect(source.split(desktopCloseGuard)).toHaveLength(3);
+        expect(source).toContain("if (e.target === e.currentTarget) onClose()");
         expect(source).toContain('onClick={onClose} aria-label="Fechar"');
     });
 });

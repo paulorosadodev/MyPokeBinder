@@ -43,7 +43,7 @@ Além disso, foram tratados dois comportamentos visuais e de identidade:
 
 ## Consequências
 
-- Experiência de abertura de fichário realista, imersiva e cinematográfica logo na chegada do usuário.
+- Experiência de abertura de binder realista, imersiva e cinematográfica logo na chegada do usuário.
 - O fluxo de curadoria e inspeção de cartas da coleção se torna muito mais ágil, permitindo editar cartas em sequência sem perder a busca ou os filtros aplicados.
 - Interface de ordenação limpa, compacta e intuitiva.
 - Identidade visual vibrante no vermelho clássico da franquia Pokémon.

@@ -19,7 +19,7 @@ Anteriormente, o middleware de sessão redirecionava qualquer acesso à raiz (`/
 
 1. **Roteamento Inteligente na Raiz (`/`) e Rota `/inicio`**:
    - A rota `/` foi liberada como rota pública no proxy middleware (`src/lib/supabase/proxy.ts`).
-   - Usuários não autenticados que acessam `/` visualizam uma **Landing Page temática** de alto padrão visual, apresentando a vitrine do fichário 3×3, os 151 slots da Pokédex de Kanto, as 6 principais funcionalidades práticas, o fluxo em 3 passos e a explicação do login Google.
+   - Usuários não autenticados que acessam `/` visualizam uma **Landing Page temática** de alto padrão visual, apresentando a vitrine do binder 3×3, os 151 slots da Pokédex de Kanto, as 6 principais funcionalidades práticas, o fluxo em 3 passos e a explicação do login Google.
    - Usuários autenticados que acessam `/` continuam sendo apresentados imediatamente ao seu **Binder 3×3** em tempo real (`BinderClientPage`).
    - A rota `/inicio` foi criada para expor a Landing Page de forma direta sob demanda.
 

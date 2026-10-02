@@ -16,6 +16,10 @@ describe("Rarity Tiers and Badge Style Logic", () => {
         expect(getRarityImpactTier("Full Art Trainer")).toBe(2);
         expect(getRarityImpactTier("Shiny Ultra Rare")).toBe(2);
         expect(getRarityImpactTier("Shiny Rare VMAX")).toBe(2);
+        expect(getRarityImpactTier("Rare V")).toBe(2);
+        expect(getRarityImpactTier("Rara V")).toBe(2);
+        expect(getRarityImpactTier("V")).toBe(2);
+        expect(getRarityImpactTier("Rare", "Pikachu V")).toBe(2);
     });
 
     it("should correctly classify Tier 1 enhanced rarities", () => {

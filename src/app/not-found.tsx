@@ -62,7 +62,7 @@ export default function NotFound() {
                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2 w-full sm:w-auto">
                             <Link href="/" className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-sm transition-all active:scale-[0.98] shadow-lg shadow-amber-500/20">
                                 <BookOpen size={16} />
-                                <span>Voltar ao Meu Fichário</span>
+                                <span>Voltar ao Meu Binder</span>
                             </Link>
 
                             <Link href="/collection" className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-200 font-semibold text-sm transition-all active:scale-[0.98]">

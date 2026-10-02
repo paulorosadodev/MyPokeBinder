@@ -157,7 +157,7 @@ export function matchesCardNumber(rawLocalId: string | undefined | null, term: s
     return false;
 }
 
-export function matchesCardSearch(card: { card_name: string; card_set_name?: string | null; pokemon_dex_id: number; tcgdex_card_id: string; card_artist?: string | null }, searchTerm: string): boolean {
+export function matchesCardSearch(card: { card_name: string; card_set_name?: string | null; pokemon_dex_id?: number | null; tcgdex_card_id: string; card_artist?: string | null }, searchTerm: string): boolean {
     const term = searchTerm.trim().toLowerCase();
     if (!term) return true;
 
@@ -166,7 +166,7 @@ export function matchesCardSearch(card: { card_name: string; card_set_name?: str
     const matchesArtist = (card.card_artist || "").toLowerCase().includes(term);
 
     const dexQuery = parseDexQuery(term);
-    const matchesDex = dexQuery !== null && card.pokemon_dex_id === dexQuery;
+    const matchesDex = dexQuery !== null && card.pokemon_dex_id != null && card.pokemon_dex_id === dexQuery;
 
     const cardLocalId = extractCardLocalId(card);
     const matchesCardNum = matchesCardNumber(cardLocalId, term);
@@ -247,7 +247,9 @@ export function filterAndSortCollectionGroups(groups: CollectionCardGroup[], fil
 
     list.sort((a, b) => {
         if (sortField === "dex") {
-            return sortDirection === "asc" ? a.card.pokemon_dex_id - b.card.pokemon_dex_id : b.card.pokemon_dex_id - a.card.pokemon_dex_id;
+            const dexA = a.card.pokemon_dex_id ?? 99999;
+            const dexB = b.card.pokemon_dex_id ?? 99999;
+            return sortDirection === "asc" ? dexA - dexB : dexB - dexA;
         }
         if (sortField === "name") {
             return sortDirection === "asc" ? a.card.card_name.localeCompare(b.card.card_name) : b.card.card_name.localeCompare(a.card.card_name);

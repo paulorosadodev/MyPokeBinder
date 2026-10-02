@@ -182,11 +182,12 @@ export function BinderSpread({ currentPage, isMobile, cardsMap, availableCounts 
                             </div>
                         </>
                     ) : (
-                        <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-[#121622]/50 p-8 text-center">
-                            <div className="h-16 w-16 rounded-full border border-white/10 bg-white/[0.02] flex items-center justify-center text-slate-600 mb-3">
-                                <span className="text-xl font-bold">151</span>
-                            </div>
-                            <p className="text-xs text-slate-500">Fim do Binder 151</p>
+                        <div className="grid min-h-0 flex-1 grid-cols-3 grid-rows-3 gap-2 rounded-xl border border-[#161b26] bg-[#0b0e15] p-1.5 shadow-inner sm:gap-2.5 sm:p-2">
+                            {Array.from({ length: 9 }, (_, index) => (
+                                <div key={`empty-slot-${index}`} className="flex h-full min-h-0 w-full items-center justify-center rounded-lg border-2 border-dashed border-white/10 bg-[#090c13]/60 shadow-inner">
+                                    <div className="flex h-7 w-7 items-center justify-center rounded-full border border-white/5 bg-transparent" />
+                                </div>
+                            ))}
                         </div>
                     )}
                 </div>

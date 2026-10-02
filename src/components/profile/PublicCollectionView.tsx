@@ -341,9 +341,9 @@ export function PublicCollectionView({ username, fallbackData }: { username: str
                                 {groups.map((group, index) => {
                                     const card = group.card;
                                     const appear = getCardAppearProps(index);
-                                    const rarity = getRarityBadgeStyle(card.card_rarity);
+                                    const rarity = getRarityBadgeStyle(card.card_rarity, card.card_name);
                                     const imageSrc = formatTcgdexImageUrl(card.card_image_url);
-                                    const shineMode = resolveCardShine(card.card_variant, card.card_rarity, card.card_image_url);
+                                    const shineMode = resolveCardShine(card.card_variant, card.card_rarity, card.card_image_url, card.card_name);
                                     const elementTypes = resolveCardElementTypes(card.card_types, card.pokemon_dex_id);
 
                                     return (

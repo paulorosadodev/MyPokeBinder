@@ -39,9 +39,18 @@ describe("Card variant helpers", () => {
         expect(resolveCardShine("reverse", "Ultra Rare")).toBe("prismatic");
         expect(resolveCardShine("normal", "Double rare")).toBe("prismatic");
         expect(resolveCardShine("normal", "Rare Holo VMAX")).toBe("prismatic");
+        expect(resolveCardShine("normal", "Rare V")).toBe("prismatic");
+        expect(resolveCardShine("normal", "Rara V")).toBe("prismatic");
+        expect(resolveCardShine("normal", "V")).toBe("prismatic");
+        expect(resolveCardShine("normal", "Rare Holo", undefined, "Pikachu V")).toBe("prismatic");
+        expect(resolveCardShine("holo", "Rare", undefined, "Charizard V")).toBe("prismatic");
+        expect(resolveCardShine("normal", "Promo", undefined, "Zacian V")).toBe("prismatic");
+        expect(resolveCardShine("normal", "Rare Holo", undefined, "Rayquaza VMAX")).toBe("prismatic");
+        expect(resolveCardShine("normal", "Rare", undefined, "Arceus VSTAR")).toBe("prismatic");
+        expect(resolveCardShine("normal", "Rare", undefined, "Mewtwo V-UNION")).toBe("prismatic");
         expect(resolveCardShine("normal", "Radiant Rare")).toBe("prismatic");
 
-        for (const rarity of ["Illustration rare", "Special illustration rare", "Ultra Rare", "Hyper rare", "Secret Rare"]) {
+        for (const rarity of ["Illustration rare", "Special illustration rare", "Ultra Rare", "Hyper rare", "Secret Rare", "Rare V", "Rara V", "V"]) {
             expect(resolveCardShine("normal", rarity)).toBe("prismatic");
             expect(resolveCardShine("holo", rarity)).toBe("prismatic");
             expect(resolveCardShine("reverse", rarity)).toBe("prismatic");

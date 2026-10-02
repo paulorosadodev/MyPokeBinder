@@ -11,7 +11,6 @@ import { Card3DTilt } from "@/components/ui/Card3DTilt";
 import { Select, SelectOption } from "@/components/ui/Select";
 import { CardSearchModal } from "@/components/modal/CardSearchModal";
 import { formatTcgdexImageUrl } from "@/lib/pokemon/tcgdex";
-import { getPokemonSilhouetteUrl, POKEMON_151, markSilhouetteLoaded } from "@/lib/pokemon/constants";
 import { getRarityBadgeStyle, RARITY_FILTER_OPTIONS } from "@/lib/pokemon/rarity";
 import { resolveCardShine, VARIANT_FILTER_OPTIONS } from "@/lib/pokemon/variant";
 import { resolveCardElementTypes } from "@/lib/pokemon/cardTypes";
@@ -101,12 +100,7 @@ export default function CollectionPage() {
         isFiltersRestored.current = true;
     }, []);
 
-    const [isPokemonPickerOpen, setIsPokemonPickerOpen] = useState(false);
-    const [pokemonPickerSearch, setPokemonPickerSearch] = useState("");
-
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
-    const [selectedDexId, setSelectedDexId] = useState(1);
-    const [selectedPokemonName, setSelectedPokemonName] = useState("Bulbasaur");
     const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {
@@ -179,19 +173,6 @@ export default function CollectionPage() {
         } catch {}
     }, [searchTerm, statusFilter, languageFilter, rarityFilter, expansionFilter, artistFilter, variantFilter, sortField, sortDirection]);
 
-    const filteredPokemonList = useMemo(() => {
-        if (!pokemonPickerSearch.trim()) return POKEMON_151;
-        const term = pokemonPickerSearch.toLowerCase().trim();
-        return POKEMON_151.filter((p) => p.name.toLowerCase().includes(term) || String(p.dexId) === term || `#${p.dexId}`.includes(term));
-    }, [pokemonPickerSearch]);
-
-    const handleSelectPokemonForSearch = (dexId: number, name: string) => {
-        setSelectedDexId(dexId);
-        setSelectedPokemonName(name);
-        setIsPokemonPickerOpen(false);
-        setIsSearchModalOpen(true);
-    };
-
     const handleCardAdded = (newCard: UserCard) => {
         mutate();
         mutateExpansions();
@@ -206,14 +187,7 @@ export default function CollectionPage() {
                         <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">Minha Coleção</h1>
                     </div>
 
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setPokemonPickerSearch("");
-                            setIsPokemonPickerOpen(true);
-                        }}
-                        className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-poke-blue px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-opacity hover:opacity-90"
-                    >
+                    <button type="button" onClick={() => setIsSearchModalOpen(true)} className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-poke-blue px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-opacity hover:opacity-90">
                         <Plus size={18} />
                         <span>Adicionar Carta</span>
                     </button>
@@ -290,14 +264,7 @@ export default function CollectionPage() {
                             <p className="text-sm font-semibold text-white">Sua coleção está vazia</p>
                             <p className="mt-1 text-xs text-slate-400">Comece a adicionar cartas físicas para acompanhar seus Pokémon.</p>
                         </div>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setPokemonPickerSearch("");
-                                setIsPokemonPickerOpen(true);
-                            }}
-                            className="mt-2 flex cursor-pointer items-center gap-2 rounded-xl bg-poke-blue px-5 py-2.5 text-xs font-semibold text-white shadow-md transition-opacity hover:opacity-90"
-                        >
+                        <button type="button" onClick={() => setIsSearchModalOpen(true)} className="mt-2 flex cursor-pointer items-center gap-2 rounded-xl bg-poke-blue px-5 py-2.5 text-xs font-semibold text-white shadow-md transition-opacity hover:opacity-90">
                             <Plus size={16} />
                             <span>Adicionar primeira carta</span>
                         </button>
@@ -341,7 +308,7 @@ export default function CollectionPage() {
                                 return (
                                     <div key={`${filterResetKey}-${group.key}`} onClick={() => router.push(`/cards/${card.id}?from=collection`)} className={`group relative flex cursor-pointer flex-col justify-between rounded-xl border border-white/10 bg-white/[0.03] p-1.5 transition-all duration-200 hover:border-poke-blue/50 hover:bg-white/[0.06] sm:p-2.5 ${appear.className}`} style={appear.style}>
                                         <div className="z-10 flex min-h-[20px] items-center justify-between gap-1 sm:min-h-[26px]">
-                                            <span className="flex h-4.5 sm:h-5 items-center shrink-0 rounded bg-black/60 px-1 text-[9px] font-bold text-slate-300 backdrop-blur-sm sm:px-1.5 sm:text-[10px]">#{String(card.pokemon_dex_id).padStart(3, "0")}</span>
+                                            <span className="flex h-4.5 sm:h-5 items-center shrink-0 rounded bg-black/60 px-1 text-[9px] font-bold text-slate-300 backdrop-blur-sm sm:px-1.5 sm:text-[10px]">{card.pokemon_dex_id != null ? `#${String(card.pokemon_dex_id).padStart(3, "0")}` : "TCG"}</span>
 
                                             <div className="flex items-center gap-0.5 sm:gap-1">
                                                 {card.card_condition && <ConditionBadge condition={card.card_condition} />}
@@ -371,7 +338,7 @@ export default function CollectionPage() {
                                         </div>
 
                                         <div className="relative my-1 aspect-[8/11] w-full sm:my-2">
-                                            <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={resolveCardShine(card.card_variant, card.card_rarity, card.card_image_url)} elementTypes={resolveCardElementTypes(card.card_types, card.pokemon_dex_id)}>
+                                            <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={resolveCardShine(card.card_variant, card.card_rarity, card.card_image_url, card.card_name)} elementTypes={resolveCardElementTypes(card.card_types, card.pokemon_dex_id)}>
                                                 <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill unoptimized sizes="(max-width: 640px) 30vw, (max-width: 768px) 33vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" priority={index === 0} />
                                             </Card3DTilt>
                                         </div>
@@ -379,7 +346,7 @@ export default function CollectionPage() {
                                         <div className="flex min-h-[30px] flex-col justify-center gap-0.5 sm:min-h-[38px] sm:gap-1">
                                             <div className="flex items-center justify-between gap-1">
                                                 <span className="truncate text-[10px] font-semibold text-white transition-colors group-hover:text-poke-blue sm:text-xs">{card.card_name}</span>
-                                                {card.card_rarity && <span className={`shrink-0 rounded px-1 text-[7px] font-semibold border sm:text-[8px] ${getRarityBadgeStyle(card.card_rarity).badgeClasses}`}>{getRarityBadgeStyle(card.card_rarity).label}</span>}
+                                                {card.card_rarity && <span className={`shrink-0 rounded px-1 text-[7px] font-semibold border sm:text-[8px] ${getRarityBadgeStyle(card.card_rarity, card.card_name).badgeClasses}`}>{getRarityBadgeStyle(card.card_rarity, card.card_name).label}</span>}
                                             </div>
 
                                             <div className="flex items-center justify-between text-[8px] text-slate-400 sm:text-[10px]">
@@ -408,62 +375,7 @@ export default function CollectionPage() {
                 )}
             </main>
 
-            {isPokemonPickerOpen && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-0 sm:p-4 backdrop-blur-sm"
-                    onClick={(e) => {
-                        if (e.target === e.currentTarget && window.matchMedia("(min-width: 640px)").matches) setIsPokemonPickerOpen(false);
-                    }}
-                >
-                    <div className="modal-enter flex h-dvh max-h-none w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-[#12151d] shadow-2xl sm:h-[85vh] sm:max-h-[820px] sm:max-w-2xl sm:rounded-2xl sm:border sm:border-white/10 md:max-w-4xl lg:max-w-5xl">
-                        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
-                            <div>
-                                <h3 className="text-lg font-bold text-white">Escolha um Pokémon</h3>
-                                <p className="mt-0.5 text-xs text-slate-400">Selecione o Pokémon para procurar cartas no catálogo</p>
-                            </div>
-                            <button type="button" onClick={() => setIsPokemonPickerOpen(false)} className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white">
-                                <X size={18} />
-                            </button>
-                        </div>
-
-                        <div className="border-b border-white/5 bg-black/20 p-4">
-                            <div className="relative">
-                                <Search size={16} className="absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-500" />
-                                <SearchInput type="text" value={pokemonPickerSearch} onChange={(e) => setPokemonPickerSearch(e.target.value)} placeholder="Filtrar por nome ou número (#001 a #151)..." placeholderClassName="left-10 right-4" className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pr-4 pl-10 text-xs text-white focus:border-poke-blue/60 focus:outline-none" autoFocus />
-                            </div>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-4 md:p-5">
-                            {filteredPokemonList.length === 0 ? (
-                                <div className="flex h-full min-h-[250px] flex-col items-center justify-center gap-2 text-center text-slate-500">
-                                    <Search size={28} className="text-slate-600" />
-                                    <span className="text-xs">Nenhum Pokémon encontrado com esse nome ou número.</span>
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                                    {filteredPokemonList.map((p, index) => {
-                                        const appear = getCardAppearProps(index, { stepMs: 25, maxDelayMs: 400 });
-
-                                        return (
-                                            <button key={p.dexId} type="button" onClick={() => handleSelectPokemonForSearch(p.dexId, p.name)} className={`group flex flex-col items-center gap-2 rounded-xl border border-white/5 bg-white/[0.02] p-3 text-center transition-all hover:border-poke-blue/40 hover:bg-white/[0.06] sm:gap-2.5 sm:p-3.5 ${appear.className}`} style={appear.style}>
-                                                <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[#0d1017] sm:h-14 sm:w-14">
-                                                    <Image src={getPokemonSilhouetteUrl(p.dexId)} alt={p.name} fill sizes="56px" className="object-contain opacity-50 transition-opacity group-hover:opacity-80" unoptimized onLoad={() => markSilhouetteLoaded(p.dexId)} />
-                                                </div>
-                                                <div className="flex w-full min-w-0 flex-col items-center gap-1">
-                                                    <span className="w-full text-xs font-semibold leading-snug text-balance text-white transition-colors group-hover:text-poke-blue sm:text-[13px]">{p.name}</span>
-                                                    <span className="rounded border border-white/5 bg-white/5 px-1.5 py-0.5 font-mono text-[10px] font-medium text-slate-400">#{String(p.dexId).padStart(3, "0")}</span>
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            <CardSearchModal isOpen={isSearchModalOpen} dexId={selectedDexId} pokemonName={selectedPokemonName} onClose={() => setIsSearchModalOpen(false)} onCardAdded={handleCardAdded} />
+            <CardSearchModal isOpen={isSearchModalOpen} onClose={() => setIsSearchModalOpen(false)} onCardAdded={handleCardAdded} />
         </div>
     );
 }

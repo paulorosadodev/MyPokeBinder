@@ -59,10 +59,16 @@ export function LanguageSlider<T extends string = CardLanguage>({ value, onChang
         const activeItem = itemRefs.current[activeIndex];
 
         if (container && activeItem) {
-            const containerRect = container.getBoundingClientRect();
-            const itemRect = activeItem.getBoundingClientRect();
-            const left = Math.max(0, itemRect.left - containerRect.left);
-            const width = Math.min(itemRect.width, Math.max(0, containerRect.width - left));
+            let measuredLeft = activeItem.offsetLeft;
+            let offsetParent = activeItem.offsetParent as HTMLElement | null;
+
+            while (offsetParent && offsetParent !== container) {
+                measuredLeft += offsetParent.offsetLeft;
+                offsetParent = offsetParent.offsetParent as HTMLElement | null;
+            }
+
+            const left = Math.max(0, measuredLeft);
+            const width = Math.min(activeItem.offsetWidth, Math.max(0, container.clientWidth - left));
 
             setIndicatorStyle({
                 left,
@@ -102,6 +108,7 @@ export function LanguageSlider<T extends string = CardLanguage>({ value, onChang
     return (
         <div ref={containerRef} role="radiogroup" aria-label={ariaLabel} className={`relative inline-flex items-center overflow-hidden max-w-full rounded-xl border border-white/10 bg-[#0d111a]/90 p-1 shadow-inner backdrop-blur-md transition-colors ${fullWidth ? "w-full" : "w-auto"} ${disabled ? "opacity-60 cursor-not-allowed" : ""} ${className}`}>
             <div
+                data-slider-indicator
                 style={{
                     transform: indicatorStyle.ready ? `translate3d(${indicatorStyle.left}px, 0, 0)` : `translate3d(${activeIndex * 100}%, 0, 0)`,
                     width: indicatorStyle.ready ? `${indicatorStyle.width}px` : `${100 / Math.max(1, options.length)}%`,

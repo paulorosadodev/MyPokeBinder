@@ -4,10 +4,10 @@
 
 **Blocked by:** 01: Migração de Banco de Dados, Schema de Binders e Preservação Legada
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A rota `/` renderiza a Estante de Binders com cards dos fichários do usuário, mostrando capa temática, título, formato do grid, total de páginas e barra de progresso.
-- [ ] A Estante exibe um card de destaque para "Criar Novo Fichário" direcionando para `/binders/new`.
-- [ ] O Header desktop e o BottomNav mobile são atualizados com duas abas ativas: "Meus Binders" (`/`) e "Coleção" (`/collection`), com slider deslizante contínuo e sem menções ao Dashboard.
-- [ ] A rota legada `/dashboard` redireciona permanentemente (HTTP 308) para a rota `/`.
-- [ ] A rota `GET /api/binders` lista todos os binders do usuário autenticado com dados agregados de slots e progresso.
+- [x] A rota `/` renderiza a Estante de Binders com cards dos fichários do usuário, mostrando capa temática, título, formato do grid, total de páginas e barra de progresso.
+- [x] A Estante exibe um card de destaque para "Criar Novo Fichário" direcionando para `/binders/new`.
+- [x] O Header desktop e o BottomNav mobile são atualizados com duas abas ativas: "Meus Binders" (`/`) e "Coleção" (`/collection`), com slider deslizante contínuo e sem menções ao Dashboard.
+- [x] A rota legada `/dashboard` redireciona permanentemente (HTTP 308) para a rota `/`.
+- [x] A rota `GET /api/binders` lista todos os binders do usuário autenticado com dados agregados de slots e progresso.

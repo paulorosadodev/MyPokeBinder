@@ -4,10 +4,10 @@
 
 **Blocked by:** 01: Migração de Banco de Dados, Schema de Binders e Preservação Legada
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] O dataset estático centralizado e utilitários de Pokédex suportam todos os 1.025 Pokémon oficiais com seus nomes, números e tipos elementais, consumindo os sprites locais existentes em `public/pokemon/gen1..9/`.
-- [ ] A rota `GET /api/search` é atualizada para aceitar buscas por texto geral de cartas sem exigir Pokémon prévio, mapeando corretamente `dexId` quando for Pokémon ou `null` quando for Treinador/Energia.
-- [ ] A rota `POST /api/cards` aceita a inserção de cartas com `pokemon_dex_id` numérico (1 a 1025) ou `null` (para Treinadores e Energias), validando os campos obrigatórios e bloqueando cartas de TCG Pocket.
-- [ ] O modal intermediário de escolha de Pokémon na Coleção (`/collection`) é removido, e o clique em "+ Adicionar Carta" abre diretamente o modal do catálogo (`CardSearchModal`) com busca geral em estado limpo.
-- [ ] Cartas de Treinadores e Energias podem ser adicionadas e persistidas na coleção do usuário com seus metadados físicos de idioma, versão física e condição de conservação.
+- [x] O dataset estático centralizado e utilitários de Pokédex suportam todos os 1.025 Pokémon oficiais com seus nomes, números e tipos elementais, consumindo os sprites locais existentes em `public/pokemon/gen1..9/`.
+- [x] A rota `GET /api/search` é atualizada para aceitar buscas por texto geral de cartas sem exigir Pokémon prévio, mapeando corretamente `dexId` quando for Pokémon ou `null` quando for Treinador/Energia.
+- [x] A rota `POST /api/cards` aceita a inserção de cartas com `pokemon_dex_id` numérico (1 a 1025) ou `null` (para Treinadores e Energias), validando os campos obrigatórios e bloqueando cartas de TCG Pocket.
+- [x] O modal intermediário de escolha de Pokémon na Coleção (`/collection`) é removido, e o clique em "+ Adicionar Carta" abre diretamente o modal do catálogo (`CardSearchModal`) com busca geral em estado limpo.
+- [x] Cartas de Treinadores e Energias podem ser adicionadas e persistidas na coleção do usuário com seus metadados físicos de idioma, versão física e condição de conservação.

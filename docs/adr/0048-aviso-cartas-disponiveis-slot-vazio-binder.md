@@ -6,9 +6,9 @@ Aceito
 
 ## Contexto
 
-No MyPokeBinder, o fichário digital de 151 slots representa o álbum físico do colecionador. Quando um usuário adquire novas cartas físicas através da página de Coleção (`/collection`) ou pelo catálogo (`CardSearchModal`), essas cartas são cadastradas como guardadas (`is_in_binder = false`).
+No MyPokeBinder, o binder digital de 151 slots representa o álbum físico do colecionador. Quando um usuário adquire novas cartas físicas através da página de Coleção (`/collection`) ou pelo catálogo (`CardSearchModal`), essas cartas são cadastradas como guardadas (`is_in_binder = false`).
 
-Anteriormente, ao navegar pelas páginas do Binder (`/`), os slots vazios exibiam apenas a silhueta escura do Pokémon e o botão genérico com ícone `+`, sem qualquer indicação de que o colecionador já possuía exemplares físicos daquele mesmo Pokémon guardados na sua coleção aguardando para serem colocados em exibição no fichário. O usuário precisava abrir manualmente cada slot ou consultar a página de Coleção para descobrir se já tinha cartas disponíveis para preencher as lacunas do álbum.
+Anteriormente, ao navegar pelas páginas do Binder (`/`), os slots vazios exibiam apenas a silhueta escura do Pokémon e o botão genérico com ícone `+`, sem qualquer indicação de que o colecionador já possuía exemplares físicos daquele mesmo Pokémon guardados na sua coleção aguardando para serem colocados em exibição no binder. O usuário precisava abrir manualmente cada slot ou consultar a página de Coleção para descobrir se já tinha cartas disponíveis para preencher as lacunas do álbum.
 
 ## Decisão
 

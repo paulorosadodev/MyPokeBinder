@@ -4,7 +4,7 @@
 Aceito
 
 ## Contexto
-Em dispositivos móveis (smartphones com largura entre 320px e 430px e alturas reduzidas de viewport), o modal de escolha de cartas para adição ao fichário (`CardSearchModal`) apresentava dois problemas críticos de usabilidade e layout:
+Em dispositivos móveis (smartphones com largura entre 320px e 430px e alturas reduzidas de viewport), o modal de escolha de cartas para adição ao binder (`CardSearchModal`) apresentava dois problemas críticos de usabilidade e layout:
 
 1. **Ocupação Excessiva de Altura**: O cabeçalho, barra de busca, seletores de raridade e expansão, além dos seletores de idioma e variante física ocupavam juntos mais da metade da altura total do modal (~340px). Isso deixava menos da metade do modal para a visualização do catálogo, cortando as cartas ao meio e exigindo rolagem constante.
 2. **Estouro Horizontal de Conteúdo do Slider**: O componente `LanguageSlider` apresentava estouro visual (`overflow`) na coluna de variante ("Versão: Normal, Holo, Reverse"). Como as colunas dividiam o espaço em 50% cada (~140px) e os botões não possuíam `min-w-0` nem truncamento de texto, somado a textos mais longos com ícones, o botão "Reverse" e o pill deslizante ultrapassavam a margem direita do modal. Além disso, as classes responsivas anteriores (`xs:inline` / `xs:hidden`) não eram suportadas pelo Tailwind v4 sem declaração explícita de breakpoint, impedindo a exibição de rótulos curtos.

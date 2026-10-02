@@ -15,8 +15,9 @@ import { CardLightbox } from "@/components/ui/CardLightbox";
 import { FlagIcon } from "@/components/ui/FlagIcon";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { Select, type SelectOption } from "@/components/ui/Select";
-import { DashboardMiniSlot } from "@/components/dashboard/DashboardMiniSlot";
 import { formatTcgdexImageUrl } from "@/lib/pokemon/tcgdex";
+import { getPokemonSilhouetteUrl } from "@/lib/pokemon/constants";
+import { getCoverTheme } from "@/lib/binder/themes";
 import { getRarityBadgeStyle, RARITY_FILTER_OPTIONS } from "@/lib/pokemon/rarity";
 import { resolveCardShine } from "@/lib/pokemon/variant";
 import { resolveCardElementTypes } from "@/lib/pokemon/cardTypes";
@@ -25,13 +26,15 @@ import { ConditionBadge } from "@/components/ui/ConditionBadge";
 import { ALL_ARTISTS_FILTER, buildArtistFilterOptions, buildCollectionFilterResetKey, matchesCardSearch } from "@/lib/collection/listCards";
 import { useClientPagedWindow } from "@/lib/hooks/useClientPagedWindow";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
+import { useDismissibleOverlay } from "@/lib/hooks/useDismissibleOverlay";
+import { useOverlayPresence } from "@/lib/hooks/useOverlayPresence";
 import { buildThemeCssVars } from "@/lib/profile/username";
 import { getCardAppearProps } from "@/lib/ui/cardAppear";
 import { fetcher as jsonFetcher } from "@/lib/swr";
-import { BinderStatusFilter, UserCard, type CardElementType, type CardShineMode } from "@/types/binder";
+import { Binder, BinderSlot, BinderStatusFilter, UserCard, type CardElementType, type CardShineMode } from "@/types/binder";
 import type { ProfilePayload } from "@/lib/profile/buildProfile";
 import { toast } from "sonner";
-import { Settings, Share2, BookOpen, Layers, Check, Layers2, Pencil, Plus, X, Search, Globe, Sparkles, Gem, GripVertical, Palette } from "lucide-react";
+import { Settings, Share2, BookOpen, Layers, Check, Layers2, Pencil, Plus, X, Search, Globe, Sparkles, Gem, GripVertical, Palette, Star, Lock, ExternalLink } from "lucide-react";
 
 const PICKER_STATUS_OPTIONS: SelectOption<BinderStatusFilter>[] = [
     { value: "all", label: "Todas as cartas" },
@@ -68,7 +71,7 @@ function FeaturedSlotFrame({ children, className = "" }: { children: ReactNode; 
 
 function FeaturedCardTile({ card, onMaximize, priority = false }: { card: UserCard; onMaximize?: (src: string, alt: string, shineMode: CardShineMode, elementTypes: CardElementType[]) => void; priority?: boolean }) {
     const imageSrc = formatTcgdexImageUrl(card.card_image_url);
-    const shineMode = resolveCardShine(card.card_variant, card.card_rarity, card.card_image_url);
+    const shineMode = resolveCardShine(card.card_variant, card.card_rarity, card.card_image_url, card.card_name);
     const elementTypes = resolveCardElementTypes(card.card_types, card.pokemon_dex_id);
 
     return (
@@ -85,7 +88,7 @@ function FeaturedCardTile({ card, onMaximize, priority = false }: { card: UserCa
 function SortableFeaturedCard({ id, index, card, onRemove, priority = false }: { id: string; index: number; card: UserCard; onRemove: () => void; priority?: boolean }) {
     const { ref, isDragging } = useSortable({ id, index });
     const imageSrc = formatTcgdexImageUrl(card.card_image_url);
-    const shineMode = resolveCardShine(card.card_variant, card.card_rarity, card.card_image_url);
+    const shineMode = resolveCardShine(card.card_variant, card.card_rarity, card.card_image_url, card.card_name);
     const elementTypes = resolveCardElementTypes(card.card_types, card.pokemon_dex_id);
 
     return (
@@ -118,6 +121,101 @@ function FeaturedEmptySlot({ editing, onAdd }: { editing: boolean; onAdd: () => 
 
 function ProfileShell({ children }: { children: ReactNode }) {
     return <div className="flex min-h-[calc(100dvh-4rem)] flex-col bg-[#0a0c10]">{children}</div>;
+}
+
+function ReadonlySlotMinimap({ binder, slots, onCardClick }: { binder: Binder; slots: BinderSlot[]; onCardClick: (card: UserCard) => void }) {
+    const pagesMap = useMemo(() => {
+        const map = new Map<number, BinderSlot[]>();
+        for (let p = 1; p <= binder.total_pages; p++) {
+            map.set(p, []);
+        }
+        for (const s of slots) {
+            const pageSlots = map.get(s.page_number) || [];
+            pageSlots.push(s);
+            map.set(s.page_number, pageSlots);
+        }
+        return map;
+    }, [binder.total_pages, slots]);
+
+    const gridClass = binder.grid_type === "1x1" ? "grid-cols-1 max-w-[80px]" : binder.grid_type === "2x2" ? "grid-cols-2 max-w-[160px]" : "grid-cols-3 max-w-[240px]";
+
+    return (
+        <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-2.5">
+                <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-white">Mapa de Slots</span>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-medium text-slate-400">Modo Leitura</span>
+                </div>
+
+                <div className="flex items-center gap-3 text-[11px] text-slate-400">
+                    <div className="flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full border border-dashed border-white/30" />
+                        <span>Livre</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-amber-400/70" />
+                        <span>Meta</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                        <span>Alocada</span>
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex gap-4 overflow-x-auto pb-2 pt-1">
+                {Array.from(pagesMap.entries()).map(([pageNum, pageSlots]) => {
+                    const filledCount = pageSlots.filter((s) => Boolean(s.user_card_id || s.card)).length;
+                    return (
+                        <div key={pageNum} className="flex shrink-0 flex-col gap-2 rounded-xl border border-white/10 bg-[#0c0e15] p-3 shadow-md">
+                            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400">
+                                <span>Pág. {pageNum}</span>
+                                <span className="font-mono text-[10px] text-slate-500">
+                                    {filledCount}/{pageSlots.length}
+                                </span>
+                            </div>
+
+                            <div className={`grid gap-1.5 ${gridClass}`}>
+                                {pageSlots.map((slot) => {
+                                    const card = slot.card;
+                                    const isFilled = Boolean(slot.user_card_id || card);
+
+                                    if (isFilled && card) {
+                                        return (
+                                            <button key={slot.id} type="button" onClick={() => onCardClick(card)} title={`${card.card_name} (Slot #${slot.slot_index})`} className="group relative aspect-[8/11] w-full min-w-[50px] overflow-hidden rounded-md border border-emerald-500/50 bg-emerald-500/10 transition-transform hover:scale-105 hover:border-emerald-400 focus:outline-none">
+                                                <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill unoptimized sizes="60px" className="object-cover" />
+                                            </button>
+                                        );
+                                    }
+
+                                    if (slot.slot_type === "pokemon" && slot.target_dex_id) {
+                                        return (
+                                            <div key={slot.id} title={`Meta: #${String(slot.target_dex_id).padStart(3, "0")} (Slot #${slot.slot_index})`} className="relative flex aspect-[8/11] w-full min-w-[50px] flex-col items-center justify-center rounded-md border border-amber-500/30 bg-amber-500/5 p-1">
+                                                <div className="relative h-6 w-6 opacity-40">
+                                                    <Image src={getPokemonSilhouetteUrl(slot.target_dex_id)} alt="Meta" fill unoptimized className="object-contain brightness-0 invert" />
+                                                </div>
+                                                <span className="mt-0.5 font-mono text-[9px] font-bold text-amber-300/80">#{String(slot.target_dex_id).padStart(3, "0")}</span>
+                                            </div>
+                                        );
+                                    }
+
+                                    if (slot.slot_type === "card" && slot.target_card_image_url) {
+                                        return (
+                                            <div key={slot.id} title={`Meta: ${slot.target_card_name || "Carta"} (Slot #${slot.slot_index})`} className="relative aspect-[8/11] w-full min-w-[50px] overflow-hidden rounded-md border border-amber-500/30 bg-amber-500/5 opacity-60">
+                                                <Image src={formatTcgdexImageUrl(slot.target_card_image_url)} alt={slot.target_card_name || "Meta"} fill unoptimized sizes="60px" className="object-cover grayscale" />
+                                            </div>
+                                        );
+                                    }
+
+                                    return <div key={slot.id} title={`Slot livre #${slot.slot_index}`} className="relative aspect-[8/11] w-full min-w-[50px] rounded-md border border-dashed border-white/10 bg-white/[0.02]" />;
+                                })}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
 }
 
 function ProfileThemeScope({ themeColor, children }: { themeColor?: string; children: ReactNode }) {
@@ -155,6 +253,9 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
     const [pickerStatus, setPickerStatus] = useState<BinderStatusFilter>("all");
     const [pickerLanguage, setPickerLanguage] = useState("all");
     const [pickerRarity, setPickerRarity] = useState("all");
+
+    useDismissibleOverlay(isPickerOpen, () => setIsPickerOpen(false), isSavingFeatured);
+    const { isPresent: isPickerPresent, state: pickerOverlayState } = useOverlayPresence(isPickerOpen);
     const [pickerArtist, setPickerArtist] = useState(ALL_ARTISTS_FILTER);
     const [lightbox, setLightbox] = useState<{ src: string; alt: string; shineMode: CardShineMode; elementTypes: CardElementType[] } | null>(null);
     const [pickerScrollRoot, setPickerScrollRoot] = useState<HTMLDivElement | null>(null);
@@ -251,12 +352,49 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
         }
     };
 
-    const handleSlotClick = useCallback(
-        (dexId: number) => {
-            router.push(`/?dexId=${dexId}`);
-        },
-        [router],
-    );
+    const [isUpdatingBinderStatus, setIsUpdatingBinderStatus] = useState<string | null>(null);
+
+    const handleSetFeatured = async (binderId: string) => {
+        if (isUpdatingBinderStatus) return;
+        setIsUpdatingBinderStatus(binderId);
+        try {
+            const res = await fetch(`/api/binders/${binderId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ is_featured: true }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Erro ao definir binder em destaque");
+            toast.success("Binder definido como destaque!");
+            await mutate();
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : "Erro ao definir destaque";
+            toast.error(msg);
+        } finally {
+            setIsUpdatingBinderStatus(null);
+        }
+    };
+
+    const handleTogglePublic = async (binderId: string, nextPublic: boolean) => {
+        if (isUpdatingBinderStatus) return;
+        setIsUpdatingBinderStatus(binderId);
+        try {
+            const res = await fetch(`/api/binders/${binderId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ is_public: nextPublic }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Erro ao alterar visibilidade");
+            toast.success(nextPublic ? "Binder agora é público!" : "Binder agora é privado!");
+            await mutate();
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : "Erro ao alterar visibilidade";
+            toast.error(msg);
+        } finally {
+            setIsUpdatingBinderStatus(null);
+        }
+    };
 
     const toggleFavorite = (cardId: string) => {
         setDraftFavoriteIds((prev) => {
@@ -347,6 +485,10 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
     }
 
     const { user, stats, slots, rarityBreakdown, isOwner, themeColor } = profile;
+    const featuredBinder = profile.featuredBinder ?? profile.binders?.find((b) => b.is_featured) ?? profile.binders?.[0] ?? null;
+    const featuredBinderSlots = profile.featuredBinderSlots ?? [];
+    const featuredTheme = getCoverTheme(featuredBinder?.cover_theme || "classic_red");
+    const otherBinders = (profile.binders || []).filter((b) => b.id !== featuredBinder?.id && (isOwner || b.is_public));
     const maxRarityCount = rarityBreakdown.reduce((max, item) => Math.max(max, item.count), 0) || 1;
     const showFeaturedSection = isOwner || displayFeaturedCards.length > 0;
 
@@ -484,62 +626,193 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
                         ) : null}
                     </section>
 
-                    <section className="profile-enter profile-enter-d1 grid grid-cols-2 gap-3 sm:gap-4">
-                        <div className="flex flex-col justify-between rounded-2xl border border-white/10 bg-[#12151d]/90 px-4 py-4 sm:px-5 sm:py-5">
-                            <div className="flex items-center gap-1.5 text-slate-400">
-                                <BookOpen size={14} className="text-poke-blue" />
-                                <span className="text-xs font-semibold">Binder</span>
-                            </div>
-                            <div className="mt-3">
-                                <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
-                                    <span className="font-mono text-2xl font-black tracking-tight text-white sm:text-3xl">{stats.totalInBinder}</span>
-                                    <span className="text-xs text-slate-500 sm:text-sm">/ 151</span>
-                                </div>
-                                <div className="mt-2.5 flex items-center gap-2">
-                                    <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-white/10">
-                                        <div className="h-full rounded-full bg-poke-blue transition-all duration-500" style={{ width: `${stats.completionPercentage}%` }} />
+                    {featuredBinder ? (
+                        <section className="profile-enter profile-enter-d1 flex flex-col gap-5 rounded-3xl border border-white/10 bg-gradient-to-b from-[#161a26]/90 via-[#10131d]/90 to-[#0c0e15]/90 p-6 shadow-2xl backdrop-blur-xl sm:p-8">
+                            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 shadow-md" style={{ backgroundColor: featuredTheme.primaryColor }}>
+                                        <BookOpen size={22} className="text-white" />
                                     </div>
-                                    <span className="shrink-0 font-mono text-[11px] font-bold text-poke-blue">{stats.completionPercentage}%</span>
+                                    <div>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-400/15 px-2.5 py-0.5 text-[11px] font-bold text-amber-300">
+                                                <Star size={12} className="fill-amber-300 text-amber-300" />
+                                                <span>Binder em Destaque</span>
+                                            </span>
+
+                                            {isOwner && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleTogglePublic(featuredBinder.id, !featuredBinder.is_public)}
+                                                    disabled={isUpdatingBinderStatus === featuredBinder.id}
+                                                    className={`flex cursor-pointer items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition-all ${featuredBinder.is_public ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25" : "border-slate-500/40 bg-slate-500/15 text-slate-300 hover:bg-slate-500/25"}`}
+                                                >
+                                                    {featuredBinder.is_public ? <Globe size={11} /> : <Lock size={11} />}
+                                                    <span>{featuredBinder.is_public ? "Público" : "Privado"}</span>
+                                                </button>
+                                            )}
+                                        </div>
+                                        <h2 className="mt-1 text-xl font-black tracking-tight text-white sm:text-2xl">{featuredBinder.name}</h2>
+                                        {featuredBinder.description && <p className="mt-0.5 text-xs text-slate-400">{featuredBinder.description}</p>}
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-2.5">
+                                    {isOwner && (
+                                        <NextLink href={`/binders/${featuredBinder.id}/edit`} className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white">
+                                            <Pencil size={13} />
+                                            <span>Editar</span>
+                                        </NextLink>
+                                    )}
+
+                                    <NextLink href={`/binders/${featuredBinder.id}`} className="flex items-center gap-1.5 rounded-xl bg-poke-blue px-4 py-2 text-xs font-bold text-white shadow-lg shadow-poke-blue/25 transition-all hover:bg-poke-blue/90">
+                                        <BookOpen size={14} />
+                                        <span>Abrir no Binder</span>
+                                    </NextLink>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="flex flex-col justify-between rounded-2xl border border-white/10 bg-[#12151d]/90 px-4 py-4 sm:px-5 sm:py-5">
-                            <div className="flex items-center gap-1.5 text-slate-400">
-                                <Layers size={14} className="text-poke-blue" />
-                                <span className="text-xs font-semibold">Coleção</span>
+                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+                                <div className="rounded-2xl border border-white/10 bg-[#12151d]/90 p-4">
+                                    <span className="text-[11px] font-semibold text-slate-400">Formato</span>
+                                    <p className="mt-1 font-mono text-lg font-black text-white">Grade {featuredBinder.grid_type}</p>
+                                </div>
+                                <div className="rounded-2xl border border-white/10 bg-[#12151d]/90 p-4">
+                                    <span className="text-[11px] font-semibold text-slate-400">Páginas</span>
+                                    <p className="mt-1 font-mono text-lg font-black text-white">
+                                        {featuredBinder.total_pages} {featuredBinder.total_pages === 1 ? "página" : "páginas"}
+                                    </p>
+                                </div>
+                                <div className="rounded-2xl border border-white/10 bg-[#12151d]/90 p-4">
+                                    <span className="text-[11px] font-semibold text-slate-400">Preenchimento</span>
+                                    <p className="mt-1 font-mono text-lg font-black text-white">
+                                        {featuredBinder.total_cards ?? 0} <span className="text-xs font-normal text-slate-500">/ {featuredBinder.total_slots ?? 0}</span>
+                                    </p>
+                                </div>
+                                <div className="rounded-2xl border border-white/10 bg-[#12151d]/90 p-4">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[11px] font-semibold text-slate-400">Progresso</span>
+                                        <span className="font-mono text-xs font-bold text-poke-blue">{featuredBinder.completion_percentage ?? 0}%</span>
+                                    </div>
+                                    <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                                        <div className="h-full rounded-full bg-poke-blue transition-all duration-500" style={{ width: `${featuredBinder.completion_percentage ?? 0}%` }} />
+                                    </div>
+                                </div>
                             </div>
-                            <div className="mt-3">
-                                <span className="font-mono text-2xl font-black tracking-tight text-white sm:text-3xl">{stats.totalCollection}</span>
-                                <p className="mt-1 text-[11px] text-slate-500">{stats.totalCollection === 1 ? "carta física" : "cartas físicas"}</p>
+
+                            <ReadonlySlotMinimap
+                                binder={featuredBinder}
+                                slots={featuredBinderSlots}
+                                onCardClick={(card) => {
+                                    openLightbox(formatTcgdexImageUrl(card.card_image_url), card.card_name, resolveCardShine(card.card_variant, card.card_rarity, card.card_image_url, card.card_name), resolveCardElementTypes(card.card_types, card.pokemon_dex_id));
+                                }}
+                            />
+                        </section>
+                    ) : isOwner ? (
+                        <section className="profile-enter profile-enter-d1 flex flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-white/15 bg-white/[0.02] p-8 text-center">
+                            <BookOpen size={32} className="text-slate-500" />
+                            <div>
+                                <h3 className="text-base font-bold text-white">Nenhum binder criado ainda</h3>
+                                <p className="mt-1 text-xs text-slate-400">Crie seu primeiro binder com capas temáticas e grades personalizadas para destacá-lo aqui.</p>
                             </div>
-                        </div>
-                    </section>
+                            <NextLink href="/binders/new" className="mt-2 inline-flex items-center gap-2 rounded-xl bg-poke-blue px-4 py-2 text-xs font-bold text-white shadow-md shadow-poke-blue/20 hover:opacity-90">
+                                <Plus size={15} />
+                                <span>Criar Primeiro Binder</span>
+                            </NextLink>
+                        </section>
+                    ) : null}
 
                     <section className="profile-enter profile-enter-d2 flex flex-col gap-5 rounded-2xl border border-white/10 bg-[#12151d]/90 p-5 shadow-xl backdrop-blur-md sm:p-6">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
-                                <h2 className="text-base font-bold text-white sm:text-lg">Mini-Grid dos 151</h2>
-                                <p className="text-xs text-slate-400">{isOwner ? "Clique em um slot para abrir a página no binder." : "Pokémon no binder aparecem coloridos; os demais ficam em silhueta."}</p>
+                                <h2 className="text-base font-bold text-white sm:text-lg">{isOwner ? "Outros Binders" : "Vitrine de Binders"}</h2>
+                                <p className="text-xs text-slate-400">{isOwner ? "Gerencie a visibilidade pública e defina qual binder é o destaque principal." : "Outros binders públicos organizados por este treinador."}</p>
                             </div>
 
-                            <div className="flex items-center gap-4 text-xs">
-                                <div className="flex items-center gap-1.5">
-                                    <div className="h-3 w-3 rounded border border-white/15 bg-white/5" />
-                                    <span className="text-slate-500">Vazio</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <div className="h-3 w-3 rounded border border-poke-blue bg-poke-blue/30" />
-                                    <span className="text-slate-200">Preenchido</span>
-                                </div>
-                            </div>
+                            {isOwner && (
+                                <NextLink href="/binders/new" className="flex items-center gap-1.5 rounded-xl border border-poke-blue/40 bg-poke-blue/15 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:border-poke-blue/60 hover:bg-poke-blue/25">
+                                    <Plus size={14} />
+                                    <span>Novo Binder</span>
+                                </NextLink>
+                            )}
                         </div>
 
-                        <div className="grid grid-cols-[repeat(auto-fill,minmax(54px,1fr))] gap-2">
-                            {slots.map((slot, index) => (
-                                <DashboardMiniSlot key={slot.pokemon_dex_id} slot={slot} index={index} onClick={isOwner ? handleSlotClick : undefined} />
-                            ))}
-                        </div>
+                        {otherBinders.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-white/5 bg-white/[0.015] py-8 text-center text-xs text-slate-500">
+                                <BookOpen size={24} className="opacity-40" />
+                                <span>{isOwner ? "Você não possui outros binders além do destaque." : "Nenhum outro binder público disponível."}</span>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                {otherBinders.map((b: Binder) => {
+                                    const theme = getCoverTheme(b.cover_theme);
+                                    return (
+                                        <div key={b.id} className="group flex flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-[#0d1017] transition-all hover:border-white/20 hover:shadow-xl">
+                                            <div className="h-3 w-full" style={{ backgroundColor: theme.primaryColor }} />
+
+                                            <div className="flex flex-1 flex-col gap-3 p-4">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div>
+                                                        <h3 className="font-bold text-white group-hover:text-poke-blue transition-colors">{b.name}</h3>
+                                                        {b.description && <p className="mt-0.5 line-clamp-2 text-[11px] text-slate-400">{b.description}</p>}
+                                                    </div>
+
+                                                    {isOwner && (
+                                                        <button type="button" onClick={() => handleTogglePublic(b.id, !b.is_public)} disabled={isUpdatingBinderStatus === b.id} title={b.is_public ? "Tornar privado" : "Tornar público"} className={`shrink-0 rounded-lg border p-1.5 transition-colors ${b.is_public ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25" : "border-slate-500/40 bg-slate-500/15 text-slate-400 hover:bg-slate-500/25"}`}>
+                                                            {b.is_public ? <Globe size={13} /> : <Lock size={13} />}
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                                                    <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 font-medium text-slate-300">Grade {b.grid_type}</span>
+                                                    <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 font-medium text-slate-300">
+                                                        {b.total_pages} {b.total_pages === 1 ? "pág" : "págs"}
+                                                    </span>
+                                                    <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 font-medium text-slate-400">
+                                                        {b.total_cards ?? 0}/{b.total_slots ?? 0} cartas
+                                                    </span>
+                                                </div>
+
+                                                <div>
+                                                    <div className="flex items-center justify-between text-[11px]">
+                                                        <span className="text-slate-400">Preenchimento</span>
+                                                        <span className="font-mono font-bold text-poke-blue">{b.completion_percentage ?? 0}%</span>
+                                                    </div>
+                                                    <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                                                        <div className="h-full rounded-full bg-poke-blue transition-all duration-300" style={{ width: `${b.completion_percentage ?? 0}%` }} />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center justify-between border-t border-white/5 bg-white/[0.02] p-3">
+                                                {isOwner ? (
+                                                    <button type="button" onClick={() => handleSetFeatured(b.id)} disabled={isUpdatingBinderStatus === b.id} className="flex cursor-pointer items-center gap-1 text-[11px] font-semibold text-amber-300/80 transition-colors hover:text-amber-300">
+                                                        <Star size={13} />
+                                                        <span>Tornar Destaque</span>
+                                                    </button>
+                                                ) : (
+                                                    <span />
+                                                )}
+
+                                                <div className="flex items-center gap-2">
+                                                    {isOwner && (
+                                                        <NextLink href={`/binders/${b.id}/edit`} className="rounded-lg border border-white/10 bg-white/5 p-1.5 text-slate-400 hover:text-white transition-colors" title="Editar Binder">
+                                                            <Pencil size={13} />
+                                                        </NextLink>
+                                                    )}
+
+                                                    <NextLink href={`/binders/${b.id}`} className="flex items-center gap-1 rounded-lg bg-poke-blue px-3 py-1.5 text-xs font-bold text-white transition-all hover:bg-poke-blue/90">
+                                                        <span>Abrir</span>
+                                                        <ExternalLink size={12} />
+                                                    </NextLink>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </section>
 
                     {rarityBreakdown.length > 0 && (
@@ -573,14 +846,18 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
                 </main>
             </ProfileThemeScope>
 
-            {isPickerOpen ? (
+            {isPickerPresent ? (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-0 sm:p-4 backdrop-blur-sm"
+                    className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-0 sm:p-4 backdrop-blur-sm"
+                    data-overlay-state={pickerOverlayState}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Selecionar cartas em destaque"
                     onClick={(e) => {
-                        if (e.target === e.currentTarget && window.matchMedia("(min-width: 640px)").matches) setIsPickerOpen(false);
+                        if (e.target === e.currentTarget && !isSavingFeatured) setIsPickerOpen(false);
                     }}
                 >
-                    <div className="flex h-dvh max-h-none w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-[#12151d] shadow-2xl sm:h-[85vh] sm:max-h-[820px] sm:max-w-3xl sm:rounded-2xl sm:border sm:border-white/10">
+                    <div className="modal-surface flex h-dvh max-h-none w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-[#12151d] shadow-2xl sm:h-[85vh] sm:max-h-[820px] sm:max-w-3xl sm:rounded-2xl sm:border sm:border-white/10">
                         <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-5 py-4">
                             <div>
                                 <h3 className="text-base font-bold text-white">Escolher cartas em destaque</h3>

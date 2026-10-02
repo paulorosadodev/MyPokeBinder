@@ -41,7 +41,7 @@ Demandas identificadas:
     - Removida a seção redundante de classificação de cartas em configurações.
     - Correção do switch tátil de som para evitar transbordamento (`overflow`) do container (`inline-flex items-center rounded-full p-1` com `translate-x-5` / `translate-x-0`).
     - Propagação dinâmica da cor primária personalizada (`--theme-primary` / `--color-poke-blue`) para:
-      1. Ícones e badges de "em exibição" / "carta ativa" no fichário.
+      1. Ícones e badges de "em exibição" / "carta ativa" no binder.
       2. Pílulas contadoras de exemplares duplicados (`x2`, `x3`, etc.).
       3. Slots preenchidos regulares do mini-grid do dashboard.
       4. Card e métricas do Binder 151 no dashboard.

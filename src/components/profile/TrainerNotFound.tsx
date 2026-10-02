@@ -61,7 +61,7 @@ export function TrainerNotFound({ username, type = "profile" }: TrainerNotFoundP
                                     <>
                                         {isCollection ? (
                                             <>
-                                                Nenhuma coleção foi localizada para o treinador <span className="font-mono text-teal-300 font-semibold">@{cleanUsername}</span>. Um Snorlax selvagem bloqueou a rota deste fichário e tirou uma bela soneca.
+                                                Nenhuma coleção foi localizada para o treinador <span className="font-mono text-teal-300 font-semibold">@{cleanUsername}</span>. Um Snorlax selvagem bloqueou a rota deste binder e tirou uma bela soneca.
                                             </>
                                         ) : (
                                             <>
@@ -70,7 +70,7 @@ export function TrainerNotFound({ username, type = "profile" }: TrainerNotFoundP
                                         )}
                                     </>
                                 ) : isCollection ? (
-                                    "A coleção que você tentou acessar não foi localizada. Um Snorlax parece estar bloqueando o caminho deste fichário na Pokédex."
+                                    "A coleção que você tentou acessar não foi localizada. Um Snorlax parece estar bloqueando o caminho deste binder na Pokédex."
                                 ) : (
                                     "O perfil de treinador que você tentou acessar não foi localizado ou não existe nesta região da Pokédex."
                                 )}
@@ -80,7 +80,7 @@ export function TrainerNotFound({ username, type = "profile" }: TrainerNotFoundP
                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2 w-full sm:w-auto">
                             <Link href="/" className={`inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm transition-all active:scale-[0.98] shadow-lg ${isCollection ? "bg-teal-600 hover:bg-teal-500 text-white shadow-teal-600/25" : "bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/25"}`}>
                                 <BookOpen size={16} />
-                                <span>Voltar ao Meu Fichário</span>
+                                <span>Voltar ao Meu Binder</span>
                             </Link>
 
                             <Link href="/collection" className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-200 font-semibold text-sm transition-all active:scale-[0.98]">

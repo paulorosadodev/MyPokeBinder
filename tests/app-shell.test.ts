@@ -61,7 +61,7 @@ describe("Route loading shells", () => {
     it("uses the same binder opening loader for refresh and client navigation", () => {
         const binder = readFileSync(join(import.meta.dir, "../src/components/binder/BinderClientPage.tsx"), "utf8");
         expect(binder).toContain("BinderOpeningLoader");
-        expect(binder).toContain("Carregando seu fichário...");
+        expect(binder).toContain("Carregando seu binder...");
         expect(binder).not.toContain("Carregando binder...");
         expect(binder).toContain("<Suspense fallback={<BinderOpeningLoader />}>");
         expect(binder).toContain("<BinderOpeningLoader />");

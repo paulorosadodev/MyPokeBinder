@@ -53,6 +53,9 @@ const POKEMON_TYPE_FALLBACK: Record<PokemonType, CardElementType> = {
     ice: "Water",
     dragon: "Dragon",
     fairy: "Fairy",
+    steel: "Metal",
+    dark: "Darkness",
+    flying: "Colorless",
 };
 
 export function isCardElementType(value: unknown): value is CardElementType {

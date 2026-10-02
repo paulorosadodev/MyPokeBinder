@@ -13,7 +13,7 @@ Para aumentar a imersão e simular a experiência tátil de colecionar cartas f�
 No entanto, diferentes áreas da aplicação possuem propósitos distintos de navegação e inspeção, exigindo comportamentos específicos de interação:
 
 1. Na **Coleção** (`/collection`), o usuário realiza varredura e filtragem rápida do acervo; animações 3D excessivas ou saltos geravam fadiga visual e instabilidade.
-2. No **Fichário** (`/`), ao passar o mouse sobre uma carta preenchida, ela deve se destacar aumentando de tamanho suavemente, mas permanecendo em seu respectivo slot no grid ("ficar no mesmo lugar"). Além disso, no desktop, ao clicar em um slot, deve abrir a carta em tamanho grande com efeito 3D ao lado do modal de seleção, permitindo trocar a carta ativa com atualização imediata da prévia em tempo real sem fechar o modal prematuramente.
+2. No **Binder** (`/`), ao passar o mouse sobre uma carta preenchida, ela deve se destacar aumentando de tamanho suavemente, mas permanecendo em seu respectivo slot no grid ("ficar no mesmo lugar"). Além disso, no desktop, ao clicar em um slot, deve abrir a carta em tamanho grande com efeito 3D ao lado do modal de seleção, permitindo trocar a carta ativa com atualização imediata da prévia em tempo real sem fechar o modal prematuramente.
 3. Na **Página de Edição / Detalhes** (`/cards/[id]`), a carta possuía uma moldura/borda artificial escura que obscurecia a arte. A ampliação para visualização centralizada na tela deve ser ativada exclusivamente via clique explícito, fechando ao clicar novamente na carta, no botão X ou apertando a tecla Esc.
 
 ## Decisão
@@ -35,18 +35,18 @@ No entanto, diferentes áreas da aplicação possuem propósitos distintos de na
         - Clicar no plano de fundo escurecido (`backdrop`);
         - Pressionar a tecla `Escape`.
 
-4. **Fichário: Hover no Mesmo Lugar, Carta Grande Escalável e Responsividade (`/`)**:
-    - No hover do grid do fichário (`BinderSlot`), o `Card3DTilt` opera com `scale={1.15}` aumentando de tamanho a partir do centro do próprio slot sem sair do lugar, com elevação de camada (`z-index: 30` / `40`) para não sofrer cortes.
+4. **Binder: Hover no Mesmo Lugar, Carta Grande Escalável e Responsividade (`/`)**:
+    - No hover do grid do binder (`BinderSlot`), o `Card3DTilt` opera com `scale={1.15}` aumentando de tamanho a partir do centro do próprio slot sem sair do lugar, com elevação de camada (`z-index: 30` / `40`) para não sofrer cortes.
     - Em telas desktop (`lg:` e superiores), o modal `BinderSlotSelectModal` exibe layout lado a lado:
         - À esquerda: a carta em destaque em tamanho grande com perspectiva e reflexo holográfico 3D interativo (`Card3DTilt`), escalando suavemente de `240px` (em `lg`), `300px` (em `xl`) até `340px` (em `2xl`).
         - À direita: o painel com as cartas disponíveis no acervo para aquele Pokémon, com grid adaptativo (`lg:grid-cols-2 xl:grid-cols-3`).
     - Em telas menores (`< lg`, tablets e smartphones), a carta grande lateral é ocultada (`hidden lg:flex`), conferindo largura total ao modal para que os cards não fiquem espremidos.
     - Textos de ação ("Em exibição" e "Exibir") e badges de idioma possuem `whitespace-nowrap` e `min-w-0`, eliminando qualquer quebra indesejada de linha ou colisão entre botões em larguras compactas. O botão "Editar" preserva seu ícone em telas menores e expande com rótulo textual em telas maiores.
-    - Ao selecionar ou trocar a carta no modal, o modal **não se fecha automaticamente**: a carta grande à esquerda atualiza instantaneamente para a nova carta selecionada, o badge "Em exibição" é atualizado no painel e a persistência é enviada ao servidor. Ao fechar o modal, a nova escolha já se encontra aplicada no Fichário.
+    - Ao selecionar ou trocar a carta no modal, o modal **não se fecha automaticamente**: a carta grande à esquerda atualiza instantaneamente para a nova carta selecionada, o badge "Em exibição" é atualizado no painel e a persistência é enviada ao servidor. Ao fechar o modal, a nova escolha já se encontra aplicada no Binder.
 
 ## Consequências
 
 - **Positivas**:
     - Controle deliberado e sem fadiga visual na página de detalhes.
-    - Experiência rica e fluida de troca de cartas no Fichário desktop com prévia em alta definição instantânea.
+    - Experiência rica e fluida de troca de cartas no Binder desktop com prévia em alta definição instantânea.
     - Fidelidade física e visual de um verdadeiro álbum de colecionador.

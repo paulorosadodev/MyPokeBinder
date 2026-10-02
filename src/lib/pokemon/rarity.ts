@@ -1,63 +1,111 @@
 export type RarityImpactTier = 0 | 1 | 2 | 3;
 
-export function getRarityImpactTier(rarity?: string | null): RarityImpactTier {
-    if (!rarity || typeof rarity !== "string") {
+export function getRarityImpactTier(rarity?: string | null, cardName?: string | null): RarityImpactTier {
+    const hasRarity = Boolean(rarity && typeof rarity === "string" && rarity.trim());
+    const hasName = Boolean(cardName && typeof cardName === "string" && cardName.trim());
+    if (!hasRarity && !hasName) {
         return 0;
     }
-    const lower = rarity.trim().toLowerCase();
-    if (lower === "special illustration rare" || lower.includes("special illustration rare") || lower.includes("ilustração rara especial") || lower === "hyper rare" || lower.includes("hyper rare") || lower.includes("hiper-rara") || lower.includes("rara hiper") || lower === "secret rare" || lower.includes("secret rare") || lower.includes("rara secreta")) {
+    const lowerRarity = hasRarity ? (rarity as string).trim().toLowerCase() : "";
+    const lowerName = hasName ? (cardName as string).trim().toLowerCase() : "";
+
+    if (lowerRarity.includes("special illustration rare") || lowerRarity.includes("ilustração rara especial") || lowerRarity.includes("hyper rare") || lowerRarity.includes("hiper-rara") || lowerRarity.includes("rara hiper") || lowerRarity.includes("secret rare") || lowerRarity.includes("rara secreta")) {
         return 3;
     }
-    if (lower === "illustration rare" || lower.includes("illustration rare") || lower.includes("ilustração rara") || lower === "ultra rare" || lower.includes("ultra rare") || lower.includes("rara ultra") || lower === "full art trainer" || lower.includes("full art trainer") || lower === "shiny ultra rare" || lower.includes("shiny ultra rare") || lower.includes("rara ultra brilhante") || lower.includes("brilhante rara ultra") || lower === "shiny rare vmax" || lower.includes("shiny rare vmax")) {
+    if (
+        lowerRarity.includes("illustration rare") ||
+        lowerRarity.includes("ilustração rara") ||
+        lowerRarity.includes("ultra rare") ||
+        lowerRarity.includes("rara ultra") ||
+        lowerRarity.includes("full art trainer") ||
+        lowerRarity.includes("shiny ultra rare") ||
+        lowerRarity.includes("rara ultra brilhante") ||
+        lowerRarity.includes("shiny rare vmax") ||
+        lowerRarity.includes("vmax") ||
+        lowerRarity.includes("vstar") ||
+        lowerRarity.includes("v-union") ||
+        lowerRarity.includes("vunion") ||
+        lowerRarity.includes("rare holo v") ||
+        lowerRarity.includes("rare v") ||
+        lowerRarity.includes("rara v") ||
+        lowerRarity.includes("rara holo v") ||
+        lowerRarity.includes("holo v") ||
+        /\b(v|vmax|vstar|v-union|vunion)\b/i.test(lowerRarity) ||
+        (hasName && /\b(v|vmax|vstar|v-union|vunion)\b/i.test(lowerName))
+    ) {
         return 2;
     }
-    if (lower === "double rare" || lower.includes("double rare") || lower.includes("rara dupla")) {
+    if (lowerRarity.includes("double rare") || lowerRarity.includes("rara dupla")) {
         return 1;
     }
     return 0;
 }
 
-export function isFullArtRarity(rarity?: string | null): boolean {
-    if (!rarity || typeof rarity !== "string") {
+export function isFullArtRarity(rarity?: string | null, cardName?: string | null): boolean {
+    const hasRarity = Boolean(rarity && typeof rarity === "string" && rarity.trim());
+    const hasName = Boolean(cardName && typeof cardName === "string" && cardName.trim());
+
+    if (!hasRarity && !hasName) {
         return false;
     }
-    const lower = rarity.trim().toLowerCase();
-    return (
-        lower.includes("illustration rare") ||
-        lower.includes("ilustração rara") ||
-        lower.includes("ultra rare") ||
-        lower.includes("rara ultra") ||
-        lower.includes("rare ultra") ||
-        lower.includes("double rare") ||
-        lower.includes("rara dupla") ||
-        lower.includes("hyper rare") ||
-        lower.includes("hiper-rara") ||
-        lower.includes("rara hiper") ||
-        lower.includes("secret rare") ||
-        lower.includes("rara secreta") ||
-        lower.includes("rare secret") ||
-        lower.includes("rainbow") ||
-        lower.includes("arco-íris") ||
-        lower.includes("full art") ||
-        lower.includes("arte expandida") ||
-        lower.includes("arte completa") ||
-        lower.includes("shiny ultra rare") ||
-        lower.includes("rara ultra brilhante") ||
-        lower.includes("brilhante rara ultra") ||
-        lower.includes("shiny rare vmax") ||
-        lower.includes("vmax") ||
-        lower.includes("vstar") ||
-        lower.includes("holo v") ||
-        lower.includes("holo ex") ||
-        lower.includes("rare holo v") ||
-        lower.includes("rare holo ex") ||
-        lower.includes("radiant") ||
-        lower.includes("radiante") ||
-        lower.includes("amazing") ||
-        lower.includes("incrível") ||
-        lower.includes("incrivel") ||
-        lower.includes("ace spec")
-    );
+
+    const lowerRarity = hasRarity ? (rarity as string).trim().toLowerCase() : "";
+    const lowerName = hasName ? (cardName as string).trim().toLowerCase() : "";
+
+    if (hasRarity) {
+        if (
+            lowerRarity.includes("illustration rare") ||
+            lowerRarity.includes("ilustração rara") ||
+            lowerRarity.includes("ultra rare") ||
+            lowerRarity.includes("rara ultra") ||
+            lowerRarity.includes("rare ultra") ||
+            lowerRarity.includes("double rare") ||
+            lowerRarity.includes("rara dupla") ||
+            lowerRarity.includes("hyper rare") ||
+            lowerRarity.includes("hiper-rara") ||
+            lowerRarity.includes("rara hiper") ||
+            lowerRarity.includes("secret rare") ||
+            lowerRarity.includes("rara secreta") ||
+            lowerRarity.includes("rare secret") ||
+            lowerRarity.includes("rainbow") ||
+            lowerRarity.includes("arco-íris") ||
+            lowerRarity.includes("full art") ||
+            lowerRarity.includes("arte expandida") ||
+            lowerRarity.includes("arte completa") ||
+            lowerRarity.includes("shiny ultra rare") ||
+            lowerRarity.includes("rara ultra brilhante") ||
+            lowerRarity.includes("brilhante rara ultra") ||
+            lowerRarity.includes("shiny rare vmax") ||
+            lowerRarity.includes("vmax") ||
+            lowerRarity.includes("vstar") ||
+            lowerRarity.includes("v-union") ||
+            lowerRarity.includes("vunion") ||
+            lowerRarity.includes("holo v") ||
+            lowerRarity.includes("rare holo v") ||
+            lowerRarity.includes("rare v") ||
+            lowerRarity.includes("rara v") ||
+            lowerRarity.includes("rara holo v") ||
+            lowerRarity.includes("holo ex") ||
+            lowerRarity.includes("rare holo ex") ||
+            lowerRarity.includes("radiant") ||
+            lowerRarity.includes("radiante") ||
+            lowerRarity.includes("amazing") ||
+            lowerRarity.includes("incrível") ||
+            lowerRarity.includes("incrivel") ||
+            lowerRarity.includes("ace spec") ||
+            /\b(v|vmax|vstar|v-union|vunion)\b/i.test(lowerRarity)
+        ) {
+            return true;
+        }
+    }
+
+    if (hasName) {
+        if (/\b(v|vmax|vstar|v-union|vunion)\b/i.test(lowerName)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 export interface RarityFilterOption {
@@ -65,7 +113,6 @@ export interface RarityFilterOption {
     label: string;
 }
 
-/** Labels oficiais PT-BR (Pokémon Estampas Ilustradas / pokemon.com/br). */
 export const RARITY_FILTER_OPTIONS: RarityFilterOption[] = [
     { value: "all", label: "Todas as raridades" },
     { value: "special illustration rare", label: "Ilustração Rara Especial" },
@@ -85,10 +132,6 @@ export const RARITY_FILTER_OPTIONS: RarityFilterOption[] = [
     { value: "promo", label: "Promocional" },
 ];
 
-/**
- * Traduz raridades TCGdex/EN para o nome oficial em português (Brasil).
- * Fonte: arquivo de cartas pokemon.com/br (Pokémon Estampas Ilustradas).
- */
 export function formatRarityLabel(rarity?: string | null): string {
     if (!rarity || typeof rarity !== "string" || !rarity.trim()) {
         return "Comum";
@@ -118,15 +161,18 @@ export function formatRarityLabel(rarity?: string | null): string {
     return trimmed;
 }
 
-export function getRarityBadgeStyle(rarity?: string | null): {
+export function getRarityBadgeStyle(
+    rarity?: string | null,
+    cardName?: string | null,
+): {
     badgeClasses: string;
     label: string;
     tier: RarityImpactTier;
     isFullArt: boolean;
 } {
-    const tier = getRarityImpactTier(rarity);
+    const tier = getRarityImpactTier(rarity, cardName);
     const label = formatRarityLabel(rarity);
-    const isFullArt = isFullArtRarity(rarity);
+    const isFullArt = isFullArtRarity(rarity, cardName);
     const lower = (rarity || "").trim().toLowerCase();
 
     if (tier === 3) {
@@ -182,15 +228,17 @@ export function getRarityBadgeStyle(rarity?: string | null): {
     };
 }
 
-export function getRarityScore(rarity?: string | null): number {
-    if (!rarity || typeof rarity !== "string") return 0;
-    const lower = rarity.trim().toLowerCase();
+export function getRarityScore(rarity?: string | null, cardName?: string | null): number {
+    if (!rarity && !cardName) return 0;
+    const lower = (rarity || "").trim().toLowerCase();
+    const lowerName = (cardName || "").trim().toLowerCase();
     if (lower.includes("special illustration rare") || lower.includes("ilustração rara especial")) return 100;
     if (lower.includes("hyper rare") || lower.includes("hiper-rara") || lower.includes("rara hiper")) return 90;
     if (lower.includes("illustration rare") || lower.includes("ilustração rara")) return 80;
     if (lower.includes("shiny ultra rare") || lower.includes("rara ultra brilhante") || lower.includes("brilhante rara ultra") || lower.includes("shiny rare vmax")) return 75;
     if (lower.includes("secret rare") || lower.includes("rara secreta")) return 70;
     if (lower.includes("ultra rare") || lower.includes("rara ultra") || lower.includes("full art trainer")) return 65;
+    if (lower.includes("vmax") || lower.includes("vstar") || lower.includes("v-union") || lower.includes("vunion") || lower.includes("rare holo v") || lower.includes("rare v") || lower.includes("rara v") || lower.includes("rara holo v") || lower.includes("holo v") || /\b(v|vmax|vstar|v-union|vunion)\b/i.test(lower) || (lowerName && /\b(v|vmax|vstar|v-union|vunion)\b/i.test(lowerName))) return 60;
     if (lower.includes("radiant") || lower.includes("radiante") || lower.includes("amazing") || lower.includes("incrível") || lower.includes("incrivel")) return 50;
     if (lower.includes("double rare") || lower.includes("rara dupla")) return 40;
     if (lower.includes("holo") || lower.includes("holográfic") || lower.includes("holografic")) return 30;

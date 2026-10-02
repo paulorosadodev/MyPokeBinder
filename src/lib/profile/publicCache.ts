@@ -1,7 +1,8 @@
 import { revalidateTag, unstable_cache } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { buildProfileFromCards, type ProfilePayload, type ProfileUser } from "@/lib/profile/buildProfile";
-import type { UserCard } from "@/types/binder";
+import type { Binder, BinderSlot, UserCard } from "@/types/binder";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const PUBLIC_PROFILE_REVALIDATE_SECONDS = 60;
@@ -31,6 +32,9 @@ export interface CachedPublicTrainerData {
         favoriteCardIds: string[];
     };
     cards: UserCard[];
+    binders?: Binder[];
+    featuredBinder?: Binder | null;
+    featuredBinderSlots?: BinderSlot[];
 }
 
 export interface PublicViewer {
@@ -105,12 +109,15 @@ export function buildCachedPublicProfile(data: CachedPublicTrainerData): CachedP
             isOwner: false,
             themeColor: data.owner.themeColor,
             favoriteCardIds: data.owner.favoriteCardIds,
+            binders: data.binders,
+            featuredBinder: data.featuredBinder,
+            featuredBinderSlots: data.featuredBinderSlots,
         }),
     );
 }
 
 async function loadPublicTrainerData(username: string): Promise<CachedPublicTrainerData | null> {
-    const supabase = createPublicClient();
+    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createAdminClient() : createPublicClient();
     const { data: profileRow, error: profileError } = await supabase.from("profiles").select("id, username, display_name, avatar_url, created_at, theme_color, bio, favorite_card_ids").eq("username", username).maybeSingle();
 
     if (profileError || !profileRow) {
@@ -125,6 +132,50 @@ async function loadPublicTrainerData(username: string): Promise<CachedPublicTrai
         return null;
     }
 
+    const { data: bindersData } = await supabase.from("binders").select("*").eq("user_id", profileRow.id).order("created_at", { ascending: true });
+
+    let allSlots: any[] = [];
+    const binderIds = (bindersData ?? []).map((b) => b.id);
+    if (binderIds.length > 0) {
+        const { data: slotsData } = await supabase.from("binder_slots").select("*").in("binder_id", binderIds).order("page_number", { ascending: true }).order("slot_index", { ascending: true });
+        allSlots = slotsData ?? [];
+    }
+
+    const userCardIds = allSlots.map((s) => s.user_card_id).filter((cid): cid is string => typeof cid === "string" && Boolean(cid));
+
+    const userCardsMap = new Map<string, UserCard>();
+    if (userCardIds.length > 0) {
+        const { data: uCards } = await supabase.from("user_cards").select("*").in("id", userCardIds);
+        for (const card of uCards ?? []) {
+            userCardsMap.set(card.id, card as UserCard);
+        }
+    }
+
+    const slotsByBinder = new Map<string, BinderSlot[]>();
+    for (const slot of allSlots) {
+        const list = slotsByBinder.get(slot.binder_id) || [];
+        list.push({
+            ...slot,
+            card: slot.user_card_id ? userCardsMap.get(slot.user_card_id) || null : null,
+        });
+        slotsByBinder.set(slot.binder_id, list);
+    }
+
+    const bindersWithStats: Binder[] = (bindersData ?? []).map((b) => {
+        const slots = slotsByBinder.get(b.id) || [];
+        const total = slots.length;
+        const filled = slots.filter((s) => Boolean(s.user_card_id)).length;
+        return {
+            ...b,
+            total_slots: total,
+            total_cards: filled,
+            completion_percentage: total > 0 ? Math.round((filled / total) * 100) : 0,
+        };
+    });
+
+    const featured = bindersWithStats.find((b) => b.is_featured) || bindersWithStats[0] || null;
+    const featuredSlots = featured ? slotsByBinder.get(featured.id) || [] : [];
+
     return {
         owner: {
             id: profileRow.id,
@@ -137,6 +188,9 @@ async function loadPublicTrainerData(username: string): Promise<CachedPublicTrai
             favoriteCardIds: profileRow.favorite_card_ids ?? [],
         },
         cards: (cardsData ?? []) as UserCard[],
+        binders: bindersWithStats,
+        featuredBinder: featured,
+        featuredBinderSlots: featuredSlots,
     };
 }
 

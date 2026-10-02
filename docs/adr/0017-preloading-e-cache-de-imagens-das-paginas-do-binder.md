@@ -6,7 +6,7 @@ Aceito
 
 ## Contexto
 
-Ao navegar pelas páginas do fichário (binder), observava-se atraso e carregamento visível das imagens de cartas e silhuetas de Pokémon nas próximas páginas.
+Ao navegar pelas páginas do binder (binder), observava-se atraso e carregamento visível das imagens de cartas e silhuetas de Pokémon nas próximas páginas.
 
 A análise revelou quatro gargalos arquiteturais:
 
@@ -35,4 +35,4 @@ A análise revelou quatro gargalos arquiteturais:
 
 - A virada de páginas do binder torna-se instantânea, sem flicker ou visualização de slots carregando.
 - Redução de carga e processamento de imagens sob demanda no servidor Node/Next.js local.
-- Experiência fluida e ágil ao folhear o fichário tanto no desktop quanto no mobile.
+- Experiência fluida e ágil ao folhear o binder tanto no desktop quanto no mobile.

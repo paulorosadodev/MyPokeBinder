@@ -6,9 +6,9 @@ Aceito
 
 ## Contexto
 
-O MyPokeBinder foi concebido para ser a representação digital de um fichário físico real 3×3 voltado aos 151 Pokémon originais.
+O MyPokeBinder foi concebido para ser a representação digital de um binder físico real 3×3 voltado aos 151 Pokémon originais.
 
-Anteriormente (no ADR 0003), para contornar a discrepância na API TCGdex — onde o namespace `pt-br` continha apenas as coleções do Pokémon TCG Pocket e o namespace `pt` continha as 125 coleções físicas traduzidas no Brasil —, os dois catálogos foram combinados. Isso fez com que cartas puramente digitais do aplicativo móvel _Pokémon TCG Pocket_ (como as expansões `A1 - Dominação Genética`, `P-A - Promo-A`, etc.) passassem a ser exibidas na busca do fichário.
+Anteriormente (no ADR 0003), para contornar a discrepância na API TCGdex — onde o namespace `pt-br` continha apenas as coleções do Pokémon TCG Pocket e o namespace `pt` continha as 125 coleções físicas traduzidas no Brasil —, os dois catálogos foram combinados. Isso fez com que cartas puramente digitais do aplicativo móvel _Pokémon TCG Pocket_ (como as expansões `A1 - Dominação Genética`, `P-A - Promo-A`, etc.) passassem a ser exibidas na busca do binder.
 
 O Pokémon TCG Pocket é um jogo com regras e formatos simplificados exclusivos para smartphones (decks de 20 cartas, sem cartas de energia física, pontuação própria). Suas cartas não possuem existência física no mundo real. Além disso, no idioma inglês (`en`), o TCGdex também misturava 2.321 cartas digitais do Pocket junto às 21.415 cartas físicas.
 
@@ -35,6 +35,6 @@ Foi realizada uma análise técnica comprovando que filtrar o TCG Pocket traz **
 
 ## Consequências
 
-- O fichário mantém fidelidade absoluta ao propósito de espelhar cartas colecionáveis do mundo real.
+- O binder mantém fidelidade absoluta ao propósito de espelhar cartas colecionáveis do mundo real.
 - Resultados de busca não são poluídos por cartas exclusivas do jogo mobile.
 - Nenhuma carta física é perdida em nenhum dos idiomas suportados (PT-BR, EN, JA).

@@ -71,7 +71,7 @@ describe("Cards API Validation", () => {
             },
             body: JSON.stringify({
                 tcgdex_card_id: "base1-44",
-                pokemon_dex_id: 152,
+                pokemon_dex_id: 1026,
                 card_name: "Chikorita",
                 card_image_url: "https://assets.tcgdex.net/en/base/base1/44/high.webp",
                 card_language: "en",

@@ -105,7 +105,7 @@ const CAPABILITIES = [
     {
         icon: BookOpen,
         title: "Binder 3×3",
-        desc: "17 páginas com 151 slots fixos, capa em couro e física de folhear como um fichário real.",
+        desc: "17 páginas com 151 slots fixos, capa em couro e física de folhear como um binder real.",
     },
     {
         icon: Search,
@@ -170,7 +170,7 @@ export function LandingPage() {
 
                         <div className="order-2 w-full lg:order-1 lg:max-w-xl">
                             <p className={`landing-enter landing-enter-d1 text-5xl font-extrabold tracking-tight sm:text-6xl lg:text-7xl ${brandHeroGradientClass}`}>MyPokeBinder</p>
-                            <h1 className="landing-enter landing-enter-d2 mt-4 text-xl font-semibold tracking-tight text-white sm:mt-5 sm:text-3xl lg:text-4xl">Seu fichário 3×3 dos 151 de Kanto</h1>
+                            <h1 className="landing-enter landing-enter-d2 mt-4 text-xl font-semibold tracking-tight text-white sm:mt-5 sm:text-3xl lg:text-4xl">Seu binder 3×3 dos 151 de Kanto</h1>
                             <p className="landing-enter landing-enter-d3 mt-4 max-w-[40ch] text-sm leading-relaxed text-slate-400 sm:mt-5 sm:text-base lg:text-lg">Registre cartas físicas, preencha os slots e folheie o binder com física de página real.</p>
                             <button type="button" onClick={handleLogin} disabled={loadingAuth} className="landing-enter landing-enter-d4 mt-8 flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl bg-[#ef4444] px-7 py-3.5 text-sm font-semibold text-white transition-all hover:bg-[#dc2626] active:scale-[0.98] disabled:opacity-70 sm:mt-10 sm:w-auto">
                                 <LogIn size={18} />

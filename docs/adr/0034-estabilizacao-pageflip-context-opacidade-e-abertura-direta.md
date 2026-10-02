@@ -6,10 +6,10 @@ Parcialmente supersedida pela [ADR 35](./0035-reabertura-cinematografica-capa-bi
 
 ## Contexto
 
-Após a implementação inicial do folheamento e das correções de navegação do fichário, foram reportadas 4 anomalias críticas na experiência do usuário:
+Após a implementação inicial do folheamento e das correções de navegação do binder, foram reportadas 4 anomalias críticas na experiência do usuário:
 
 1. **Início Fechado com Piscar Após Carregamento ("começa fechado, depois de um tempo ele pisca")**:
-   - O fichário iniciava fechado na capa (`startPage = 0`), aguardava a resolução do SWR e do motor 3D, e subitamente a tela sofria um piscar/reload visual.
+   - O binder iniciava fechado na capa (`startPage = 0`), aguardava a resolução do SWR e do motor 3D, e subitamente a tela sofria um piscar/reload visual.
    - A causa raiz residia na reatividade do `react-pageflip`: toda vez que `cardsMap` ou qualquer prop dos slots se alterava, novas instâncias de nós filhos eram repassadas ao `HTMLFlipBook`. O hook interno do `react-pageflip` disparava `updateFromHtml()`, destruindo a árvore de páginas (`this.pages.destroy()`), recarregando o canvas (`render.reload()`) e reexibindo o spread no meio do ciclo de vida, gerando o piscar.
 
 2. **Salto de Scroll da Janela ("ai o scroll buga")**:
@@ -27,8 +27,8 @@ Após a implementação inicial do folheamento e das correções de navegação 
 ## Decisão
 
 1. **Abertura Instantânea e Direta na Página Solicitada (`startPage={initialTargetPhysical}`)**:
-   - Eliminou-se a dependência artificial de iniciar o fichário fechado na capa e disparar timers de abertura automática (`setTimeout`).
-   - O fichário inicializa imediatamente na página solicitada pelo usuário (Página 1, ou `targetPhysical = 2`, spread 1 em landscape), renderizando a capa interna à esquerda e a primeira página de cartas à direita desde o primeiro frame.
+   - Eliminou-se a dependência artificial de iniciar o binder fechado na capa e disparar timers de abertura automática (`setTimeout`).
+   - O binder inicializa imediatamente na página solicitada pelo usuário (Página 1, ou `targetPhysical = 2`, spread 1 em landscape), renderizando a capa interna à esquerda e a primeira página de cartas à direita desde o primeiro frame.
    - A remoção do temporizador extinguiu completamente a condição de corrida que causava o duplo folheamento para a Página 2.
    - Caso o usuário deseje visualizar a capa externa, ele pode folhear para a esquerda a qualquer momento e, ao clicar na capa, a ação `flipNext()` abre suavemente para a Página 1.
 
@@ -44,11 +44,11 @@ Após a implementação inicial do folheamento e das correções de navegação 
 
 4. **Eliminação do Bug de Scroll com `overflow-anchor: none`**:
    - Os seletores `.binder-book-stage`, `.stf__parent` e `.binder-flipbook-root` receberam `overflow-anchor: none` no CSS.
-   - Como o fichário já nasce com as dimensões finais completas do spread aberto, a janela do navegador permanece perfeitamente ancorada sem saltos ou trepidações.
+   - Como o binder já nasce com as dimensões finais completas do spread aberto, a janela do navegador permanece perfeitamente ancorada sem saltos ou trepidações.
 
 ## Consequências
 
-- **Abertura Imediata na Página 1**: Ao abrir o fichário ou retornar de outras rotas, o usuário encontra suas cartas prontas e abertas na Página 1, sem atrasos e sem cair na Página 2.
+- **Abertura Imediata na Página 1**: Ao abrir o binder ou retornar de outras rotas, o usuário encontra suas cartas prontas e abertas na Página 1, sem atrasos e sem cair na Página 2.
 - **Zero Piscar Visual**: Atualizações de dados no SWR atualizam os slots no DOM sem recarregar o motor 3D.
 - **Estabilidade de Rolagem**: O scroll da tela permanece estático e confortável.
 - **Renderização 3D Opaca e Realista**: O folheamento exibe sombras e texturas ricas sem artefatos de transparência ou vazamentos no canvas.

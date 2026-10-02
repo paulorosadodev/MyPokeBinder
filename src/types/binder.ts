@@ -16,7 +16,7 @@ export interface CardVariantsFlags {
 export interface UserCard {
     id: string;
     user_id: string;
-    pokemon_dex_id: number;
+    pokemon_dex_id: number | null;
     tcgdex_card_id: string;
     card_name: string;
     card_image_url: string;
@@ -42,12 +42,66 @@ export interface SearchCardItem {
     artist?: string;
     types?: CardElementType[];
     variants?: CardVariantsFlags;
+    dexId?: number | null;
 }
 
 export interface SearchResponse {
     cards: SearchCardItem[];
     hasMore: boolean;
     totalCount: number;
+}
+
+export type GridType = "1x1" | "2x2" | "3x3" | "3x4";
+export type SlotType = "free" | "pokemon" | "card";
+
+export interface Binder {
+    id: string;
+    user_id: string;
+    name: string;
+    description: string;
+    grid_type: GridType;
+    total_pages: number;
+    cover_theme: string;
+    cover_pokemon_dex_id?: number | null;
+    is_public: boolean;
+    is_featured: boolean;
+    created_at: string;
+    updated_at: string;
+    total_cards?: number;
+    total_slots?: number;
+    completion_percentage?: number;
+    filled_goals?: number;
+    total_goals?: number;
+    preview_cards?: BinderPreviewCard[];
+}
+
+export interface BinderPreviewCard {
+    id: string;
+    card_name: string;
+    card_image_url: string;
+    slot_index?: number;
+}
+
+export interface BinderSlot {
+    id: string;
+    binder_id: string;
+    page_number: number;
+    slot_index: number;
+    slot_type: SlotType;
+    target_dex_id?: number | null;
+    target_tcgdex_id?: string | null;
+    target_card_name?: string | null;
+    target_card_image_url?: string | null;
+    user_card_id?: string | null;
+    card?: UserCard | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface BinderDetailResponse {
+    binder: Binder;
+    slots: BinderSlot[];
+    otherBinders?: { id: string; name: string }[];
 }
 
 export interface DashboardSlot {
@@ -72,10 +126,20 @@ export interface CollectionCardGroup {
     hasInBinder: boolean;
 }
 
+export interface CardAllocation {
+    slot_id: string;
+    binder_id: string;
+    page_number: number;
+    slot_index: number;
+    binder_name: string;
+    binder_grid: string;
+}
+
 export interface CardDetailsResponse {
     card: UserCard;
     copies: UserCard[];
     availableVariants: CardVariant[];
+    allocation?: CardAllocation | null;
 }
 
 export interface BinderCardsResponse {

@@ -27,7 +27,7 @@ Na página de configurações (`/configuracoes`), a seleção de temas e cores u
    - **Propagação em Toda a Aplicação**: o desenho e estilo vetorial da Pokébola temática ativa são propagados universalmente por toda a aplicação:
      - No componente de logo do cabeçalho (`PokeballLogo.tsx`);
      - Em todas as telas e spinners de carregamento (`PokeballLoader.tsx`);
-     - Na capa frontal do fichário/binder (`BinderBookFlip.tsx`);
+     - Na capa frontal do binder/binder (`BinderBookFlip.tsx`);
      - No favicon dinâmico atualizado via SVG data URL no navegador.
 
 3. **Sprites Fixos e Títulos Sem Quebra de Linha (`whitespace-nowrap`)**:

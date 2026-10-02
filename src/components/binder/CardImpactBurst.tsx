@@ -121,6 +121,24 @@ const TYPE_CONFIGS: Record<
         palette: ["#f472b6", "#f9a8d4", "#fdf2f8", "#e879f9", "#ffffff"],
         shapes: ["star", "orb", "star", "diamond"],
     },
+    steel: {
+        ringColor: "#94a3b8",
+        ringGlow: "rgba(148, 163, 184, 0.7)",
+        palette: ["#94a3b8", "#cbd5e1", "#e2e8f0", "#64748b", "#ffffff"],
+        shapes: ["shard", "diamond", "shard", "star"],
+    },
+    dark: {
+        ringColor: "#64748b",
+        ringGlow: "rgba(100, 116, 139, 0.7)",
+        palette: ["#64748b", "#475569", "#334155", "#94a3b8", "#1e293b"],
+        shapes: ["shard", "orb", "ember", "diamond"],
+    },
+    flying: {
+        ringColor: "#cbd5e1",
+        ringGlow: "rgba(203, 213, 225, 0.7)",
+        palette: ["#cbd5e1", "#f1f5f9", "#e2e8f0", "#94a3b8", "#ffffff"],
+        shapes: ["leaf", "orb", "droplet", "star"],
+    },
 };
 
 const RAINBOW_PALETTE = ["#ff4b4b", "#ff8c00", "#ffd700", "#22c55e", "#00f0ff", "#6366f1", "#a855f7", "#ff3b94"];

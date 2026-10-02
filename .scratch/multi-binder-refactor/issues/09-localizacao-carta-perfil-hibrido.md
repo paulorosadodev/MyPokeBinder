@@ -4,11 +4,11 @@
 
 **Blocked by:** 06: Três Tipos de Slots e Interação de Alocação, 07: Painel Retrátil de Estatísticas do Binder
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A página `/cards/[id]` exibe o status de localização do exemplar físico: se estiver alocada, exibe "No binder: [Nome] (Página P, Slot S)" com botão para remover do binder ou abrir o fichário; se estiver guardada, exibe o botão para alocar em um binder.
-- [ ] A ação de alocar pela página da carta exibe um seletor com os binders do usuário e seus slots compatíveis disponíveis.
-- [ ] O perfil público do treinador (`/perfil/[username]`) identifica o binder marcado como destaque (`is_featured`) e renderiza suas Estatísticas e progresso no topo da página.
-- [ ] Visitantes podem visualizar o mapa de slots e progresso do binder em destaque em modo somente leitura.
-- [ ] Abaixo do binder em destaque, o perfil exibe a vitrine dos demais binders marcados como públicos pelo treinador (`is_public = true`), ocultando binders privados para visitantes.
-- [ ] O dono do perfil tem controles diretos para definir qual binder é o principal em destaque e gerenciar a visibilidade pública de seus fichários.
+- [x] A página `/cards/[id]` exibe o status de localização do exemplar físico: se estiver alocada, exibe "No binder: [Nome] (Página P, Slot S)" com botão para remover do binder ou abrir o fichário; se estiver guardada, exibe o botão para alocar em um binder.
+- [x] A ação de alocar pela página da carta exibe um seletor com os binders do usuário e seus slots compatíveis disponíveis.
+- [x] O perfil público do treinador (`/perfil/[username]`) identifica o binder marcado como destaque (`is_featured`) e renderiza suas Estatísticas e progresso no topo da página.
+- [x] Visitantes podem visualizar o mapa de slots e progresso do binder em destaque em modo somente leitura.
+- [x] Abaixo do binder em destaque, o perfil exibe a vitrine dos demais binders marcados como públicos pelo treinador (`is_public = true`), ocultando binders privados para visitantes.
+- [x] O dono do perfil tem controles diretos para definir qual binder é o principal em destaque e gerenciar a visibilidade pública de seus fichários.

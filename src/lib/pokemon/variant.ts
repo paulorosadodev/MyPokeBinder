@@ -139,11 +139,11 @@ export function formatVariantLabel(variant?: CardVariant | string | null): strin
     return "Normal";
 }
 
-export function resolveCardShine(variant?: CardVariant | string | null, rarity?: string | null, imageUrl?: string | null): CardShineMode {
+export function resolveCardShine(variant?: CardVariant | string | null, rarity?: string | null, imageUrl?: string | null, cardName?: string | null): CardShineMode {
     if (imageUrl !== undefined && !hasCardImage(imageUrl)) {
         return "none";
     }
-    if (isFullArtRarity(rarity)) {
+    if (isFullArtRarity(rarity, cardName)) {
         return "prismatic";
     }
     if (variant === "holo") {

@@ -39,7 +39,7 @@ Com o crescimento das coleções, surgiu a necessidade de:
 
 5. **Painel de Estatísticas e Métricas Dinâmicas**:
    - A rota `/dashboard` é descontinuada.
-   - Cada binder possui seu próprio painel retrátil de **Estatísticas**, exibindo a taxa de metas preenchidas (quando houver slots de Pokémon ou Carta) e a taxa de ocupação total de slots, além do mapa visual de slots. Clicar em qualquer slot das estatísticas folheia o fichário diretamente para a página correspondente.
+   - Cada binder possui seu próprio painel retrátil de **Estatísticas**, exibindo a taxa de metas preenchidas (quando houver slots de Pokémon ou Carta) e a taxa de ocupação total de slots, além do mapa visual de slots. Clicar em qualquer slot das estatísticas folheia o binder diretamente para a página correspondente.
 
 6. **Arquitetura de Navegação e Rotas**:
    - `/`: **Estante de Binders** (vitrine com cards dos binders, capas, formato e progresso).

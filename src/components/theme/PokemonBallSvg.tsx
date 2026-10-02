@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useId } from "react";
 
 export type BallType = "pokeball" | "greatball" | "ultraball" | "masterball" | "safariball" | "loveball" | "quickball" | "duskball" | "luxuryball" | "custom";
 
@@ -12,6 +12,7 @@ interface PokemonBallSvgProps {
 }
 
 export function PokemonBallSvg({ ballType = "pokeball", customColor = "#ef4444", size = 40, className = "", isActive = false, style }: PokemonBallSvgProps) {
+    const gradientId = `grad-bottom-${ballType}-${useId().replaceAll(":", "")}`;
     const getTopDetails = () => {
         switch (ballType) {
             case "greatball":
@@ -119,7 +120,7 @@ export function PokemonBallSvg({ ballType = "pokeball", customColor = "#ef4444",
             }
         >
             <defs>
-                <linearGradient id={`grad-bottom-${ballType}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                <linearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
                     <stop offset="0%" stopColor="#ffffff" />
                     <stop offset="100%" stopColor="#cbd5e1" />
                 </linearGradient>
@@ -127,7 +128,7 @@ export function PokemonBallSvg({ ballType = "pokeball", customColor = "#ef4444",
 
             {getTopDetails()}
 
-            <path d="M 4 50 A 46 46 0 0 0 96 50 Z" fill={`url(#grad-bottom-${ballType})`} />
+            <path d="M 4 50 A 46 46 0 0 0 96 50 Z" fill={`url(#${gradientId})`} />
 
             <line x1="4" y1="50" x2="96" y2="50" stroke="#0f172a" strokeWidth="7" />
             <circle cx="50" cy="50" r="46" fill="none" stroke="#0f172a" strokeWidth="6" />

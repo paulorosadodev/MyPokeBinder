@@ -8,7 +8,7 @@ O MyPokeBinder oferece personalização cromática para os usuários através do
 
 Anteriormente, o componente `PokeballLogo` consumia a variável `--theme-primary` por padrão sem distinção de contexto. Com isso, quando um usuário logado que selecionou um tema personalizado acessava páginas institucionais e públicas (como Início `/` e `/inicio`, Termos de Serviço `/termos` e Política de Privacidade `/privacidade`), as Pokébolas dessas páginas eram renderizadas com a cor personalizada do usuário.
 
-Foi estabelecida a regra de negócio de que a cor personalizada selecionada pelo usuário destina-se exclusivamente ao escopo interno da aplicação (Fichário 3×3, Coleção, Dashboard, Perfil, Detalhes da Carta, etc.). Nas páginas de acolhimento institucional e públicas, todas as Pokébolas devem manter fixo o vermelho clássico (#ef4444) da identidade visual Pokémon.
+Foi estabelecida a regra de negócio de que a cor personalizada selecionada pelo usuário destina-se exclusivamente ao escopo interno da aplicação (Binder 3×3, Coleção, Dashboard, Perfil, Detalhes da Carta, etc.). Nas páginas de acolhimento institucional e públicas, todas as Pokébolas devem manter fixo o vermelho clássico (#ef4444) da identidade visual Pokémon.
 
 ## Decisão
 1. **Aprimoramento do Componente `PokeballLogo`**:

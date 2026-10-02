@@ -1,6 +1,6 @@
 import { formatRarityLabel, getRarityScore } from "@/lib/pokemon/rarity";
 import { POKEMON_151 } from "@/lib/pokemon/constants";
-import type { DashboardSlot, UserCard } from "@/types/binder";
+import type { Binder, BinderSlot, DashboardSlot, UserCard } from "@/types/binder";
 
 export interface ProfileUser {
     id: string;
@@ -21,11 +21,9 @@ export interface ProfilePayload {
         completionPercentage: number;
     };
     slots: DashboardSlot[];
-    /** Up to 4 owner-picked showcase cards (empty if none). */
     featuredCards: UserCard[];
     featuredIsManual: boolean;
     favoriteCardIds: string[];
-    /** @deprecated Alias of featuredCards */
     rarestCards: UserCard[];
     rarityBreakdown: Array<{
         label: string;
@@ -33,15 +31,18 @@ export interface ProfilePayload {
         score: number;
     }>;
     isOwner: boolean;
+    binders?: Binder[];
+    featuredBinder?: Binder | null;
+    featuredBinderSlots?: BinderSlot[];
 }
 
-export function buildProfileFromCards(input: { user: ProfileUser; cards: UserCard[]; isOwner: boolean; themeColor?: string | null; favoriteCardIds?: string[] | null }): ProfilePayload {
+export function buildProfileFromCards(input: { user: ProfileUser; cards: UserCard[]; isOwner: boolean; themeColor?: string | null; favoriteCardIds?: string[] | null; binders?: Binder[]; featuredBinder?: Binder | null; featuredBinderSlots?: BinderSlot[] }): ProfilePayload {
     const cards = input.cards ?? [];
     const cardsById = new Map(cards.map((c) => [c.id, c]));
 
     const binderMap = new Map<number, UserCard>();
     cards.forEach((c) => {
-        if (c.is_in_binder && !binderMap.has(c.pokemon_dex_id)) {
+        if (c.is_in_binder && c.pokemon_dex_id != null && !binderMap.has(c.pokemon_dex_id)) {
             binderMap.set(c.pokemon_dex_id, c);
         }
     });
@@ -108,5 +109,8 @@ export function buildProfileFromCards(input: { user: ProfileUser; cards: UserCar
         rarestCards: featuredCards,
         rarityBreakdown,
         isOwner: input.isOwner,
+        binders: input.binders ?? [],
+        featuredBinder: input.featuredBinder ?? null,
+        featuredBinderSlots: input.featuredBinderSlots ?? [],
     };
 }

@@ -6,12 +6,12 @@ Aceito
 
 ## Contexto
 
-Foram identificados dois comportamentos inadequados na interface do fichário (`/`):
+Foram identificados dois comportamentos inadequados na interface do binder (`/`):
 
 1. **Bug na Animação de Abertura do Binder e Cumulative Layout Shift (CLS)**:
    - Ao acessar a página ou recarregar, o usuário visualizava apenas a barra de ações e cabeçalho, com o centro vazio.
-   - Subitamente, o fichário surgia no centro já fechado, empurrava a interface e os controles inferiores bruscamente para baixo ("joga a tela pra baixo") e só então iniciava a animação de abertura.
-   - Ao transitar entre rotas (por exemplo, de Coleção ou Configurações de volta para o Fichário), o componente `BinderBookFlip` era desmontado e remontado do zero. A biblioteca `react-pageflip` (StPageFlip v2.0.7) demorava dezenas de milissegundos para ler o DOM e calcular sua matriz 3D, gerando frames pretos/vazios e cortes no ciclo de abertura.
+   - Subitamente, o binder surgia no centro já fechado, empurrava a interface e os controles inferiores bruscamente para baixo ("joga a tela pra baixo") e só então iniciava a animação de abertura.
+   - Ao transitar entre rotas (por exemplo, de Coleção ou Configurações de volta para o Binder), o componente `BinderBookFlip` era desmontado e remontado do zero. A biblioteca `react-pageflip` (StPageFlip v2.0.7) demorava dezenas de milissegundos para ler o DOM e calcular sua matriz 3D, gerando frames pretos/vazios e cortes no ciclo de abertura.
    - Além disso, a virada manual de páginas acionava `onPageChange`, que disparava um `useEffect` enquanto a virada de 600ms ainda rodava (devido a um `isFlippingRef` resetado prematuramente por timeout de 100ms), forçando interrupções visuais na folha.
 
 2. **Rolagem Brusca e Desnecessária ao Buscar Pokémon (`BinderControls`)**:
@@ -26,7 +26,7 @@ Foram identificados dois comportamentos inadequados na interface do fichário (`
    - Enquanto o StPageFlip prepara os canvas de rotação 3D (`isBookEngineReady === false`), o `BinderBookFlip` renderiza imediatamente um componente de capa idêntico (`FrontCoverContent`), evitando telas pretas ou estados vazios.
 
 2. **Posicionamento Natural Lateral sem Deslocamento Horizontal**:
-   - O fichário nunca deve ser centralizado artificialmente via `transform: translateX(-25%)` quando fechado na Capa Frontal. Essa transição lateral forçava a geometria do container e causava anomalias e saltos na rolagem da página ("scroll buga").
+   - O binder nunca deve ser centralizado artificialmente via `transform: translateX(-25%)` quando fechado na Capa Frontal. Essa transição lateral forçava a geometria do container e causava anomalias e saltos na rolagem da página ("scroll buga").
    - O container permanece com `transform: none` fixo e estável. No desktop, a Capa Frontal (página 0 do StPageFlip em landscape) e seu placeholder inicial (`FrontCoverContent`) iniciam já posicionados no lado direito (`w-1/2 sm:ml-auto`), exatamente onde o livro físico se apoia quando fechado.
    - Ao disparar `readyToOpen`, a folha da capa vira suavemente para a esquerda via física 3D do StPageFlip, sem nenhum movimento do container e sem afetar a barra de rolagem da janela.
 
@@ -41,7 +41,7 @@ Foram identificados dois comportamentos inadequados na interface do fichário (`
 
 ## Consequências
 
-- **Estabilidade Visual Total**: O layout shift foi completamente erradicado; a navegação entre rotas e recarregamentos exibe o fichário instantaneamente em seu container proporcional.
+- **Estabilidade Visual Total**: O layout shift foi completamente erradicado; a navegação entre rotas e recarregamentos exibe o binder instantaneamente em seu container proporcional.
 - **Zero Deslocamento Lateral ou Bug de Scroll**: O container não desliza na tela. Ele começa já na posição natural da capa (à direita no desktop) e vira as folhas com estabilidade perfeita.
 - **UX Polida na Busca**: A busca por Pokémon foca o slot sem rolar a página para baixo se a carta já estiver visível aos olhos do usuário.
 - **Cobertura de Testes Automatizados**: Implementada suíte dedicada `tests/binder-scroll-and-flip.test.ts` validando todas as bordas e limites de visibilidade no viewport.

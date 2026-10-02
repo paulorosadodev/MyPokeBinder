@@ -26,8 +26,9 @@ beforeAll(async () => {
                     name: "navegacao-de-teste",
                     setup(build) {
                         build.onResolve({ filter: /^next\/navigation$/ }, () => ({ path: "navigation", namespace: "teste" }));
-                        build.onLoad({ filter: /.*/, namespace: "teste" }, () => ({
-                            contents: 'export const useSearchParams = () => new URLSearchParams(location.search); export const useRouter = () => ({replace(){},push(){}}); export const usePathname = () => "/";',
+                        build.onResolve({ filter: /^next\/link$/ }, () => ({ path: "link", namespace: "teste" }));
+                        build.onLoad({ filter: /.*/, namespace: "teste" }, (args) => ({
+                            contents: args.path === "link" ? 'import { createElement } from "react"; export default function Link({ href, children, ...props }) { return createElement("a", { href, ...props }, children); }' : 'export const useSearchParams = () => new URLSearchParams(location.search); export const useRouter = () => ({replace(){},push(){}}); export const usePathname = () => "/";',
                             loader: "js",
                         }));
                     },
@@ -48,6 +49,7 @@ beforeAll(async () => {
             const script = scripts.get(pathname.slice(1));
             if (script) return new Response(script);
             if (pathname === "/app.css") return new Response(css.css, { headers: { "Content-Type": "text/css" } });
+            if (pathname === "/pokemon-card-back.png") return new Response(Bun.file("public/pokemon-card-back.png"), { headers: { "Content-Type": "image/png" } });
             if (/^\/pokemon\/gen1\/\d+\.png$/.test(pathname)) return new Response(Bun.file(`public${pathname}`));
             if (pathname.startsWith("/api/")) return Response.json({ cards, availableCounts: {} });
             return new Response('<html><head><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/app.css"></head><body><div id="root"></div><script>window.process={env:{}}</script><script type="module" src="/app.js"></script></body></html>', { headers: { "Content-Type": "text/html" } });
@@ -100,6 +102,167 @@ async function transitionFrames(page: Page): Promise<{ phase: string; ids: strin
 }
 
 describe("Animação real do binder no navegador", () => {
+    it("abre a prévia da estante com o PageFlip depois de ampliar o binder sem mudar sua posição", async () => {
+        const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+        try {
+            await page.goto(new URL("?shelf", server.url).toString(), { waitUntil: "domcontentloaded" });
+            const card = page.locator("#shelf-card");
+            const stage = card.locator(".binder-shelf-stage");
+            await stage.waitFor({ state: "visible" });
+            await page.waitForFunction(() => document.querySelector(".binder-shelf-stage")?.querySelector(".stf__item"));
+            await stage.evaluate((element) => {
+                const frames: { state: string | null; insideLeft: number }[] = [];
+                let started = false;
+                const sample = () => {
+                    const state = element.getAttribute("data-shelf-state");
+                    if (state === "flipping") started = true;
+                    if (started) {
+                        const inside = element.querySelectorAll(".binder-book-page")[1]?.closest(".stf__item");
+                        const insideRect = inside?.getBoundingClientRect();
+                        frames.push({
+                            state,
+                            insideLeft: insideRect?.left ?? 0,
+                        });
+                    }
+                    if (!started || state !== "read") {
+                        requestAnimationFrame(sample);
+                        return;
+                    }
+                    element.setAttribute("data-test-flip-frames", JSON.stringify(frames));
+                };
+                requestAnimationFrame(sample);
+                element.addEventListener("transitionend", (event) => {
+                    if (event.propertyName === "transform" && !element.getAttribute("data-test-scale-ended-at")) {
+                        element.setAttribute("data-test-scale-ended-at", String(performance.now()));
+                    }
+                });
+                new MutationObserver(() => {
+                    if (element.getAttribute("data-shelf-state") === "flipping" && !element.getAttribute("data-test-flip-started-at")) {
+                        element.setAttribute("data-test-flip-started-at", String(performance.now()));
+                    }
+                }).observe(element, { attributes: true, attributeFilter: ["data-shelf-state"] });
+            });
+            const stageCenterX = await stage.evaluate((element) => {
+                const rect = element.getBoundingClientRect();
+                return rect.left + rect.width / 2;
+            });
+            const closedPageWidth = await stage.locator(".binder-cover-front").evaluate((element) => element.getBoundingClientRect().width);
+            const restingCenterX = await stage.locator(".binder-cover-front").evaluate((element) => {
+                const rect = element.getBoundingClientRect();
+                return rect.left + rect.width / 2;
+            });
+            expect(Math.abs(restingCenterX - stageCenterX)).toBeLessThan(2);
+
+            await card.hover();
+            await page.waitForTimeout(180);
+            expect(await stage.getAttribute("data-shelf-page")).toBe("0");
+            expect(await card.evaluate((element) => getComputedStyle(element).zIndex)).toBe("60");
+            const engineClosedCenterX = await stage.locator(".binder-cover-front").evaluate((element) => {
+                const rect = element.getBoundingClientRect();
+                return rect.left + rect.width / 2;
+            });
+            expect(Math.abs(engineClosedCenterX - restingCenterX)).toBeLessThan(2);
+
+            await page.waitForFunction(() => document.querySelector(".binder-shelf-stage")?.getAttribute("data-shelf-state") === "flipping");
+            await page.waitForFunction(() => document.querySelector(".binder-shelf-stage")?.getAttribute("data-test-scale-ended-at"));
+            const transitionTiming = await stage.evaluate((element) => ({
+                scaleEndedAt: Number(element.getAttribute("data-test-scale-ended-at")),
+                flipStartedAt: Number(element.getAttribute("data-test-flip-started-at")),
+            }));
+            expect(transitionTiming.flipStartedAt).toBeGreaterThanOrEqual(transitionTiming.scaleEndedAt);
+            await page.waitForFunction(() => document.querySelector(".binder-shelf-stage")?.getAttribute("data-shelf-page") !== "0" && document.querySelector(".binder-shelf-stage")?.getAttribute("data-shelf-state") === "read");
+            const flipFrames = JSON.parse((await stage.getAttribute("data-test-flip-frames")) ?? "[]") as { state: string; insideLeft: number }[];
+            const settledFrame = flipFrames.at(-1)!;
+            const lastTurningFrame = flipFrames.findLast((frame) => frame.state === "flipping")!;
+            expect(Math.abs(lastTurningFrame.insideLeft - settledFrame.insideLeft)).toBeLessThan(4);
+
+            const openGeometry = await stage.locator(".stf__item").evaluateAll((items) => {
+                const rects = items.filter((item) => getComputedStyle(item).display !== "none").map((item) => item.getBoundingClientRect());
+                return { widths: rects.map((rect) => rect.width) };
+            });
+            expect(openGeometry.widths.length).toBeGreaterThanOrEqual(2);
+            expect(Math.min(...openGeometry.widths)).toBeGreaterThan(closedPageWidth);
+            const catalogCenterX = await stage.getByText("Página 1").evaluate((element) => {
+                const rect = element.closest(".stf__item")!.getBoundingClientRect();
+                return rect.left + rect.width / 2;
+            });
+            expect(Math.abs(catalogCenterX - restingCenterX)).toBeLessThan(2);
+            expect(await stage.getByText("Página 1").isVisible()).toBe(true);
+
+            await page.mouse.move(1200, 820);
+            await page.waitForFunction(() => document.querySelector(".binder-shelf-stage")?.getAttribute("data-shelf-state") === "flipping");
+            expect(await card.evaluate((element) => getComputedStyle(element).zIndex)).toBe("60");
+            await page.waitForFunction(() => document.querySelector(".binder-shelf-stage")?.getAttribute("data-shelf-page") === "0" && document.querySelector(".binder-shelf-stage")?.getAttribute("data-shelf-state") === "read");
+        } finally {
+            await page.close();
+        }
+    }, 10000);
+
+    it("mantém a entrada do modal estável e alinha os sliders durante todo o ciclo", async () => {
+        const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+        try {
+            await page.goto(new URL("?cardSearch", server.url).toString(), { waitUntil: "domcontentloaded" });
+            await page.locator("#open-card-search").click();
+
+            const modal = page.getByRole("dialog", { name: "Buscar carta" });
+            await modal.waitFor({ state: "visible" });
+            await page.waitForTimeout(80);
+            expect(await modal.getAttribute("data-overlay-state")).toBe("opening");
+
+            const openingScales = await modal.locator(".modal-surface").evaluate(
+                (surface) =>
+                    new Promise<number[]>((resolve) => {
+                        const scales: number[] = [];
+                        const sample = () => {
+                            const matrix = new DOMMatrixReadOnly(getComputedStyle(surface).transform);
+                            scales.push(Math.hypot(matrix.a, matrix.b));
+                            const state = surface.closest("[data-overlay-state]")?.getAttribute("data-overlay-state");
+                            if (state === "opening") {
+                                requestAnimationFrame(sample);
+                                return;
+                            }
+                            resolve(scales);
+                        };
+                        requestAnimationFrame(sample);
+                    }),
+            );
+
+            expect(Math.max(...openingScales)).toBeLessThanOrEqual(1.0001);
+
+            const readSliderAlignment = () =>
+                modal.locator('[role="radiogroup"]').evaluateAll((sliders) =>
+                    sliders.map((slider) => {
+                        const selected = slider.querySelector<HTMLElement>('[aria-checked="true"]')!;
+                        const indicator = slider.querySelector<HTMLElement>("[data-slider-indicator]")!;
+                        const selectedRect = selected.getBoundingClientRect();
+                        const indicatorRect = indicator.getBoundingClientRect();
+                        return {
+                            leftDelta: Math.abs(selectedRect.left - indicatorRect.left),
+                            widthDelta: Math.abs(selectedRect.width - indicatorRect.width),
+                        };
+                    }),
+                );
+            const expectSlidersAligned = (alignments: { leftDelta: number; widthDelta: number }[]) => {
+                expect(alignments).toHaveLength(3);
+                for (const alignment of alignments) {
+                    expect(alignment.leftDelta).toBeLessThan(1);
+                    expect(alignment.widthDelta).toBeLessThan(1);
+                }
+            };
+
+            expectSlidersAligned(await readSliderAlignment());
+            await page.waitForFunction(() => document.querySelector('[aria-label="Buscar carta"]')?.getAttribute("data-overlay-state") === "open");
+            expectSlidersAligned(await readSliderAlignment());
+
+            await modal.getByRole("button", { name: "Fechar" }).click();
+            await page.waitForFunction(() => document.querySelector('[aria-label="Buscar carta"]')?.getAttribute("data-overlay-state") === "closing");
+            expect(await modal.locator(".modal-transient-content").evaluate((element) => getComputedStyle(element).visibility)).toBe("hidden");
+            await modal.waitFor({ state: "detached" });
+        } finally {
+            await page.close();
+        }
+    }, 10000);
+
     it("mantém o loading mobile visível e revela o binder com uma entrada própria", async () => {
         const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
         try {
@@ -255,6 +418,79 @@ describe("Animação real do binder no navegador", () => {
         }
     }, 15000);
 
+    it("destaca o slot universal desktop pela busca e pelo mapa de estatísticas", async () => {
+        const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+        try {
+            await page.goto(new URL("?universal&universalViewer", server.url).toString());
+            await page.locator(".binder-book-stage").waitFor({ state: "visible" });
+            const search = page.getByRole("textbox", { name: "Buscar Pokémon no binder", exact: true }).first();
+            await search.fill("#151");
+            await search.press("Enter");
+            await page.waitForSelector("#binder-slot-slot-36.slot-glow, .slot-glow:has(#binder-slot-slot-36)", { timeout: 6000 });
+            await page.waitForTimeout(2600);
+            await page.getByRole("button", { name: "Estatísticas", exact: true }).click();
+            const statisticsDrawer = page.locator(".fixed.inset-0.z-50");
+            await statisticsDrawer.waitFor({ state: "visible" });
+            await statisticsDrawer.getByRole("button").last().click();
+            await page.waitForSelector("#binder-slot-slot-36.slot-glow, .slot-glow:has(#binder-slot-slot-36)", { timeout: 6000 });
+        } finally {
+            await page.close();
+        }
+    }, 20000);
+
+    it("mantém a prévia do spread ao mover o cursor entre botões vizinhos", async () => {
+        const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+        try {
+            await page.goto(new URL("?universal&universalViewer", server.url).toString());
+            const selector = page.getByRole("navigation", { name: "Navegação rápida de páginas" });
+            const pageOne = selector.locator("button").nth(0);
+            const pageTwo = selector.locator("button").nth(1);
+            const pageThree = selector.locator("button").nth(2);
+            await pageTwo.hover();
+            await selector.evaluate((element) => {
+                const pageOneButton = element.querySelectorAll("button")[0];
+                let mutations = 0;
+                const observer = new MutationObserver((entries) => {
+                    mutations += entries.filter((entry) => entry.target === pageOneButton && entry.attributeName === "class").length;
+                });
+                observer.observe(element, { attributes: true, attributeFilter: ["class"], subtree: true });
+                element.setAttribute("data-page-one-hover-mutations", String(mutations));
+                window.setTimeout(() => {
+                    observer.disconnect();
+                    element.setAttribute("data-page-one-hover-mutations", String(mutations));
+                }, 250);
+            });
+            const pageTwoBox = await pageTwo.boundingBox();
+            const pageThreeBox = await pageThree.boundingBox();
+            if (!pageTwoBox || !pageThreeBox) throw new Error("Botões de página não renderizados");
+            await page.mouse.move((pageTwoBox.x + pageTwoBox.width + pageThreeBox.x) / 2, pageTwoBox.y + pageTwoBox.height / 2);
+            await page.waitForTimeout(30);
+            await pageThree.hover();
+            await page.waitForTimeout(300);
+            expect(await selector.getAttribute("data-page-one-hover-mutations")).toBe("0");
+        } finally {
+            await page.close();
+        }
+    }, 10000);
+
+    it("faz a troca de brilho do seletor sem alterar a geometria dos botões", async () => {
+        const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+        try {
+            await page.goto(new URL("?universal&universalViewer", server.url).toString());
+            const selector = page.getByRole("navigation", { name: "Navegação rápida de páginas" });
+            const styles = await selector.locator("button").evaluateAll((buttons) =>
+                buttons.map((button) => {
+                    const style = getComputedStyle(button);
+                    return { borderWidth: style.borderTopWidth, transitionProperty: style.transitionProperty };
+                }),
+            );
+            expect(styles.every((style) => style.borderWidth === "1px")).toBe(true);
+            expect(styles.every((style) => style.transitionProperty === "all" || style.transitionProperty.includes("box-shadow"))).toBe(true);
+        } finally {
+            await page.close();
+        }
+    }, 10000);
+
     it("preserva a página ao alternar entre mobile e desktop", async () => {
         const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
         try {
@@ -293,4 +529,32 @@ describe("Animação real do binder no navegador", () => {
             }
         }, 10000);
     }
+});
+
+describe("Capas sólidas do binder universal", () => {
+    it("mantém capa, contracapa e forros opacos durante as viradas", async () => {
+        const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+        try {
+            await page.goto(new URL("?universal", server.url).toString());
+            await page.locator(".binder-cover-front.stf__item").waitFor({ state: "visible" });
+            await page.waitForTimeout(800);
+            const covers = page.locator(".stf__item");
+            const surfaces = await covers.evaluateAll((sheets) => sheets.map((sheet) => ({ color: getComputedStyle(sheet).backgroundColor, density: sheet.getAttribute("data-density") })));
+            expect(surfaces.map((surface) => surface.color)).not.toContain("rgba(0, 0, 0, 0)");
+            expect([surfaces[0].density, surfaces[1].density, surfaces.at(-2)?.density, surfaces.at(-1)?.density]).toEqual(["hard", "hard", "hard", "hard"]);
+            for (let turn = 0; turn < 3; turn++) {
+                await page.getByRole("button", { name: "Avançar teste" }).click();
+                await page.waitForFunction(() => document.querySelector(".binder-book-stage--busy") !== null);
+                const turning = await page.locator(".stf__item.--hard:not(.--simple)").evaluateAll((sheets) => sheets.map((sheet) => ({ color: getComputedStyle(sheet).backgroundColor, opacity: getComputedStyle(sheet).opacity })));
+                if (turn !== 1) expect(turning.length).toBeGreaterThan(0);
+                for (const surface of turning) {
+                    expect(surface.color).not.toBe("rgba(0, 0, 0, 0)");
+                    expect(surface.opacity).toBe("1");
+                }
+                await page.waitForFunction(() => !document.querySelector(".binder-book-stage--busy"));
+            }
+        } finally {
+            await page.close();
+        }
+    }, 15000);
 });

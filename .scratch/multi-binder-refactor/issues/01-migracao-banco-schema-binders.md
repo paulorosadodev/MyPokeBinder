@@ -4,11 +4,11 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A tabela `public.binders` é criada com colunas `id`, `user_id`, `name`, `description`, `grid_type` (1x1, 2x2, 3x3, 3x4), `total_pages`, `cover_theme`, `is_public`, `is_featured`, e políticas de RLS onde o dono tem controle total e visitantes podem ler binders públicos.
-- [ ] A tabela `public.binder_slots` é criada com `binder_id`, `page_number`, `slot_index`, `slot_type` (free, pokemon, card), `target_dex_id`, `target_tcgdex_id`, `target_card_name`, `target_card_image_url`, e `user_card_id` com restrição única `UNIQUE(user_card_id)` garantindo posse física estrita.
-- [ ] A restrição de `user_cards.pokemon_dex_id` é ajustada para aceitar valores nulos (Treinadores e Energias) e números até 1025: `CHECK (pokemon_dex_id IS NULL OR (pokemon_dex_id >= 1 AND pokemon_dex_id <= 1025))`.
-- [ ] Uma trigger em `binder_slots` sincroniza automaticamente a coluna `user_cards.is_in_binder` sempre que uma carta é alocada ou liberada de um slot.
-- [ ] A migração inclui script de backfill que cria o binder "Kanto 151 Original" (3x3, 17 páginas, slots 1..151 tipo Pokémon) para todos os usuários existentes com cartas no binder e associa suas cartas aos respectivos slots.
-- [ ] A migração é executada com sucesso no Supabase via MCP e os índices e permissões são validados.
+- [x] A tabela `public.binders` é criada com colunas `id`, `user_id`, `name`, `description`, `grid_type` (1x1, 2x2, 3x3, 3x4), `total_pages`, `cover_theme`, `is_public`, `is_featured`, e políticas de RLS onde o dono tem controle total e visitantes podem ler binders públicos.
+- [x] A tabela `public.binder_slots` é criada com `binder_id`, `page_number`, `slot_index`, `slot_type` (free, pokemon, card), `target_dex_id`, `target_tcgdex_id`, `target_card_name`, `target_card_image_url`, e `user_card_id` com restrição única `UNIQUE(user_card_id)` garantindo posse física estrita.
+- [x] A restrição de `user_cards.pokemon_dex_id` é ajustada para aceitar valores nulos (Treinadores e Energias) e números até 1025: `CHECK (pokemon_dex_id IS NULL OR (pokemon_dex_id >= 1 AND pokemon_dex_id <= 1025))`.
+- [x] Uma trigger em `binder_slots` sincroniza automaticamente a coluna `user_cards.is_in_binder` sempre que uma carta é alocada ou liberada de um slot.
+- [x] A migração inclui script de backfill que cria o binder "Kanto 151 Original" (3x3, 17 páginas, slots 1..151 tipo Pokémon) para todos os usuários existentes com cartas no binder e associa suas cartas aos respectivos slots.
+- [x] A migração é executada com sucesso no Supabase via MCP e os índices e permissões são validados (com concessão explícita de `GRANT ALL` para `authenticated`, `service_role` e `GRANT SELECT` para `anon`, além de política de leitura pública de cartas alocadas em binders públicos).
