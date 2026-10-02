@@ -102,8 +102,8 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
     const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const pendingHighlightDexIdRef = useRef<number | null>(null);
     const highlightRequestIdRef = useRef(0);
-    const selectReturnTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
-    const catalogOpenTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+    const selectReturnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const catalogOpenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [isBookReady, setIsBookReady] = useState(false);
     const [isBookEngineReady, setIsBookEngineReady] = useState(false);
     const { showLoader, canReveal } = useBinderEntrance(isBookEngineReady, skipEntranceAnimation, isMobile);
@@ -616,8 +616,8 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
         setSearchDexId(selectDexId);
         setSearchPokemonName(selectPokemonName);
         setSelectModalOpen(false);
-        if (catalogOpenTimerRef.current) window.clearTimeout(catalogOpenTimerRef.current);
-        catalogOpenTimerRef.current = window.setTimeout(() => {
+        if (catalogOpenTimerRef.current) clearTimeout(catalogOpenTimerRef.current);
+        catalogOpenTimerRef.current = setTimeout(() => {
             catalogOpenTimerRef.current = null;
             setSearchModalOpen(true);
         }, 300);
@@ -625,8 +625,8 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
 
     const handleReturnToSelectModal = () => {
         setSearchModalOpen(false);
-        if (selectReturnTimerRef.current) window.clearTimeout(selectReturnTimerRef.current);
-        selectReturnTimerRef.current = window.setTimeout(() => {
+        if (selectReturnTimerRef.current) clearTimeout(selectReturnTimerRef.current);
+        selectReturnTimerRef.current = setTimeout(() => {
             selectReturnTimerRef.current = null;
             setSelectModalOpen(true);
         }, 300);
