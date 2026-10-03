@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Globe, Lock, ArrowRight, Settings, Search, X, Layers } from "lucide-react";
+import { Plus, Globe, Lock, ArrowRight, Settings, Search, X, Layers, BookOpen } from "lucide-react";
 import { BinderShelfGridSkeleton } from "@/components/loading/BinderShelfSkeleton";
 import { BinderShelfBook } from "@/components/shelf/BinderShelfBook";
 import { SearchInput } from "@/components/ui/SearchInput";
@@ -32,36 +32,47 @@ export function BinderShelf({ initialBinders = [] }: BinderShelfProps) {
     return (
         <div className="flex min-h-screen flex-col">
             <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-6 px-4 py-6 pb-28 sm:px-6 sm:py-8 md:pb-16">
-                <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-                    <div>
-                        <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">Meus Binders</h1>
+                <div className="flex items-center justify-between gap-2.5 sm:gap-4">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
+                        <h1 className="truncate text-xl font-extrabold tracking-tight text-white sm:text-3xl leading-none">Meus Binders</h1>
+                        {!isLoading ? (
+                            <>
+                                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 sm:px-3.5 sm:py-1.5 text-xs font-semibold text-slate-300 leading-none translate-y-[1px] sm:translate-y-[4px]">
+                                    <BookOpen size={13} className="text-[var(--theme-primary)] shrink-0" />
+                                    <span>
+                                        {binders.length} <span className="hidden sm:inline">{binders.length === 1 ? "binder cadastrado" : "binders cadastrados"}</span>
+                                        <span className="sm:hidden">{binders.length === 1 ? "binder" : "binders"}</span>
+                                    </span>
+                                </span>
+                                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 sm:px-3.5 sm:py-1.5 text-xs font-semibold text-slate-300 leading-none translate-y-[1px] sm:translate-y-[4px]">
+                                    <Layers size={13} className="text-[var(--theme-primary)] shrink-0" />
+                                    <span>
+                                        {totalCollectionCardsInBinders} <span className="hidden sm:inline">{totalCollectionCardsInBinders === 1 ? "carta alocada" : "cartas alocadas"}</span>
+                                        <span className="sm:hidden">{totalCollectionCardsInBinders === 1 ? "alocada" : "alocadas"}</span>
+                                    </span>
+                                </span>
+                            </>
+                        ) : (
+                            <>
+                                <div className="h-6 w-16 sm:h-7 sm:w-28 shrink-0 animate-pulse rounded-full bg-white/10 translate-y-[1px] sm:translate-y-[4px]" />
+                                <div className="h-6 w-16 sm:h-7 sm:w-28 shrink-0 animate-pulse rounded-full bg-white/10 translate-y-[1px] sm:translate-y-[4px]" />
+                            </>
+                        )}
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3">
-                        <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300">
-                            <Layers size={14} className="text-slate-400" />
-                            <span>
-                                <strong className="text-white">{binders.length}</strong> {binders.length === 1 ? "Binder" : "Binders"}
-                            </span>
-                            <span className="text-white/20">|</span>
-                            <span>
-                                <strong className="text-white">{totalCollectionCardsInBinders}</strong> cartas alocadas
-                            </span>
-                        </div>
-
-                        <NextLink href="/binders/new" prefetch={true} onMouseEnter={() => router.prefetch("/binders/new")} onTouchStart={() => router.prefetch("/binders/new")} className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-poke-blue px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-opacity hover:opacity-90">
-                            <Plus size={18} />
-                            <span>Criar Binder</span>
-                        </NextLink>
-                    </div>
+                    <NextLink href="/binders/new" prefetch={true} onMouseEnter={() => router.prefetch("/binders/new")} onTouchStart={() => router.prefetch("/binders/new")} aria-label="Criar Binder" className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 sm:gap-2 rounded-xl bg-poke-blue px-3 py-2 sm:px-5 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-md shadow-poke-blue/20 transition-all hover:brightness-110 active:scale-[0.98]">
+                        <Plus size={16} className="sm:h-[18px] sm:w-[18px]" />
+                        <span className="hidden min-[380px]:inline">Criar Binder</span>
+                        <span className="min-[380px]:hidden">Criar</span>
+                    </NextLink>
                 </div>
 
-                <div className="relative z-20 rounded-2xl border border-white/10 bg-[#121520]/80 p-2.5 shadow-xl backdrop-blur-md sm:p-3.5">
-                    <div className="relative">
-                        <Search size={15} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-500 sm:left-3.5 sm:h-4 sm:w-4" />
-                        <SearchInput type="search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar por nome ou descrição..." placeholderClassName="left-8.5 right-8 text-xs sm:left-10 sm:right-9 sm:text-sm" className="h-9 w-full rounded-xl border border-white/10 bg-white/5 py-2 pr-9 pl-8.5 text-xs text-white transition-colors focus:border-poke-blue/60 focus:bg-white/[0.08] focus:outline-none sm:h-10 sm:py-2.5 sm:pr-10 sm:pl-10 sm:text-sm" />
+                <div className="relative z-20 flex items-center justify-between gap-2 sm:gap-3 w-full">
+                    <div className="relative flex-1 min-w-0 sm:w-[440px] md:w-[500px] lg:w-[540px] sm:flex-none">
+                        <Search size={15} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-500 z-20 sm:left-3.5 sm:h-4 sm:w-4" />
+                        <SearchInput type="search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar por nome ou descrição..." placeholderClassName="left-8.5 right-8 text-xs sm:left-10 sm:right-9 sm:text-sm" className="w-full h-9 sm:h-10 rounded-xl border border-white/10 bg-white/5 py-1.5 sm:py-2.5 pr-8 sm:pr-9 pl-8.5 sm:pl-10 text-xs sm:text-sm text-white transition-colors focus:border-poke-blue/60 focus:bg-white/[0.08] focus:outline-none" />
                         {searchTerm && (
-                            <button type="button" onClick={() => setSearchTerm("")} aria-label="Limpar busca" className="absolute top-1/2 right-2.5 z-20 -translate-y-1/2 text-slate-500 transition-colors hover:text-white sm:right-3">
+                            <button type="button" onClick={() => setSearchTerm("")} aria-label="Limpar busca" className="absolute top-1/2 right-2.5 -translate-y-1/2 text-slate-500 hover:text-white z-20 sm:right-3 cursor-pointer">
                                 <X size={14} className="sm:h-[15px] sm:w-[15px]" />
                             </button>
                         )}

@@ -224,87 +224,97 @@ export function PublicCollectionView({ username, fallbackData, publicGuestTheme 
         <div className="flex min-h-screen flex-col bg-[#0a0c10]">
             <div style={themeStyle}>
                 <main key={username} className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8 pb-28 md:pb-16">
-                    <header className="profile-enter flex flex-col gap-4">
-                        <NextLink href={`/perfil/${owner.username}`} prefetch={true} className="inline-flex w-fit items-center gap-1.5 text-xs font-semibold text-slate-400 transition-colors hover:text-white">
+                    <header className="profile-enter flex items-center justify-between gap-2.5 sm:gap-4">
+                        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                            {owner.avatarUrl && !avatarError ? (
+                                <Image src={owner.avatarUrl} alt={owner.username} width={48} height={48} className="h-10 w-10 sm:h-12 sm:w-12 shrink-0 rounded-full border border-white/20 object-cover" referrerPolicy="no-referrer" onError={() => setAvatarError(true)} unoptimized />
+                            ) : (
+                                <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 text-sm sm:text-base font-bold text-white">{(owner.username[0] || "T").toUpperCase()}</div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 sm:gap-2.5">
+                                    <h1 className="truncate text-base font-extrabold tracking-tight text-white sm:text-2xl leading-none">{displayName}</h1>
+                                    {!isLoading ? (
+                                        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 sm:px-3.5 sm:py-1.5 text-xs font-semibold text-slate-300 leading-none translate-y-[1px] sm:translate-y-[2px]">
+                                            <Layers size={13} className="text-[var(--theme-primary)] shrink-0" />
+                                            <span>
+                                                {total} <span className="hidden sm:inline">{hasActiveFilters ? (total === 1 ? "carta encontrada" : "cartas encontradas") : total === 1 ? "carta na coleção" : "cartas na coleção"}</span>
+                                                <span className="sm:hidden">{total === 1 ? "carta" : "cartas"}</span>
+                                            </span>
+                                        </span>
+                                    ) : (
+                                        <div className="h-6 w-20 sm:h-7 sm:w-28 shrink-0 animate-pulse rounded-full bg-white/10 translate-y-[1px] sm:translate-y-[2px]" aria-label="Carregando total de cartas" />
+                                    )}
+                                </div>
+                                <p className="mt-1 font-mono text-xs font-semibold text-poke-blue">@{owner.username}</p>
+                            </div>
+                        </div>
+
+                        <NextLink href={`/perfil/${owner.username}`} prefetch={true} className="inline-flex shrink-0 items-center gap-1.5 sm:gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 sm:px-4 sm:py-2 text-xs font-semibold text-slate-300 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white">
                             <ArrowLeft size={14} />
                             <span>Perfil</span>
                         </NextLink>
-
-                        <div className="flex items-center gap-3.5 sm:gap-4">
-                            {owner.avatarUrl && !avatarError ? (
-                                <Image src={owner.avatarUrl} alt={owner.username} width={56} height={56} className="h-12 w-12 shrink-0 rounded-full border border-white/20 object-cover sm:h-14 sm:w-14" referrerPolicy="no-referrer" onError={() => setAvatarError(true)} unoptimized />
-                            ) : (
-                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 text-base font-bold text-white sm:h-14 sm:w-14">{(owner.username[0] || "T").toUpperCase()}</div>
-                            )}
-                            <div className="min-w-0 flex-1">
-                                <p className="text-[11px] font-medium text-slate-500">Coleção</p>
-                                <h1 className="truncate text-lg font-extrabold tracking-tight text-white sm:text-xl">{displayName}</h1>
-                                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
-                                    <span className="font-mono font-semibold text-poke-blue">@{owner.username}</span>
-                                    <span className="text-slate-600" aria-hidden>
-                                        /
-                                    </span>
-                                    {isLoading ? (
-                                        <span className="inline-flex items-center gap-1.5 text-slate-400">
-                                            <Layers size={12} className="text-poke-blue animate-pulse" />
-                                            <span className="h-3.5 w-6 animate-pulse rounded bg-white/10" aria-label="Carregando total de cartas" />
-                                            <span className="text-slate-400">cartas</span>
-                                        </span>
-                                    ) : (
-                                        <span className="inline-flex items-center gap-1 text-slate-400">
-                                            <Layers size={12} className="text-poke-blue" />
-                                            <span className="font-mono font-bold text-white">{total}</span>
-                                            <span>{hasActiveFilters ? (total === 1 ? "carta encontrada" : "cartas encontradas") : total === 1 ? "carta na coleção" : "cartas na coleção"}</span>
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
                     </header>
 
-                    <div className={`profile-enter profile-enter-d1 relative z-30 flex flex-col ${showFilters ? "gap-2.5 sm:gap-3" : "gap-0"} rounded-2xl border border-white/10 bg-[#121520]/80 p-2.5 shadow-xl backdrop-blur-md transition-all sm:p-3.5`}>
-                        <div className="flex items-center gap-2">
-                            <div className="relative min-w-0 flex-1">
-                                <Search size={15} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-slate-500 z-20 sm:left-3.5 sm:h-4 sm:w-4" />
+                    <div className="profile-enter profile-enter-d1 relative z-30 flex flex-col gap-3">
+                        <div className="flex items-center justify-between gap-2 sm:gap-3 w-full">
+                            <div className="relative flex-1 min-w-0 sm:w-[440px] md:w-[500px] lg:w-[540px] sm:flex-none">
+                                <Search size={15} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-500 z-20 sm:left-3.5 sm:h-4 sm:w-4" />
                                 <SearchInput
                                     type="text"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     placeholder={isMobile ? "Buscar cartas..." : "Buscar por pokémon, número, coleção ou pokédex..."}
                                     placeholderClassName="left-8.5 right-8 text-xs sm:left-10 sm:right-9 sm:text-sm"
-                                    className="w-full h-9 sm:h-10 rounded-xl border border-white/10 bg-white/5 py-2 sm:py-2.5 pr-8 sm:pr-9 pl-8.5 sm:pl-10 text-xs sm:text-sm text-white transition-colors focus:border-poke-blue/60 focus:bg-white/[0.08] focus:outline-none"
+                                    className="w-full h-9 sm:h-10 rounded-xl border border-white/10 bg-white/5 py-1.5 sm:py-2.5 pr-8 sm:pr-9 pl-8.5 sm:pl-10 text-xs sm:text-sm text-white transition-colors focus:border-poke-blue/60 focus:bg-white/[0.08] focus:outline-none"
                                 />
                                 {searchTerm ? (
-                                    <button type="button" onClick={() => setSearchTerm("")} aria-label="Limpar busca" className="absolute top-1/2 right-2.5 -translate-y-1/2 text-slate-500 hover:text-white z-20 sm:right-3">
+                                    <button type="button" onClick={() => setSearchTerm("")} aria-label="Limpar busca" className="absolute top-1/2 right-2.5 -translate-y-1/2 text-slate-500 hover:text-white z-20 sm:right-3 cursor-pointer">
                                         <X size={14} className="sm:h-[15px] sm:w-[15px]" />
                                     </button>
                                 ) : null}
                             </div>
 
-                            <button type="button" onClick={() => setShowFilters((prev) => !prev)} aria-label="Alternar filtros" aria-expanded={showFilters} className={`flex h-9 sm:h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border px-2.5 sm:px-3 text-xs font-semibold transition-colors ${showFilters || activeFilterCount > 0 ? "border-poke-blue/60 bg-poke-blue/20 text-white" : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"}`}>
-                                <SlidersHorizontal size={13} className={activeFilterCount > 0 ? "text-poke-blue" : "text-slate-400"} />
-                                <span className="inline">Filtros</span>
-                                {activeFilterCount > 0 && <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-poke-blue px-1 text-[10px] font-bold text-white">{activeFilterCount}</span>}
-                            </button>
+                            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowFilters((prev) => !prev)}
+                                    aria-label="Alternar filtros"
+                                    aria-expanded={showFilters}
+                                    className={`flex h-9 sm:h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border px-2.5 sm:px-3.5 text-xs font-semibold transition-all ${showFilters || activeFilterCount > 0 ? "border-poke-blue/60 bg-poke-blue/20 text-white shadow-[0_0_12px_rgba(59,130,246,0.2)]" : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"}`}
+                                >
+                                    <SlidersHorizontal size={13} className={activeFilterCount > 0 ? "text-poke-blue" : "text-slate-400"} />
+                                    <span>Filtros</span>
+                                    {activeFilterCount > 0 && <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-poke-blue px-1 text-[10px] font-bold text-white">{activeFilterCount}</span>}
+                                </button>
 
-                            <CardBadgeVisibilityToggle showBadges={showCardBadges} onChange={setCardBadgeVisibility} />
+                                <CardBadgeVisibilityToggle showBadges={showCardBadges} onChange={setCardBadgeVisibility} />
+                            </div>
                         </div>
 
-                        <div className={`grid transition-all duration-300 ease-in-out ${showFilters ? "grid-rows-[1fr] opacity-100 border-t border-white/10 pt-3" : "grid-rows-[0fr] opacity-0 border-t-0 pt-0 pointer-events-none"}`}>
+                        <div className={`grid transition-all duration-300 ease-in-out ${showFilters ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0 pointer-events-none"}`}>
                             <div className="overflow-hidden">
-                                <div className="grid w-full grid-cols-2 gap-1.5 lg:grid-cols-4 lg:gap-2.5">
-                                    <Select<BinderStatusFilter> value={statusFilter} onChange={setStatusFilter} options={STATUS_FILTER_OPTIONS} icon={<BookOpen size={13} />} ariaLabel="Filtrar por status no binder" className="w-full min-w-0" size="sm" />
-                                    <Select<string> value={languageFilter} onChange={setLanguageFilter} options={LANGUAGE_FILTER_OPTIONS} icon={<Globe size={13} />} ariaLabel="Filtrar por idioma" className="w-full min-w-0" menuClassName="sm:left-0 sm:right-auto" align="right" size="sm" />
-                                    <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Gem size={13} />} ariaLabel="Filtrar por raridade" className="w-full min-w-0" size="sm" />
-                                    <Select<string> value={variantFilter} onChange={setVariantFilter} options={VARIANT_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar por versão" className="w-full min-w-0" size="sm" />
-                                    <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar por expansão" className="w-full min-w-0" size="sm" />
-                                    <Select<string> value={artistFilter} onChange={setArtistFilter} options={artistOptions} icon={<Palette size={13} />} ariaLabel="Filtrar por ilustrador" className="w-full min-w-0" size="sm" />
+                                <div className="rounded-2xl border border-white/10 bg-[#121520]/80 p-3 sm:p-3.5 shadow-xl backdrop-blur-md">
+                                    <div className="grid w-full grid-cols-2 gap-1.5 lg:grid-cols-4 lg:gap-2.5">
+                                        <Select<BinderStatusFilter> value={statusFilter} onChange={setStatusFilter} options={STATUS_FILTER_OPTIONS} icon={<BookOpen size={13} />} ariaLabel="Filtrar por status no binder" className="w-full min-w-0" size="sm" />
+                                        <Select<string> value={languageFilter} onChange={setLanguageFilter} options={LANGUAGE_FILTER_OPTIONS} icon={<Globe size={13} />} ariaLabel="Filtrar por idioma" className="w-full min-w-0" menuClassName="sm:left-0 sm:right-auto" align="right" size="sm" />
+                                        <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Gem size={13} />} ariaLabel="Filtrar por raridade" className="w-full min-w-0" size="sm" />
+                                        <Select<string> value={variantFilter} onChange={setVariantFilter} options={VARIANT_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar por versão" className="w-full min-w-0" size="sm" />
+                                        <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar por expansão" className="w-full min-w-0" size="sm" />
+                                        <Select<string> value={artistFilter} onChange={setArtistFilter} options={artistOptions} icon={<Palette size={13} />} ariaLabel="Filtrar por ilustrador" className="w-full min-w-0" size="sm" />
 
-                                    <div className="col-span-2 flex w-full min-w-0 items-center gap-1.5 lg:col-span-2">
-                                        <Select<SortField> value={sortField} onChange={setSortField} options={SORT_FIELD_OPTIONS} icon={<ArrowUpDown size={13} />} ariaLabel="Ordenar coleção" className="min-w-0 flex-1" size="sm" align="right" />
-                                        <button type="button" onClick={() => setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))} aria-label={sortDirection === "asc" ? "Ordem crescente" : "Ordem decrescente"} className="flex h-7 w-7 sm:h-9 sm:w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg sm:rounded-xl border border-white/10 bg-white/5 text-slate-300 transition-all hover:border-poke-blue/50 hover:bg-white/10 hover:text-white active:scale-95">
-                                            {sortDirection === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
-                                        </button>
+                                        <div className="col-span-2 flex w-full min-w-0 items-center gap-1.5 lg:col-span-2">
+                                            <Select<SortField> value={sortField} onChange={setSortField} options={SORT_FIELD_OPTIONS} icon={<ArrowUpDown size={13} />} ariaLabel="Ordenar coleção" className="min-w-0 flex-1" size="sm" align="right" />
+                                            <button
+                                                type="button"
+                                                onClick={() => setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))}
+                                                aria-label={sortDirection === "asc" ? "Ordem crescente" : "Ordem decrescente"}
+                                                title={sortDirection === "asc" ? "Crescente (Clique para inverter)" : "Decrescente (Clique para inverter)"}
+                                                className="flex h-7 w-7 sm:h-9 sm:w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg sm:rounded-xl border border-white/10 bg-white/5 text-slate-300 transition-all hover:border-poke-blue/50 hover:bg-white/10 hover:text-white active:scale-95"
+                                            >
+                                                {sortDirection === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

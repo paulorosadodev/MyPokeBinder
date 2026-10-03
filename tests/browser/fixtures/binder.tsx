@@ -15,6 +15,7 @@ const settings: UserSettingsContextType | null = new URLSearchParams(location.se
           setThemeColor: async () => {},
           setSoundEnabled: async () => {},
           setAnimationsEnabled: async () => {},
+          setPublicThemeColor: () => {},
       }
     : null;
 

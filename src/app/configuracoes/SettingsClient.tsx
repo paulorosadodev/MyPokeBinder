@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useUserSettings } from "@/lib/context/UserSettingsContext";
@@ -38,6 +38,24 @@ export function SettingsClient({ initialProfile }: SettingsClientProps) {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [deleteConfirmText, setDeleteConfirmText] = useState("");
     const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+    const [returnPath, setReturnPath] = useState<string | null>(null);
+
+    useEffect(() => {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const fromParam = params.get("from");
+            if (fromParam && fromParam.startsWith("/") && !fromParam.startsWith("/configuracoes")) {
+                setReturnPath(fromParam);
+                return;
+            }
+            if (typeof document !== "undefined" && document.referrer) {
+                const referrerUrl = new URL(document.referrer);
+                if (referrerUrl.origin === window.location.origin && referrerUrl.pathname.startsWith("/") && !referrerUrl.pathname.startsWith("/configuracoes")) {
+                    setReturnPath(`${referrerUrl.pathname}${referrerUrl.search}`);
+                }
+            }
+        } catch {}
+    }, []);
 
     useDismissibleOverlay(
         isDeleteModalOpen,
@@ -180,6 +198,20 @@ export function SettingsClient({ initialProfile }: SettingsClientProps) {
     const effectiveAvatar = initialProfile?.avatar_url || user?.avatarUrl;
     const effectiveName = nameDraft || initialProfile?.display_name || user?.name || user?.username || "Treinador";
     const effectiveUsername = usernameDraft || initialProfile?.username || user?.username || "treinador";
+    const defaultBackPath = effectiveUsername ? `/perfil/${effectiveUsername}` : "/perfil";
+    const targetBackPath = returnPath || defaultBackPath;
+
+    const handleBack = () => {
+        if (returnPath) {
+            router.push(returnPath);
+            return;
+        }
+        if (typeof window !== "undefined" && window.history.length > 1) {
+            router.back();
+            return;
+        }
+        router.push(defaultBackPath);
+    };
 
     return (
         <div className="flex min-h-screen flex-col">
@@ -189,17 +221,12 @@ export function SettingsClient({ initialProfile }: SettingsClientProps) {
                         <button
                             type="button"
                             onMouseEnter={() => {
-                                const profilePath = effectiveUsername ? `/perfil/${effectiveUsername}` : "/perfil";
-                                router.prefetch(profilePath);
+                                router.prefetch(targetBackPath);
                             }}
                             onTouchStart={() => {
-                                const profilePath = effectiveUsername ? `/perfil/${effectiveUsername}` : "/perfil";
-                                router.prefetch(profilePath);
+                                router.prefetch(targetBackPath);
                             }}
-                            onClick={() => {
-                                const profilePath = effectiveUsername ? `/perfil/${effectiveUsername}` : "/perfil";
-                                router.replace(profilePath);
-                            }}
+                            onClick={handleBack}
                             className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-slate-300 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white"
                         >
                             <ArrowLeft size={16} />

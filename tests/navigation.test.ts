@@ -83,7 +83,7 @@ describe("Navigation and BottomNav Route Logic", () => {
         expect(calculateActiveIndex(getMobileNavItems("/unknown"))).toBe(-1);
     });
 
-    it("should calculate correct slider active index for desktop nav", () => {
+    it("should calculate correct active item index for desktop nav", () => {
         expect(calculateActiveIndex(getDesktopNavItems("/"))).toBe(0);
         expect(calculateActiveIndex(getDesktopNavItems("/binders/123"))).toBe(0);
         expect(calculateActiveIndex(getDesktopNavItems("/collection"))).toBe(1);
@@ -141,52 +141,36 @@ describe("Navigation and BottomNav Route Logic", () => {
         expect(getNavLabel({})).toBe("Meu Perfil");
     });
 
-    it("should calculate target index 2 and hide slider for profile routes to allow smooth direction slider transition", () => {
-        const getDesktopTargetIndex = (path: string, ownUsername?: string) => {
-            const isOwnSharedProfile = Boolean(ownUsername && path === `/perfil/${ownUsername}`);
-            const isProfileActive = path === "/perfil" || isOwnSharedProfile || path.startsWith("/configuracoes");
-            const rawIndex = getDesktopNavItems(path).findIndex((item) => item.isActive);
-            return isProfileActive ? 2 : rawIndex;
-        };
+    it("should identify active item in traditional desktop navbar list", () => {
+        const rootItems = getDesktopNavItems("/");
+        expect(rootItems.find((item) => item.isActive)?.label).toBe("Binders");
 
-        expect(getDesktopTargetIndex("/")).toBe(0);
-        expect(getDesktopTargetIndex("/binders/123")).toBe(0);
-        expect(getDesktopTargetIndex("/collection")).toBe(1);
-        expect(getDesktopTargetIndex("/perfil")).toBe(2);
-        expect(getDesktopTargetIndex("/perfil/ashketchum", "ashketchum")).toBe(2);
-        expect(getDesktopTargetIndex("/perfil/misty", "ashketchum")).toBe(-1);
-        expect(getDesktopTargetIndex("/configuracoes")).toBe(2);
+        const collectionItems = getDesktopNavItems("/collection");
+        expect(collectionItems.find((item) => item.isActive)?.label).toBe("Coleção");
 
-        const isSliderVisible = (index: number) => index >= 0 && index < 2;
-        expect(isSliderVisible(0)).toBe(true);
-        expect(isSliderVisible(1)).toBe(true);
-        expect(isSliderVisible(2)).toBe(false);
+        const cardItems = getDesktopNavItems("/cards/swsh4-25");
+        expect(cardItems.find((item) => item.isActive)?.label).toBe("Coleção");
+
+        const profileItems = getDesktopNavItems("/perfil");
+        expect(profileItems.some((item) => item.isActive)).toBe(false);
     });
 
-    it("should structure active navigation indicator with theme primary CSS variables", () => {
+    it("should structure active mobile bottom nav slider with theme primary CSS variables", () => {
         const activeNavPillClass = "pointer-events-none absolute top-1 bottom-1 left-1 rounded-xl border border-[var(--theme-primary)]/30 bg-[var(--theme-primary)]/20 shadow-[0_0_12px_var(--theme-primary-glow)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]";
         expect(activeNavPillClass).toContain("bg-[var(--theme-primary)]/20");
         expect(activeNavPillClass).toContain("shadow-[0_0_12px_var(--theme-primary-glow)]");
     });
 
-    it("should highlight only the optimistic target during desktop slider transition", () => {
-        const getHighlightedIndexes = (pathname: string, optimisticIndex: number | null) => {
-            const items = getDesktopNavItems(pathname);
-            const isProfileActive = pathname.startsWith("/perfil") || pathname.startsWith("/configuracoes");
-            const rawActiveIndex = items.findIndex((item) => item.isActive);
-            const targetNavIndex = isProfileActive ? 2 : rawActiveIndex;
-            const activeNavIndex = optimisticIndex !== null ? optimisticIndex : targetNavIndex;
-
-            return items.map((_, index) => activeNavIndex === index);
+    it("should highlight only the optimistic target link in traditional desktop navbar", () => {
+        const getHighlightedHrefs = (currentPath: string, optimisticHref: string | null) => {
+            const items = getDesktopNavItems(currentPath);
+            return items.filter((item) => (optimisticHref !== null ? optimisticHref === item.href : item.isActive)).map((item) => item.href);
         };
 
-        const whileLeavingBinder = getHighlightedIndexes("/", 1);
-        expect(whileLeavingBinder.filter(Boolean)).toHaveLength(1);
-        expect(whileLeavingBinder[0]).toBe(false);
-        expect(whileLeavingBinder[1]).toBe(true);
-
-        const whileGoingToProfile = getHighlightedIndexes("/", 2);
-        expect(whileGoingToProfile.every(Boolean)).toBe(false);
+        expect(getHighlightedHrefs("/", null)).toEqual(["/"]);
+        expect(getHighlightedHrefs("/", "/collection")).toEqual(["/collection"]);
+        expect(getHighlightedHrefs("/collection", "/")).toEqual(["/"]);
+        expect(getHighlightedHrefs("/", "/perfil")).toEqual([]);
     });
 
     it("should keep profile link border reserved to avoid nav height jump", () => {
