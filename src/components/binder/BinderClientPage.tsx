@@ -86,6 +86,7 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
     const [searchPokemonName, setSearchPokemonName] = useState("");
 
     const [selectModalOpen, setSelectModalOpen] = useState(shouldOpenSelectOnMount);
+    const [isRestoredSelectModal, setIsRestoredSelectModal] = useState(shouldOpenSelectOnMount);
     const [selectDexId, setSelectDexId] = useState(shouldOpenSelectOnMount && initialTargetDexId ? initialTargetDexId : 1);
     const [selectPokemonName, setSelectPokemonName] = useState(shouldOpenSelectOnMount && initialTargetDexId ? getPokemonByDexId(initialTargetDexId)?.name || "" : "");
     const [selectActiveCardId, setSelectActiveCardId] = useState<string | undefined>(undefined);
@@ -102,8 +103,6 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
     const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const pendingHighlightDexIdRef = useRef<number | null>(null);
     const highlightRequestIdRef = useRef(0);
-    const selectReturnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const catalogOpenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [isBookReady, setIsBookReady] = useState(false);
     const [isBookEngineReady, setIsBookEngineReady] = useState(false);
     const { showLoader, canReveal } = useBinderEntrance(isBookEngineReady, skipEntranceAnimation, isMobile);
@@ -134,14 +133,6 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
             if (highlightTimerRef.current) {
                 clearTimeout(highlightTimerRef.current);
                 highlightTimerRef.current = null;
-            }
-            if (selectReturnTimerRef.current) {
-                window.clearTimeout(selectReturnTimerRef.current);
-                selectReturnTimerRef.current = null;
-            }
-            if (catalogOpenTimerRef.current) {
-                window.clearTimeout(catalogOpenTimerRef.current);
-                catalogOpenTimerRef.current = null;
             }
         };
     }, []);
@@ -480,6 +471,7 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
         initialModalSlotCardRef.current = card;
         pendingDropDexIdRef.current = null;
         setPendingDropDexId(null);
+        setIsRestoredSelectModal(false);
         setSelectDexId(dexId);
         setSelectPokemonName(pokemonName);
         setSelectActiveCardId(card?.id);
@@ -492,6 +484,7 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
         initialModalSlotCardRef.current = card;
         pendingDropDexIdRef.current = null;
         setPendingDropDexId(null);
+        setIsRestoredSelectModal(false);
         setSelectDexId(dexId);
         setSelectPokemonName(pokemonName);
         setSelectActiveCardId(card?.id);
@@ -615,24 +608,17 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
     const handleOpenCatalogSearchFromSelect = () => {
         setSearchDexId(selectDexId);
         setSearchPokemonName(selectPokemonName);
+        setSearchModalOpen(true);
         setSelectModalOpen(false);
-        if (catalogOpenTimerRef.current) clearTimeout(catalogOpenTimerRef.current);
-        catalogOpenTimerRef.current = setTimeout(() => {
-            catalogOpenTimerRef.current = null;
-            setSearchModalOpen(true);
-        }, 300);
     };
 
     const handleReturnToSelectModal = () => {
         setSearchModalOpen(false);
-        if (selectReturnTimerRef.current) clearTimeout(selectReturnTimerRef.current);
-        selectReturnTimerRef.current = setTimeout(() => {
-            selectReturnTimerRef.current = null;
-            setSelectModalOpen(true);
-        }, 300);
+        setSelectModalOpen(true);
     };
 
     const handleCloseSelectModal = () => {
+        setIsRestoredSelectModal(false);
         setSelectModalOpen(false);
         const targetDex = pendingDropDexIdRef.current;
         if (targetDex !== null) {
@@ -687,7 +673,7 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
 
     return (
         <div className="flex min-h-screen flex-col overflow-x-clip max-md:min-h-[calc(100dvh-3.5rem)]">
-            <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col items-center overflow-x-clip px-0 pt-2 pb-28 sm:pt-3 md:px-4 md:pb-14 max-md:pb-[calc(4.25rem+env(safe-area-inset-bottom))]">
+            <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col items-center overflow-x-clip px-0 pt-2 pb-28 sm:pt-3 md:px-4 md:pb-14 max-md:pb-[calc(4.25rem+env(safe-area-inset-bottom))]">
                 {isError ? (
                     <div className="flex min-h-[500px] flex-1 flex-col items-center justify-center gap-4 text-slate-400">
                         <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-6 text-center">
@@ -782,9 +768,9 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
                 )}
             </main>
 
-            <CardSearchModal isOpen={searchModalOpen} dexId={searchDexId} pokemonName={searchPokemonName} onClose={handleReturnToSelectModal} onBack={handleReturnToSelectModal} onCardAdded={handleCardAdded} />
+            <CardSearchModal isOpen={searchModalOpen} hasOpenSibling={selectModalOpen} dexId={searchDexId} pokemonName={searchPokemonName} onClose={handleReturnToSelectModal} onBack={handleReturnToSelectModal} onCardAdded={handleCardAdded} />
 
-            <BinderSlotSelectModal key={selectDexId} isOpen={selectModalOpen} dexId={selectDexId} pokemonName={selectPokemonName} activeCardId={selectActiveCardId} activeCard={selectActiveCard} onClose={handleCloseSelectModal} onCardSelected={handleSelectCardFromCollection} onCardRemoved={handleRemoveCardFromCollection} onOpenCatalogSearch={handleOpenCatalogSearchFromSelect} />
+            <BinderSlotSelectModal key={selectDexId} isOpen={selectModalOpen} hasOpenSibling={searchModalOpen} skipEnterAnimation={isRestoredSelectModal} dexId={selectDexId} pokemonName={selectPokemonName} activeCardId={selectActiveCardId} activeCard={selectActiveCard} onClose={handleCloseSelectModal} onCardSelected={handleSelectCardFromCollection} onCardRemoved={handleRemoveCardFromCollection} onOpenCatalogSearch={handleOpenCatalogSearchFromSelect} />
         </div>
     );
 }

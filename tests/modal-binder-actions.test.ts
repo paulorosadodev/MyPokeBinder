@@ -66,26 +66,80 @@ describe("Binder Slot Selection and Removal Logic", () => {
         expect(allocateModalSource).not.toContain("hover:-translate-y-1");
     });
 
-    it("aguarda o fechamento do seletor antes de abrir o catálogo do binder", () => {
+    it("mantém um overlay presente na navegação entre seletor e catálogo", () => {
         const viewerSource = readFileSync(join(import.meta.dir, "../src/components/binder/UniversalBinderViewer.tsx"), "utf8");
         const legacyBinderSource = readFileSync(join(import.meta.dir, "../src/components/binder/BinderClientPage.tsx"), "utf8");
 
-        expect(viewerSource).toContain("catalogOpenTimerRef");
-        expect(legacyBinderSource).toContain("catalogOpenTimerRef");
+        [viewerSource, legacyBinderSource].forEach((source) => {
+            expect(source).not.toContain("catalogOpenTimerRef");
+            expect(source).not.toContain("catalogReturnTimerRef");
+            expect(source).not.toContain("selectReturnTimerRef");
+        });
+
+        expect(viewerSource).toContain("hasOpenSibling={isCatalogModalOpen}");
+        expect(viewerSource).toContain("hasOpenSibling={isSlotModalOpen}");
+        expect(legacyBinderSource).toContain("hasOpenSibling={searchModalOpen}");
+        expect(legacyBinderSource).toContain("hasOpenSibling={selectModalOpen}");
     });
 
     it("não exibe a navegação redundante na página de edição", () => {
-        const cardPageSource = readFileSync(join(import.meta.dir, "../src/app/cards/[id]/page.tsx"), "utf8");
+        const cardPageSource = readFileSync(join(import.meta.dir, "../src/app/cards/[id]/CardDetailClient.tsx"), "utf8");
 
         expect(cardPageSource).not.toContain("Navegação do Binder");
         expect(cardPageSource).toContain("returnToBinderModal");
     });
 
     it("redireciona o botão de alocar no binder diretamente para a página de Meus Binders (/)", () => {
-        const cardPageSource = readFileSync(join(import.meta.dir, "../src/app/cards/[id]/page.tsx"), "utf8");
+        const cardPageSource = readFileSync(join(import.meta.dir, "../src/app/cards/[id]/CardDetailClient.tsx"), "utf8");
 
         expect(cardPageSource).toContain('onClick={() => router.push("/")}');
         expect(cardPageSource).not.toContain("CardAllocateModal");
+    });
+
+    it("mantém o catálogo aberto após adicionar carta e contabiliza as cópias da sessão", () => {
+        const searchModalSource = readFileSync(join(import.meta.dir, "../src/components/modal/CardSearchModal.tsx"), "utf8");
+        const handlerSource = searchModalSource.slice(searchModalSource.indexOf("const handleAddCard"), searchModalSource.indexOf("if (!isPresent) return null;"));
+
+        expect(handlerSource).toContain("onCardAdded(data.card)");
+        expect(handlerSource).not.toContain("onClose(");
+        expect(handlerSource).not.toContain("onBack(");
+        expect(handlerSource).toContain("registerCopy(");
+        expect(searchModalSource).toContain("submittingIds");
+        expect(searchModalSource).not.toContain("submittingCardId");
+        expect(searchModalSource).toContain("disabled={isSubmittingThis}");
+        expect(searchModalSource).toContain("countCopiesForCombo(totalCopiesByCard, card.id, lang, variant, condition)");
+        expect(searchModalSource).toContain("id: CARD_ADDED_TOAST_ID");
+        expect(searchModalSource).not.toContain('toast.success("Carta adicionada à Coleção!"');
+    });
+
+    it("trata a posse como dependente da configuração exata de idioma, acabamento e estado", () => {
+        const searchModalSource = readFileSync(join(import.meta.dir, "../src/components/modal/CardSearchModal.tsx"), "utf8");
+
+        expect(searchModalSource).toContain("/api/cards/ownership?ids=");
+        expect(searchModalSource).toContain("fetchedOwnershipIdsRef");
+        expect(searchModalSource).toContain("mergeCopyCounts(ownedCounts, sessionCounts)");
+        expect(searchModalSource).toContain("const isOwnershipKnown = ownedCardIds.has(card.id)");
+        expect(searchModalSource).toContain("const isMissing = isOwnershipKnown && comboCount === 0");
+        expect(searchModalSource).toContain('data-missing={isMissing ? "true" : undefined}');
+        expect(searchModalSource).toContain("opacity-60 saturate-50");
+        expect(searchModalSource).toContain("hover:opacity-90");
+        expect(searchModalSource).toContain("rounded-[3px] bg-black/25");
+        expect(searchModalSource).toContain('countDataAttribute="matching"');
+        expect(searchModalSource).toContain("<CardBadgeStack");
+        expect(searchModalSource).toContain("você já tem");
+        expect(searchModalSource).not.toContain("em outra configuração");
+        expect(searchModalSource).not.toContain("describeCopies");
+        expect(searchModalSource).not.toContain('data-owned-count="other"');
+    });
+
+    it("revalida as listas da Coleção no binder ao adicionar carta pelo catálogo", () => {
+        const viewerSource = readFileSync(join(import.meta.dir, "../src/components/binder/UniversalBinderViewer.tsx"), "utf8");
+        const collectionPageSource = readFileSync(join(import.meta.dir, "../src/app/collection/page.tsx"), "utf8");
+
+        expect(viewerSource).toContain("onCardAdded={handleCatalogCardAdded}");
+        expect(viewerSource).not.toContain("onCardAdded={() => undefined}");
+        expect(viewerSource).toContain("isCollectionCardsCacheKey(key)");
+        expect(collectionPageSource).toContain("scheduleCollectionRevalidation");
     });
 
     it("should correctly identify current active card in binder", () => {
@@ -110,25 +164,31 @@ describe("Binder Slot Selection and Removal Logic", () => {
         expect<number | null>(pendingDropDexId).toEqual(1);
     });
 
-    it("should reset state and clear pending drop when removing card from binder", () => {
-        let pendingDropDexId: number | null = 1;
-        let selectedId: string | undefined = mockCard1.id;
-        let previewCard: UserCard | undefined = mockCard1;
-        let userCards: UserCard[] = [mockCard1, mockCard2];
+    it("mantém a carta removida visível e disponível para exibir novamente", () => {
+        const selectorSource = readFileSync(join(import.meta.dir, "../src/components/modal/BinderSlotSelectModal.tsx"), "utf8");
 
-        const removeCard = (card: UserCard) => {
-            pendingDropDexId = null;
-            selectedId = undefined;
-            previewCard = undefined;
-            userCards = userCards.filter((c) => c.pokemon_dex_id !== card.pokemon_dex_id);
-        };
+        expect(selectorSource).toContain("const removed = await onCardRemoved(card)");
+        expect(selectorSource).toContain("setSelectedCardId(undefined)");
+        expect(selectorSource).toContain("setPreviewCard(card)");
+        expect(selectorSource).toContain("updateCollectionCardBinderStatus(card.id, false)");
+    });
 
-        removeCard(mockCard1);
+    it("inicia a queda da carta somente após o fechamento do seletor", () => {
+        const viewerSource = readFileSync(join(import.meta.dir, "../src/components/binder/UniversalBinderViewer.tsx"), "utf8");
 
-        expect(pendingDropDexId).toBeNull();
-        expect(selectedId).toBeUndefined();
-        expect(previewCard).toBeUndefined();
-        expect(userCards.some((c) => c.pokemon_dex_id === 1)).toBe(false);
+        expect(viewerSource).toContain("const [pendingDropSlotId, setPendingDropSlotId]");
+        expect(viewerSource).toContain("if (isSlotModalOpen || !pendingDropSlotId) return");
+        expect(viewerSource).toContain("setPendingDropSlotId(slotId)");
+        expect(viewerSource).toContain("setDroppingSlotId(pendingDropSlotId)");
+    });
+
+    it("oculta o conteúdo do seletor antes da saída do backdrop", () => {
+        const selectorSource = readFileSync(join(import.meta.dir, "../src/components/modal/BinderSlotSelectModal.tsx"), "utf8");
+        const globalStyles = readFileSync(join(import.meta.dir, "../src/app/globals.css"), "utf8");
+
+        expect(selectorSource).toContain("modal-surface modal-transient-content");
+        expect(globalStyles).toContain('.modal-backdrop[data-overlay-state="closing"] .modal-transient-content');
+        expect(globalStyles).toContain("visibility: hidden");
     });
 
     it("should keep modal open during card edit navigation and prevent duplicate actions", () => {

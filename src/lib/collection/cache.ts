@@ -38,6 +38,21 @@ export function isGroupedCollectionListRequestKey(key: unknown): key is string {
     }
 }
 
+/**
+ * Chaves do cache SWR que respondem com `{ cards: UserCard[] }` (lista simples da Coleção
+ * usada pelo seletor de carta do binder), excluindo as páginas agrupadas da Coleção.
+ */
+export function isCollectionCardsCacheKey(key: unknown): key is string {
+    if (typeof key !== "string" || !key.startsWith("/api/cards")) return false;
+
+    try {
+        const url = new URL(key, "https://mypokebinder.local");
+        return url.pathname === "/api/cards" && url.searchParams.get("grouped") !== "true";
+    } catch {
+        return false;
+    }
+}
+
 function parseCollectionListFilters(key: string): CollectionListFilters | null {
     try {
         const url = new URL(key, "https://mypokebinder.local");

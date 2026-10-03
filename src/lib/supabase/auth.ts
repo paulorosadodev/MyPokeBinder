@@ -16,6 +16,16 @@ export async function getAuthenticatedUser(request?: Request) {
         }
     }
 
+    const downstreamUserId = request?.headers.get("x-user-id");
+    if (downstreamUserId) {
+        const downstreamEmail = request?.headers.get("x-user-email") || undefined;
+        return {
+            user: { id: downstreamUserId, email: downstreamEmail } as unknown as User,
+            supabase,
+            response: null,
+        };
+    }
+
     const {
         data: { user },
         error: authError,

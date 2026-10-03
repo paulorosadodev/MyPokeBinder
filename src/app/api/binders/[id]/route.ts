@@ -63,9 +63,9 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         card: s.user_card_id ? userCardsMap.get(s.user_card_id) || null : null,
     }));
 
-    let otherBinders: Array<{ id: string; name: string; grid_type: GridType }> = [];
+    let otherBinders: Array<{ id: string; name: string; description: string; grid_type: GridType; cover_theme: string; cover_pokemon_dex_id: number | null }> = [];
     if (user) {
-        const { data: others } = await supabase.from("binders").select("id, name, grid_type").eq("user_id", binder.user_id).order("created_at", { ascending: true });
+        const { data: others } = await supabase.from("binders").select("id, name, description, grid_type, cover_theme, cover_pokemon_dex_id").eq("user_id", binder.user_id).order("created_at", { ascending: true });
 
         otherBinders = others ?? [];
     }

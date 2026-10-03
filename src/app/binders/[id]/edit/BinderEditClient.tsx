@@ -1,14 +1,16 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import NextLink from "next/link";
+import dynamic from "next/dynamic";
 import { useSWRConfig } from "swr";
 import { ArrowLeft, Check, Lock, Globe, Trash2, AlertTriangle, Sparkles, Star } from "lucide-react";
 import { toast } from "sonner";
 import { BinderCoverArt } from "@/components/binder/BinderCoverArt";
-import { CoverPokemonSelector } from "@/components/binder/CoverPokemonSelector";
 import { BINDER_COVER_THEMES } from "@/lib/binder/themes";
+
+const CoverPokemonSelector = dynamic(() => import("@/components/binder/CoverPokemonSelector").then((mod) => mod.CoverPokemonSelector), { ssr: false });
 import { getBinderSlotPageCount } from "@/lib/binder/pageCapacity";
 import { useDismissibleOverlay } from "@/lib/hooks/useDismissibleOverlay";
 import { useOverlayPresence } from "@/lib/hooks/useOverlayPresence";
@@ -28,6 +30,8 @@ interface BinderEditClientProps {
 
 export function BinderEditClient({ binder, initialSlots }: BinderEditClientProps) {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const isFromShelf = searchParams?.get("from") === "shelf";
     const { mutate: mutateCache } = useSWRConfig();
 
     const [name, setName] = useState(binder.name);
@@ -102,9 +106,10 @@ export function BinderEditClient({ binder, initialSlots }: BinderEditClientProps
                 throw new Error(err.error || "Erro ao salvar alterações");
             }
 
-            await mutateCache("/api/binders");
+            void mutateCache("/api/binders");
+            void mutateCache(`/api/binders/${binder.id}`);
             toast.success("Estrutura do binder atualizada!");
-            router.push(`/binders/${binder.id}`);
+            router.push(isFromShelf ? "/" : `/binders/${binder.id}?opened=1`);
         } catch (err: any) {
             setErrorMessage(err.message || "Erro inesperado ao salvar");
             setIsSaving(false);
@@ -124,9 +129,10 @@ export function BinderEditClient({ binder, initialSlots }: BinderEditClientProps
                 throw new Error(err.error || "Erro ao excluir binder");
             }
 
+            void mutateCache("/api/binders");
+            void mutateCache(`/api/binders/${binder.id}`);
             toast.success("Binder excluído. As cartas voltaram para a coleção!");
             router.push("/");
-            router.refresh();
         } catch (err: any) {
             toast.error(err.message || "Erro ao excluir o binder");
             setIsDeleting(false);
@@ -136,11 +142,11 @@ export function BinderEditClient({ binder, initialSlots }: BinderEditClientProps
 
     return (
         <div className="flex min-h-screen flex-col bg-[#0a0c10] text-slate-100">
-            <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 pb-28 md:pb-16">
-                <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                    <NextLink href={`/binders/${binder.id}`} className="flex items-center gap-2 text-xs font-semibold text-slate-400 transition-colors hover:text-white">
+            <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 pb-28 md:pb-16">
+                <div className="profile-enter flex items-center justify-between border-b border-white/10 pb-4">
+                    <NextLink href={isFromShelf ? "/" : `/binders/${binder.id}?opened=1`} className="flex items-center gap-2 text-xs font-semibold text-slate-400 transition-colors hover:text-white">
                         <ArrowLeft size={16} />
-                        <span>Voltar ao Binder</span>
+                        <span>{isFromShelf ? "Voltar para a Estante" : "Voltar ao Binder"}</span>
                     </NextLink>
 
                     <h1 className="text-sm font-bold text-slate-300">
@@ -151,7 +157,7 @@ export function BinderEditClient({ binder, initialSlots }: BinderEditClientProps
                 {errorMessage && <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3.5 text-xs text-red-300">{errorMessage}</div>}
 
                 <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-                    <form onSubmit={handleSaveClick} className="flex flex-col gap-6 lg:col-span-7">
+                    <form onSubmit={handleSaveClick} className="profile-enter flex flex-col gap-6 lg:col-span-7">
                         <div className="flex flex-col gap-2">
                             <label className="text-xs font-bold text-slate-300">
                                 Nome do Binder <span className="text-red-400">*</span>
@@ -253,7 +259,7 @@ export function BinderEditClient({ binder, initialSlots }: BinderEditClientProps
                         </div>
                     </form>
 
-                    <div className="lg:col-span-5 flex flex-col gap-4">
+                    <div className="profile-enter profile-enter-d1 lg:col-span-5 flex flex-col gap-4">
                         <div className="rounded-2xl border border-white/10 bg-[#121520]/80 p-5 shadow-xl backdrop-blur-md">
                             <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Pré-visualização da Capa</span>
 

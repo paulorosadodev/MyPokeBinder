@@ -9,7 +9,21 @@ import { buildProfileFromCards } from "../src/lib/profile/buildProfile";
 import { usernameFromEmail, validateUsername, validateDisplayName, buildThemeCssVars, safeDecodeParam, isValidProfileParam } from "../src/lib/profile/username";
 import type { UserCard } from "../src/types/binder";
 
+const projectRoot = join(import.meta.dir, "..");
+
+function readSource(relativePath: string) {
+    return readFileSync(join(projectRoot, relativePath), "utf8");
+}
+
 describe("Profile API and Rarity Sorting Logic", () => {
+    it("should keep the profile route skeleton aligned to the rendered profile container", () => {
+        const skeletonSource = readSource("src/components/profile/ProfileRouteLoading.tsx");
+        const profileSource = readSource("src/components/profile/TrainerProfileView.tsx");
+
+        expect(skeletonSource).toContain("max-w-7xl");
+        expect(profileSource).toContain("max-w-7xl");
+    });
+
     it("GET /api/profile should return 401 when unauthenticated", async () => {
         const response = await getProfile(new Request("http://localhost:3000/api/profile") as any);
         expect(response.status).toBe(401);

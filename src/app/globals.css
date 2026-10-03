@@ -796,7 +796,7 @@ body {
 
 .slot-glow {
     position: relative;
-    border-radius: 0.5rem;
+    border-radius: 5.5% / 4%;
     transform-origin: center;
     animation: slot-glow-scale 3.4s cubic-bezier(0.22, 0.7, 0.24, 1) both;
     will-change: transform;
@@ -1006,9 +1006,25 @@ body {
 }
 
 .skeleton-shimmer {
-    background: linear-gradient(90deg, #181d28 25%, #242c3d 50%, #181d28 75%);
+    background: linear-gradient(110deg, #121620 20%, #222b3d 40%, #34425e 50%, #222b3d 60%, #121620 80%);
     background-size: 200% 100%;
-    animation: skeleton-shimmer 1.8s infinite linear;
+    animation: skeleton-shimmer 1.5s infinite linear;
+}
+
+.card-skeleton {
+    position: absolute;
+    inset: 0;
+    border-radius: 0.5rem;
+    background: linear-gradient(110deg, #121620 20%, #222b3d 40%, #34425e 50%, #222b3d 60%, #121620 80%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s infinite linear;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    z-index: 5;
+    pointer-events: none;
 }
 
 @keyframes pokemon-float-1 {
@@ -1491,72 +1507,36 @@ body {
 }
 
 .binder-shelf-stage {
-    transform: scale(1);
-    transform-origin: center 54%;
+    transform: none;
+    perspective: 1400px;
+    perspective-origin: 0% 50%;
 }
 
-.binder-shelf-flipbook-root,
-.binder-shelf-flipbook-root .stf__wrapper,
-.binder-shelf-flipbook-root .stf__block {
-    overflow: visible;
-}
-
-.binder-shelf-flipbook-root {
-    width: 528px !important;
-    min-width: 528px !important;
-    max-width: 528px !important;
-}
-
-.binder-shelf-engine {
-    transform: translateX(-100%);
-    pointer-events: none;
-}
-
-.binder-shelf-card--pending {
-    opacity: 0;
-    pointer-events: none;
-}
-
-.binder-shelf-flipbook-root .stf__wrapper {
-    height: 372px !important;
-    max-height: 372px !important;
-    padding-bottom: 0 !important;
-}
-
-.binder-shelf-stage[data-shelf-state="flipping"],
-.binder-shelf-stage[data-shelf-state="flipping"] * {
-    transition: none !important;
-}
-
-.binder-shelf-stage[data-shelf-state="flipping"] .stf__item,
-.binder-shelf-stage[data-shelf-state="flipping"] .stf__block {
-    will-change: transform;
+.binder-shelf-cover {
+    transform: rotateY(0deg);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    will-change: transform, box-shadow;
+    transition:
+        transform 420ms cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 420ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
-    .binder-shelf-card:is(:hover, :focus-within),
-    .binder-shelf-card:has(.binder-shelf-stage[data-shelf-state="flipping"]),
-    .binder-shelf-card:has(.binder-shelf-stage:not([data-shelf-page="0"])) {
-        z-index: 60;
+    .binder-shelf-card:has(.binder-shelf-cover--peek) {
+        z-index: 20;
     }
 
-    .binder-shelf-stage {
-        transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .binder-shelf-card:is(:hover, :focus-within) .binder-shelf-stage,
-    .binder-shelf-card:has(.binder-shelf-stage[data-shelf-state="flipping"]) .binder-shelf-stage,
-    .binder-shelf-card:has(.binder-shelf-stage:not([data-shelf-page="0"])) .binder-shelf-stage {
-        transform: scale(1.06);
+    .binder-shelf-cover--peek {
+        transform: rotateY(-32deg);
+        box-shadow:
+            12px 10px 24px -4px rgba(0, 0, 0, 0.75),
+            0 0 0 1px rgba(255, 255, 255, 0.08);
     }
 }
 
-html[data-animations-enabled="false"] .binder-shelf-stage,
-html[data-animations-enabled="false"] .binder-shelf-stage * {
+html[data-animations-enabled="false"] .binder-shelf-cover,
+html[data-animations-enabled="false"] .binder-shelf-cover * {
     transition: none !important;
-}
-
-html[data-animations-enabled="false"] .binder-shelf-stage {
     transform: none !important;
 }
 
@@ -1627,11 +1607,10 @@ html[data-animations-enabled="false"] .binder-shelf-stage {
     }
 
     .binder-shelf-stage,
-    .binder-shelf-stage * {
+    .binder-shelf-stage *,
+    .binder-shelf-cover,
+    .binder-shelf-cover * {
         transition: none !important;
-    }
-
-    .binder-shelf-stage {
         transform: none !important;
     }
 }

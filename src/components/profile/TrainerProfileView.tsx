@@ -9,8 +9,10 @@ import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { move } from "@dnd-kit/helpers";
 import { PokeballLoader } from "@/components/loading/PokeballLoader";
+import { CardGridSkeleton } from "@/components/loading/CardGridSkeleton";
 import { TrainerNotFound } from "@/components/profile/TrainerNotFound";
 import { Card3DTilt } from "@/components/ui/Card3DTilt";
+import { CardArtwork } from "@/components/ui/CardArtwork";
 import { CardLightbox } from "@/components/ui/CardLightbox";
 import { FlagIcon } from "@/components/ui/FlagIcon";
 import { SearchInput } from "@/components/ui/SearchInput";
@@ -21,8 +23,6 @@ import { getCoverTheme } from "@/lib/binder/themes";
 import { getRarityBadgeStyle, RARITY_FILTER_OPTIONS } from "@/lib/pokemon/rarity";
 import { resolveCardShine } from "@/lib/pokemon/variant";
 import { resolveCardElementTypes } from "@/lib/pokemon/cardTypes";
-import { getConditionBadgeStyle } from "@/lib/pokemon/condition";
-import { ConditionBadge } from "@/components/ui/ConditionBadge";
 import { ALL_ARTISTS_FILTER, buildArtistFilterOptions, buildCollectionFilterResetKey, matchesCardSearch } from "@/lib/collection/listCards";
 import { useClientPagedWindow } from "@/lib/hooks/useClientPagedWindow";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
@@ -33,6 +33,8 @@ import { getCardAppearProps } from "@/lib/ui/cardAppear";
 import { fetcher as jsonFetcher } from "@/lib/swr";
 import { Binder, BinderSlot, BinderStatusFilter, UserCard, type CardElementType, type CardShineMode } from "@/types/binder";
 import type { ProfilePayload } from "@/lib/profile/buildProfile";
+import { useAuth } from "@/lib/context/AuthContext";
+import { usePublicProfileTheme } from "@/lib/context/UserSettingsContext";
 import { toast } from "sonner";
 import { Settings, Share2, BookOpen, Layers, Check, Layers2, Pencil, Plus, X, Search, Globe, Sparkles, Gem, GripVertical, Palette, Star, Lock, ExternalLink } from "lucide-react";
 
@@ -77,9 +79,7 @@ function FeaturedCardTile({ card, onMaximize, priority = false }: { card: UserCa
     return (
         <FeaturedSlotFrame className="z-0">
             <button type="button" onClick={() => onMaximize?.(imageSrc, card.card_name, shineMode, elementTypes)} aria-label={`Ampliar ${card.card_name}`} className="relative z-0 h-full w-full cursor-zoom-in">
-                <Card3DTilt className="relative h-full w-full" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.25} perspective={900} shineMode={shineMode} elementTypes={elementTypes}>
-                    <Image src={imageSrc} alt={card.card_name} fill sizes="(max-width: 640px) 45vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" unoptimized priority={priority} />
-                </Card3DTilt>
+                <CardArtwork src={imageSrc} alt={card.card_name} sizes="(max-width: 640px) 45vw, 200px" shineMode={shineMode} elementTypes={elementTypes} priority={priority} />
             </button>
         </FeaturedSlotFrame>
     );
@@ -94,9 +94,7 @@ function SortableFeaturedCard({ id, index, card, onRemove, priority = false }: {
     return (
         <div ref={ref} className={`relative w-full touch-none select-none !cursor-grab active:!cursor-grabbing ${isDragging ? "z-30" : "z-0"}`} style={{ aspectRatio: "8 / 11" }} aria-label={`${card.card_name}, arraste para reordenar`}>
             <div className={`absolute inset-0 ${isDragging ? "opacity-90 ring-2 ring-poke-blue/60 rounded-lg" : ""}`}>
-                <Card3DTilt className="relative h-full w-full" maxTilt={0} maxMove={0} scale={1} glareOpacity={0} perspective={900} shineMode={shineMode} elementTypes={elementTypes} paused>
-                    <Image src={imageSrc} alt={card.card_name} fill sizes="(max-width: 640px) 45vw, 200px" className="pointer-events-none object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" unoptimized priority={priority} draggable={false} />
-                </Card3DTilt>
+                <CardArtwork src={imageSrc} alt={card.card_name} sizes="(max-width: 640px) 45vw, 200px" maxTilt={0} maxMove={0} glareOpacity={0} shineMode={shineMode} elementTypes={elementTypes} priority={priority} />
                 <span className="pointer-events-none absolute bottom-1.5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-0.5 rounded-md bg-black/55 px-1.5 py-0.5 text-white/80 backdrop-blur-sm">
                     <GripVertical size={12} strokeWidth={2.5} />
                 </span>
@@ -116,6 +114,43 @@ function FeaturedEmptySlot({ editing, onAdd }: { editing: boolean; onAdd: () => 
                 <span className="hidden text-[10px] font-medium sm:inline">{editing ? "Adicionar" : "Vazio"}</span>
             </button>
         </FeaturedSlotFrame>
+    );
+}
+
+function FeaturedPickerCard({ card, selectedPosition, onToggle }: { card: UserCard; selectedPosition: number; onToggle: () => void }) {
+    const [isHovered, setIsHovered] = useState(false);
+    const selected = selectedPosition !== -1;
+    const imageSrc = formatTcgdexImageUrl(card.card_image_url);
+    const shineMode = resolveCardShine(card.card_variant, card.card_rarity, card.card_image_url, card.card_name);
+    const elementTypes = resolveCardElementTypes(card.card_types, card.pokemon_dex_id);
+    const disableEffects = selected || isHovered;
+
+    return (
+        <button
+            type="button"
+            onClick={onToggle}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            aria-label={`${selected ? `Remover ${card.card_name} da posição ${selectedPosition + 1} dos destaques` : `Adicionar ${card.card_name} aos destaques`}`}
+            aria-pressed={selected}
+            className={`group/featured-picker block aspect-[8/11] w-full text-left transition-transform duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-poke-blue active:scale-[0.98] ${selected ? "scale-[0.98]" : ""}`}
+        >
+            <CardArtwork src={imageSrc} alt="" sizes="(max-width: 768px) 50vw, 200px" shineMode={disableEffects ? "none" : shineMode} elementTypes={elementTypes} maxTilt={0} maxMove={0} scale={1} transitionDuration={0} imageClassName="pointer-events-none object-contain">
+                {selected ? (
+                    <span aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/55 text-white">
+                        <span className="flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-poke-blue text-lg font-bold shadow-lg shadow-poke-blue/40">{selectedPosition + 1}</span>
+                        <span className="mt-2 text-[10px] font-semibold tracking-wide">Remover</span>
+                    </span>
+                ) : (
+                    <span aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 hidden flex-col items-center justify-center bg-black/45 text-white group-hover/featured-picker:flex group-focus-visible/featured-picker:flex">
+                        <span className="flex h-12 w-12 items-center justify-center rounded-full border border-white/35 bg-black/35 backdrop-blur-sm">
+                            <Plus size={22} strokeWidth={2.5} />
+                        </span>
+                        <span className="mt-2 text-[10px] font-semibold tracking-wide">Adicionar</span>
+                    </span>
+                )}
+            </CardArtwork>
+        </button>
     );
 }
 
@@ -222,8 +257,9 @@ function ProfileThemeScope({ themeColor, children }: { themeColor?: string; chil
     return <div style={themeColor ? buildThemeCssVars(themeColor) : undefined}>{children}</div>;
 }
 
-export function TrainerProfileView({ username, fallbackData }: { username: string; fallbackData?: ProfilePayload }) {
+export function TrainerProfileView({ username, fallbackData, publicGuestTheme }: { username: string; fallbackData?: ProfilePayload; publicGuestTheme?: string }) {
     const router = useRouter();
+    const { user: authUser } = useAuth();
     const {
         data: profile,
         error,
@@ -236,13 +272,8 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
         shouldRetryOnError: false,
         dedupingInterval: 10000,
     });
-    const { data: collectionPayload } = useSWR<{ cards: UserCard[] }>(profile?.isOwner ? "/api/cards" : null, jsonFetcher, {
-        revalidateOnFocus: false,
-        revalidateOnReconnect: false,
-        shouldRetryOnError: false,
-        dedupingInterval: 10000,
-    });
-    const collectionCards = collectionPayload?.cards ?? [];
+    const effectiveTheme = profile?.themeColor || fallbackData?.themeColor || publicGuestTheme;
+    usePublicProfileTheme(effectiveTheme, !authUser);
     const [avatarError, setAvatarError] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
     const [isEditingFeatured, setIsEditingFeatured] = useState(false);
@@ -253,6 +284,15 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
     const [pickerStatus, setPickerStatus] = useState<BinderStatusFilter>("all");
     const [pickerLanguage, setPickerLanguage] = useState("all");
     const [pickerRarity, setPickerRarity] = useState("all");
+
+    const shouldFetchCards = Boolean(profile?.isOwner && (isPickerOpen || isEditingFeatured));
+    const { data: collectionPayload, isLoading: isPickerLoading } = useSWR<{ cards: UserCard[] }>(shouldFetchCards ? "/api/cards" : null, jsonFetcher, {
+        revalidateOnFocus: false,
+        revalidateOnReconnect: false,
+        shouldRetryOnError: false,
+        dedupingInterval: 10000,
+    });
+    const collectionCards = collectionPayload?.cards ?? [];
 
     useDismissibleOverlay(isPickerOpen, () => setIsPickerOpen(false), isSavingFeatured);
     const { isPresent: isPickerPresent, state: pickerOverlayState } = useOverlayPresence(isPickerOpen);
@@ -460,7 +500,7 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
                     <div className="rounded-2xl border border-white/10 bg-[#12151d] p-8 shadow-xl">
                         <p className="text-base font-bold text-white">Não foi possível carregar os dados do perfil.</p>
                         <p className="mt-1 text-xs text-slate-400">Verifique sua conexão ou tente novamente mais tarde.</p>
-                        <NextLink href="/" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-poke-blue px-4 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90">
+                        <NextLink href="/" prefetch={true} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-poke-blue px-4 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90">
                             <BookOpen size={14} />
                             <span>Voltar ao Binder</span>
                         </NextLink>
@@ -495,7 +535,7 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
     return (
         <ProfileShell>
             <ProfileThemeScope themeColor={themeColor}>
-                <main key={username} className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 pb-28 md:pb-16">
+                <main key={username} className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 pb-28 md:pb-16">
                     <section className={`profile-enter relative rounded-3xl border border-white/10 bg-gradient-to-b from-[#161a26]/90 via-[#10131d]/90 to-[#0c0e15]/90 shadow-2xl backdrop-blur-xl ${isEditingFeatured ? "overflow-visible" : "overflow-hidden"}`}>
                         <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-poke-blue/10 blur-3xl" />
                         <div className="pointer-events-none absolute -bottom-24 left-1/3 h-56 w-56 rounded-full bg-poke-blue/10 blur-3xl" />
@@ -516,7 +556,7 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
                                     {user.bio ? (
                                         <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-300">{user.bio}</p>
                                     ) : isOwner ? (
-                                        <NextLink href="/configuracoes" className="mt-2 text-xs font-semibold text-slate-500 transition-colors hover:text-poke-blue">
+                                        <NextLink href="/configuracoes" prefetch={true} onMouseEnter={() => router.prefetch("/configuracoes")} onTouchStart={() => router.prefetch("/configuracoes")} className="mt-2 text-xs font-semibold text-slate-500 transition-colors hover:text-poke-blue">
                                             Adicionar uma descrição ao perfil
                                         </NextLink>
                                     ) : (
@@ -532,12 +572,12 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
                                 </button>
 
                                 {!isOwner ? (
-                                    <NextLink href={`/colecao/${user.username}`} prefetch={true} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-poke-blue px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-poke-blue/25 transition-all hover:bg-poke-blue/90 hover:shadow-poke-blue/40 sm:flex-initial">
+                                    <NextLink href={`/colecao/${user.username}`} prefetch={true} onMouseEnter={() => router.prefetch(`/colecao/${user.username}`)} onTouchStart={() => router.prefetch(`/colecao/${user.username}`)} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-poke-blue px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-poke-blue/25 transition-all hover:bg-poke-blue/90 hover:shadow-poke-blue/40 sm:flex-initial">
                                         <Layers size={15} />
                                         <span>Ver coleção</span>
                                     </NextLink>
                                 ) : (
-                                    <NextLink href="/configuracoes" className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-poke-blue/40 bg-poke-blue/15 px-4 py-2 text-xs font-semibold text-white transition-all hover:border-poke-blue/60 hover:bg-poke-blue/25 sm:flex-initial">
+                                    <NextLink href="/configuracoes" prefetch={true} onMouseEnter={() => router.prefetch("/configuracoes")} onTouchStart={() => router.prefetch("/configuracoes")} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-poke-blue/40 bg-poke-blue/15 px-4 py-2 text-xs font-semibold text-white transition-all hover:border-poke-blue/60 hover:bg-poke-blue/25 sm:flex-initial">
                                         <Settings size={14} />
                                         <span>Configurações</span>
                                     </NextLink>
@@ -715,7 +755,7 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
                                 <h3 className="text-base font-bold text-white">Nenhum binder criado ainda</h3>
                                 <p className="mt-1 text-xs text-slate-400">Crie seu primeiro binder com capas temáticas e grades personalizadas para destacá-lo aqui.</p>
                             </div>
-                            <NextLink href="/binders/new" className="mt-2 inline-flex items-center gap-2 rounded-xl bg-poke-blue px-4 py-2 text-xs font-bold text-white shadow-md shadow-poke-blue/20 hover:opacity-90">
+                            <NextLink href="/binders/new" prefetch={true} className="mt-2 inline-flex items-center gap-2 rounded-xl bg-poke-blue px-4 py-2 text-xs font-bold text-white shadow-md shadow-poke-blue/20 hover:opacity-90">
                                 <Plus size={15} />
                                 <span>Criar Primeiro Binder</span>
                             </NextLink>
@@ -730,7 +770,7 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
                             </div>
 
                             {isOwner && (
-                                <NextLink href="/binders/new" className="flex items-center gap-1.5 rounded-xl border border-poke-blue/40 bg-poke-blue/15 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:border-poke-blue/60 hover:bg-poke-blue/25">
+                                <NextLink href="/binders/new" prefetch={true} className="flex items-center gap-1.5 rounded-xl border border-poke-blue/40 bg-poke-blue/15 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:border-poke-blue/60 hover:bg-poke-blue/25">
                                     <Plus size={14} />
                                     <span>Novo Binder</span>
                                 </NextLink>
@@ -857,7 +897,7 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
                         if (e.target === e.currentTarget && !isSavingFeatured) setIsPickerOpen(false);
                     }}
                 >
-                    <div className="modal-surface flex h-dvh max-h-none w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-[#12151d] shadow-2xl sm:h-[85vh] sm:max-h-[820px] sm:max-w-3xl sm:rounded-2xl sm:border sm:border-white/10">
+                    <div className="modal-surface flex h-dvh max-h-none w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-[#12151d] shadow-2xl sm:h-[85vh] sm:max-h-[820px] sm:max-w-3xl sm:rounded-2xl sm:border sm:border-white/10 md:max-w-5xl lg:max-w-6xl">
                         <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-5 py-4">
                             <div>
                                 <h3 className="text-base font-bold text-white">Escolher cartas em destaque</h3>
@@ -887,11 +927,13 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
                         </div>
 
                         <div ref={setPickerScrollRoot} className="min-h-0 flex-1 overflow-y-auto p-4">
-                            {collectionCards.length === 0 ? (
+                            {isPickerLoading ? (
+                                <CardGridSkeleton count={15} gridClassName="grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5" />
+                            ) : collectionCards.length === 0 ? (
                                 <div className="flex h-full flex-col items-center justify-center gap-2 py-12 text-center">
                                     <Layers2 size={28} className="text-slate-600" />
                                     <p className="text-sm text-slate-400">Nenhuma carta na coleção ainda.</p>
-                                    <NextLink href="/collection" className="mt-2 text-xs font-semibold text-poke-blue">
+                                    <NextLink href="/collection" prefetch={true} className="mt-2 text-xs font-semibold text-poke-blue">
                                         Ir para a Coleção
                                     </NextLink>
                                 </div>
@@ -916,21 +958,10 @@ export function TrainerProfileView({ username, fallbackData }: { username: strin
                                 </div>
                             ) : (
                                 <div className="flex flex-col gap-3">
-                                    <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 md:grid-cols-5">
+                                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5">
                                         {visiblePickerCards.map((card) => {
-                                            const selected = draftFavoriteIds.includes(card.id);
-                                            return (
-                                                <button key={card.id} type="button" onClick={() => toggleFavorite(card.id)} className={`relative flex flex-col rounded-xl border p-1.5 text-left transition-all active:scale-[0.98] ${selected ? "border-poke-blue bg-poke-blue/10 ring-1 ring-poke-blue/40" : "border-white/10 bg-white/[0.03] hover:border-white/25"}`}>
-                                                    <span className={`absolute right-1.5 top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full border shadow-md transition-colors ${selected ? "border-emerald-400/60 bg-emerald-500 text-white shadow-emerald-500/25" : "border-white/20 bg-black/70 text-slate-400"}`}>{selected ? <Check size={13} strokeWidth={3} /> : <Plus size={13} strokeWidth={2.5} />}</span>
-                                                    <div className="relative aspect-[8/11] w-full">
-                                                        <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill unoptimized sizes="100px" className="object-contain" />
-                                                    </div>
-                                                    <div className="mt-1 flex items-center justify-between gap-1 w-full">
-                                                        <span className="truncate text-[9px] font-semibold text-white">{card.card_name}</span>
-                                                        {card.card_condition && <ConditionBadge condition={card.card_condition} size="xs" />}
-                                                    </div>
-                                                </button>
-                                            );
+                                            const selectedPosition = draftFavoriteIds.indexOf(card.id);
+                                            return <FeaturedPickerCard key={card.id} card={card} selectedPosition={selectedPosition} onToggle={() => toggleFavorite(card.id)} />;
                                         })}
                                     </div>
                                     <div ref={pickerSentinelRef} className="flex min-h-8 items-center justify-center" aria-hidden={!pickerHasMore} />

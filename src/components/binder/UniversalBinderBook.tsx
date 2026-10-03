@@ -27,6 +27,7 @@ interface UniversalBinderBookProps {
     isMobile: boolean;
     highlightedSlotId?: string | null;
     droppingSlotId?: string | null;
+    initiallyOpened?: boolean;
     onPageChange: (page: number) => void;
     onSlotClick: (slot: BinderSlot) => void;
 }
@@ -213,21 +214,30 @@ function GenericMobileBook({ binder, slotsMap, currentPage, highlightedSlotId, d
     );
 }
 
-export const UniversalBinderBook = forwardRef<UniversalBinderNavigationHandle, UniversalBinderBookProps>(function UniversalBinderBook({ binder, slots, currentPage, entryTargetPage, isMobile, highlightedSlotId, droppingSlotId, onPageChange, onSlotClick }, ref) {
+export const UniversalBinderBook = forwardRef<UniversalBinderNavigationHandle, UniversalBinderBookProps>(function UniversalBinderBook({ binder, slots, currentPage, entryTargetPage, isMobile, highlightedSlotId, droppingSlotId, initiallyOpened = false, onPageChange, onSlotClick }, ref) {
     const settings = useContext(UserSettingsContext);
     const animationsEnabled = settings?.animationsEnabled ?? true;
     const [engineMounted, setEngineMounted] = useState(false);
     const [engineReady, setEngineReady] = useState(false);
     const [isBusy, setIsBusy] = useState(false);
-    const [hasOpened, setHasOpened] = useState(false);
+
+    const physicalForPage = useCallback((page: number) => getUniversalPhysicalForPage(page, binder.total_pages, isMobile), [binder.total_pages, isMobile]);
+    const pageForPhysical = useCallback((physical: number) => getUniversalPageForPhysical(physical, binder.total_pages, isMobile), [binder.total_pages, isMobile]);
+
+    const initialStartPhysical = useMemo(() => {
+        return initiallyOpened ? physicalForPage(entryTargetPage || 1) : 0;
+    }, [entryTargetPage, initiallyOpened, physicalForPage]);
+
+    const [hasOpened, setHasOpened] = useState(Boolean(initiallyOpened));
     const stageRef = useRef<HTMLDivElement>(null);
     const flipBookRef = useRef<any>(null);
-    const currentPhysicalRef = useRef(0);
-    const hasHandledEntryTargetRef = useRef(false);
+    const currentPhysicalRef = useRef(initialStartPhysical);
+    const hasHandledEntryTargetRef = useRef(Boolean(initiallyOpened));
     const slotPageCount = getBinderSlotPageCount(binder.total_pages);
     const trailingSlotPage = getBinderTrailingSlotPage(binder.total_pages);
     const slotsMap = useMemo(() => new Map(slots.map((slot) => [`${slot.page_number}-${slot.slot_index}`, slot])), [slots]);
     const coverTheme = useMemo(() => getCoverTheme(binder.cover_theme), [binder.cover_theme]);
+
     const pagesContextValue = useMemo(() => ({ slotsMap, highlightedSlotId, droppingSlotId, pauseTilt: isBusy, onSlotClick }), [droppingSlotId, highlightedSlotId, isBusy, onSlotClick, slotsMap]);
 
     useLayoutEffect(() => {
@@ -266,10 +276,6 @@ export const UniversalBinderBook = forwardRef<UniversalBinderNavigationHandle, U
             resetMultiFlip();
         };
     }, [resetMultiFlip]);
-
-    const physicalForPage = useCallback((page: number) => getUniversalPhysicalForPage(page, binder.total_pages, isMobile), [binder.total_pages, isMobile]);
-
-    const pageForPhysical = useCallback((physical: number) => getUniversalPageForPhysical(physical, binder.total_pages, isMobile), [binder.total_pages, isMobile]);
 
     const turnToPage = useCallback(
         (page: number) => {
@@ -338,18 +344,26 @@ export const UniversalBinderBook = forwardRef<UniversalBinderNavigationHandle, U
 
     useImperativeHandle(ref, () => ({ flipNext, flipPrev, turnToPage, isBusy: () => isBusy || multiFlipStateRef.current !== null }), [flipNext, flipPrev, isBusy, turnToPage]);
 
-    const openBinder = useCallback(() => {
-        if (isMobile || hasOpened || isBusy) return;
+    const handleCoverClick = useCallback(() => {
+        if (isMobile || isBusy) return;
         const flip = flipBookRef.current?.pageFlip();
         if (!flip) return;
-        setHasOpened(true);
-        setIsBusy(true);
-        if (animationsEnabled && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-            flip.flipNext();
-        } else {
-            flip.turnToPage(2);
+        const currentPhysical = currentPhysicalRef.current;
+        if (currentPhysical === 0 || !hasOpened) {
+            setHasOpened(true);
+            setIsBusy(true);
+            if (animationsEnabled && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+                flip.flipNext();
+            } else {
+                flip.turnToPage(2);
+            }
         }
     }, [animationsEnabled, hasOpened, isBusy, isMobile]);
+
+    const openBinder = useCallback(() => {
+        if (isMobile || hasOpened || isBusy) return;
+        handleCoverClick();
+    }, [handleCoverClick, hasOpened, isBusy, isMobile]);
 
     useEffect(() => {
         if (isMobile || !engineReady || !engineMounted || hasOpened) return;
@@ -358,19 +372,13 @@ export const UniversalBinderBook = forwardRef<UniversalBinderNavigationHandle, U
     }, [engineMounted, engineReady, hasOpened, isMobile, openBinder]);
 
     useEffect(() => {
-        if (isMobile || !hasOpened || isBusy) return;
-        const expectedPhysical = physicalForPage(currentPage);
-        if (pageForPhysical(currentPhysicalRef.current) !== pageForPhysical(expectedPhysical)) turnToPage(currentPage);
-    }, [currentPage, hasOpened, isBusy, isMobile, pageForPhysical, physicalForPage, turnToPage]);
-
-    useEffect(() => {
         if (isMobile || !hasOpened || isBusy || hasHandledEntryTargetRef.current) return;
         hasHandledEntryTargetRef.current = true;
-        if (entryTargetPage !== 1) turnToPage(entryTargetPage);
-    }, [entryTargetPage, hasOpened, isBusy, isMobile, turnToPage]);
+        if (!initiallyOpened && entryTargetPage !== 1) turnToPage(entryTargetPage);
+    }, [entryTargetPage, hasOpened, initiallyOpened, isBusy, isMobile, turnToPage]);
 
     const sheets = useMemo(() => {
-        const result: React.ReactNode[] = [<BinderCover key="front" binder={binder} onClick={openBinder} />, <InsideCover key="inside-front" binder={binder} />];
+        const result: React.ReactNode[] = [<BinderCover key="front" binder={binder} onClick={handleCoverClick} />, <InsideCover key="inside-front" binder={binder} />];
         for (let page = 1; page <= binder.total_pages; page++) {
             result.push(<CatalogPage key={`catalog-${page}`} binder={binder} pageNumber={page} />);
         }
@@ -379,7 +387,7 @@ export const UniversalBinderBook = forwardRef<UniversalBinderNavigationHandle, U
         }
         result.push(<InsideCover key="inside-back" binder={binder} />, <BinderCover key="back" binder={binder} back />);
         return result;
-    }, [binder, openBinder, trailingSlotPage]);
+    }, [binder, handleCoverClick, trailingSlotPage]);
 
     if (isMobile) {
         return (
@@ -392,7 +400,7 @@ export const UniversalBinderBook = forwardRef<UniversalBinderNavigationHandle, U
     return (
         <UniversalBinderPagesContext.Provider value={pagesContextValue}>
             <div className={`relative flex h-full min-h-0 w-full flex-col items-center ${engineReady ? "binder-stage-entrance" : "invisible"}`} style={{ "--binder-entrance-duration": "720ms", "--theme-primary": coverTheme.primaryColor, "--theme-primary-glow": coverTheme.glowColor } as CSSProperties}>
-                <div ref={stageRef} className={`binder-book-stage ${isBusy ? "binder-book-stage--busy" : ""}`}>
+                <div ref={stageRef} onClick={handleCoverClick} className={`binder-book-stage ${isBusy ? "binder-book-stage--busy" : ""}`}>
                     {engineMounted ? (
                         <HTMLFlipBook
                             ref={flipBookRef}
@@ -411,7 +419,7 @@ export const UniversalBinderBook = forwardRef<UniversalBinderNavigationHandle, U
                             disableFlipByClick={!animationsEnabled}
                             flippingTime={BINDER_FLIP_MS}
                             usePortrait={false}
-                            startPage={0}
+                            startPage={initialStartPhysical}
                             onInit={() => setEngineReady(true)}
                             onChangeState={(event) => {
                                 const stateBusy = ["flipping", "user_fold", "fold_corner"].includes(String(event.data));

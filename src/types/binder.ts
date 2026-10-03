@@ -101,7 +101,7 @@ export interface BinderSlot {
 export interface BinderDetailResponse {
     binder: Binder;
     slots: BinderSlot[];
-    otherBinders?: { id: string; name: string }[];
+    otherBinders?: Array<Pick<Binder, "id" | "name" | "description" | "grid_type" | "cover_theme" | "cover_pokemon_dex_id">>;
 }
 
 export interface DashboardSlot {

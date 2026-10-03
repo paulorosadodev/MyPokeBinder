@@ -1,0 +1,440 @@
+"use client";
+
+import { useState } from "react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useUserSettings } from "@/lib/context/UserSettingsContext";
+import { useAuth } from "@/lib/context/AuthContext";
+import { toast } from "sonner";
+import { Palette, Volume2, VolumeX, ArrowLeft, Sparkles, LogOut, User, ShieldCheck, Check, Trash2, Loader2 } from "lucide-react";
+import { PokemonThemeSelector } from "@/components/theme/PokemonThemeSelector";
+import { BIO_MAX_LENGTH, DISPLAY_NAME_MAX_LENGTH, USERNAME_MAX_LENGTH, validateBio, validateDisplayName, validateUsername } from "@/lib/profile/username";
+import { useDismissibleOverlay } from "@/lib/hooks/useDismissibleOverlay";
+import { useOverlayPresence } from "@/lib/hooks/useOverlayPresence";
+
+export interface SettingsInitialProfile {
+    id: string;
+    username: string | null;
+    display_name: string | null;
+    bio: string | null;
+    avatar_url: string | null;
+}
+
+interface SettingsClientProps {
+    initialProfile: SettingsInitialProfile | null;
+}
+
+export function SettingsClient({ initialProfile }: SettingsClientProps) {
+    const router = useRouter();
+    const { themeColor, soundEnabled, animationsEnabled, setThemeColor, setSoundEnabled, setAnimationsEnabled } = useUserSettings();
+    const { user, signOut, refreshUser } = useAuth();
+    const [avatarError, setAvatarError] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [nameDraft, setNameDraft] = useState(initialProfile?.display_name || user?.name || user?.username || "");
+    const [usernameDraft, setUsernameDraft] = useState(initialProfile?.username || user?.username || "");
+    const [bioDraft, setBioDraft] = useState(initialProfile?.bio || "");
+    const [savedBio, setSavedBio] = useState(initialProfile?.bio || "");
+    const [isSavingProfile, setIsSavingProfile] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [deleteConfirmText, setDeleteConfirmText] = useState("");
+    const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+    useDismissibleOverlay(
+        isDeleteModalOpen,
+        () => {
+            setIsDeleteModalOpen(false);
+            setDeleteConfirmText("");
+        },
+        isDeletingAccount,
+    );
+    const { isPresent: isDeleteModalPresent, state: deleteModalOverlayState } = useOverlayPresence(isDeleteModalOpen);
+
+    const profileDirty = nameDraft.trim() !== (initialProfile?.display_name || user?.name || "").trim() || usernameDraft !== (initialProfile?.username || user?.username || "") || bioDraft.trim() !== savedBio.trim();
+
+    const handleLogout = async () => {
+        setIsLoggingOut(true);
+        try {
+            await signOut();
+            toast.success("Sessão encerrada com sucesso.");
+        } catch {
+            toast.error("Erro ao encerrar sessão.");
+            setIsLoggingOut(false);
+        }
+    };
+
+    const clearLocalUserData = () => {
+        try {
+            const keys = ["mypokebinder_user_profile", "mypokebinder_theme_color", "mypokebinder_sound_enabled", "mypokebinder_animations_enabled"];
+            for (const key of keys) {
+                localStorage.removeItem(key);
+            }
+            sessionStorage.removeItem("mypokebinder_collection_filters");
+            document.cookie = "mypokebinder_theme_color=; path=/; max-age=0; SameSite=Lax";
+        } catch {}
+    };
+
+    const handleDeleteAccount = async () => {
+        if (deleteConfirmText.trim().toUpperCase() !== "EXCLUIR") {
+            toast.error("Digite EXCLUIR para confirmar.");
+            return;
+        }
+
+        setIsDeletingAccount(true);
+        try {
+            const res = await fetch("/api/account", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ confirm: "EXCLUIR" }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                toast.error(data.error || "Não foi possível excluir a conta.");
+                setIsDeletingAccount(false);
+                return;
+            }
+
+            clearLocalUserData();
+            setIsDeleteModalOpen(false);
+            toast.success("Conta excluída permanentemente.");
+            await signOut();
+        } catch {
+            toast.error("Não foi possível excluir a conta.");
+            setIsDeletingAccount(false);
+        }
+    };
+
+    const handleToggleSound = async () => {
+        const nextState = !soundEnabled;
+        await setSoundEnabled(nextState);
+        toast.success(nextState ? "Sons ativados" : "Sons desativados", {
+            description: nextState ? "Efeitos sonoros ao inserir cartas habilitados." : "Efeitos sonoros silenciados.",
+        });
+    };
+
+    const handleToggleAnimations = async () => {
+        const nextState = !animationsEnabled;
+        await setAnimationsEnabled(nextState);
+        toast.success(nextState ? "Animações ativadas" : "Animações desativadas", {
+            description: nextState ? "Efeitos 3D e folheamento de páginas habilitados." : "Efeitos 3D e folheamento de páginas desativados.",
+        });
+    };
+
+    const handleSaveProfile = async () => {
+        const validatedName = validateDisplayName(nameDraft);
+        if (!validatedName.ok) {
+            toast.error(validatedName.error);
+            return;
+        }
+
+        const validatedUsername = validateUsername(usernameDraft);
+        if (!validatedUsername.ok) {
+            toast.error(validatedUsername.error);
+            return;
+        }
+
+        const validatedBio = validateBio(bioDraft);
+        if (!validatedBio.ok) {
+            toast.error(validatedBio.error);
+            return;
+        }
+
+        if (!profileDirty) {
+            toast.message("Nenhuma alteração para salvar.");
+            return;
+        }
+
+        setIsSavingProfile(true);
+        try {
+            const body: { display_name?: string; username?: string; bio?: string } = {};
+            if (validatedName.displayName !== (initialProfile?.display_name || user?.name || "").trim()) {
+                body.display_name = validatedName.displayName;
+            }
+            if (validatedUsername.username !== (initialProfile?.username || user?.username)) {
+                body.username = validatedUsername.username;
+            }
+            if ((validatedBio.bio || "") !== savedBio.trim()) {
+                body.bio = validatedBio.bio ?? "";
+            }
+
+            const res = await fetch("/api/profile", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                toast.error(data.error || "Não foi possível salvar o perfil.");
+                return;
+            }
+            setSavedBio(validatedBio.bio ?? "");
+            setBioDraft(validatedBio.bio ?? "");
+            await refreshUser();
+            toast.success("Perfil atualizado.");
+        } catch {
+            toast.error("Não foi possível salvar o perfil.");
+        } finally {
+            setIsSavingProfile(false);
+        }
+    };
+
+    const effectiveAvatar = initialProfile?.avatar_url || user?.avatarUrl;
+    const effectiveName = nameDraft || initialProfile?.display_name || user?.name || user?.username || "Treinador";
+    const effectiveUsername = usernameDraft || initialProfile?.username || user?.username || "treinador";
+
+    return (
+        <div className="flex min-h-screen flex-col">
+            <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-5 px-4 py-5 sm:gap-6 sm:px-6 sm:py-8 pb-28 md:pb-16">
+                <div className="flex flex-col gap-3 sm:gap-4">
+                    <div>
+                        <button
+                            type="button"
+                            onMouseEnter={() => {
+                                const profilePath = effectiveUsername ? `/perfil/${effectiveUsername}` : "/perfil";
+                                router.prefetch(profilePath);
+                            }}
+                            onTouchStart={() => {
+                                const profilePath = effectiveUsername ? `/perfil/${effectiveUsername}` : "/perfil";
+                                router.prefetch(profilePath);
+                            }}
+                            onClick={() => {
+                                const profilePath = effectiveUsername ? `/perfil/${effectiveUsername}` : "/perfil";
+                                router.replace(profilePath);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-slate-300 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white"
+                        >
+                            <ArrowLeft size={16} />
+                            <span>Voltar</span>
+                        </button>
+                    </div>
+
+                    <div>
+                        <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">Configurações</h1>
+                    </div>
+                </div>
+
+                <section className="profile-enter rounded-2xl border border-white/10 bg-[#12151d]/90 p-4 shadow-xl backdrop-blur-md sm:p-6">
+                    <div className="flex flex-col gap-4 border-b border-white/10 pb-4 sm:flex-row sm:items-center sm:justify-between sm:pb-5">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-poke-blue/30 bg-poke-blue/10 text-poke-blue">
+                                <User size={18} />
+                            </div>
+                            <div>
+                                <h2 className="text-base font-bold text-white sm:text-lg">Conta</h2>
+                                <p className="text-xs text-slate-400">Nome, username e descrição</p>
+                            </div>
+                        </div>
+
+                        <button type="button" onClick={handleLogout} disabled={isLoggingOut} className="hidden items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-xs font-bold text-rose-400 transition-all hover:border-rose-500/60 hover:bg-rose-500/20 hover:text-rose-200 disabled:opacity-50 sm:inline-flex">
+                            <LogOut size={15} />
+                            <span>{isLoggingOut ? "Saindo..." : "Sair da conta"}</span>
+                        </button>
+                    </div>
+
+                    <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-8">
+                        <div className="flex shrink-0 items-center gap-3.5 lg:w-56 lg:flex-col lg:items-start">
+                            {effectiveAvatar && !avatarError ? (
+                                <Image src={effectiveAvatar} alt={effectiveName} width={64} height={64} className="h-16 w-16 rounded-full border border-white/20 bg-white/10 object-cover shadow-sm ring-1 ring-white/10" referrerPolicy="no-referrer" onError={() => setAvatarError(true)} unoptimized />
+                            ) : (
+                                <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/15 bg-white/10 text-xl font-bold text-white shadow-sm">{(effectiveName[0] || user?.email?.[0] || "P").toUpperCase()}</div>
+                            )}
+                            <div className="flex min-w-0 flex-col">
+                                <span className="truncate text-sm font-bold text-white">{effectiveName}</span>
+                                <span className="truncate font-mono text-xs text-poke-blue">@{effectiveUsername}</span>
+                                {user?.email && <span className="mt-1 truncate text-[11px] text-slate-500">{user.email}</span>}
+                                <div className="mt-1.5 flex items-center gap-1.5 text-[10px] font-medium text-emerald-400">
+                                    <ShieldCheck size={12} />
+                                    <span>Conta conectada</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="min-w-0 flex-1 space-y-4">
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <label className="flex flex-col gap-1.5">
+                                    <span className="text-xs font-semibold text-slate-300">Nome</span>
+                                    <input type="text" value={nameDraft} onChange={(e) => setNameDraft(e.target.value.slice(0, DISPLAY_NAME_MAX_LENGTH))} maxLength={DISPLAY_NAME_MAX_LENGTH} autoComplete="nickname" className="w-full rounded-xl border border-white/10 bg-black/30 px-3.5 py-2.5 text-sm font-semibold text-white outline-none transition-colors placeholder:text-slate-600 focus:border-poke-blue/50 focus:ring-1 focus:ring-poke-blue/30" placeholder="Como quer ser chamado" />
+                                </label>
+
+                                <label className="flex flex-col gap-1.5">
+                                    <span className="text-xs font-semibold text-slate-300">Username</span>
+                                    <div className="relative">
+                                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500">@</span>
+                                        <input
+                                            type="text"
+                                            value={usernameDraft}
+                                            onChange={(e) =>
+                                                setUsernameDraft(
+                                                    e.target.value
+                                                        .toLowerCase()
+                                                        .replace(/[^a-z0-9_]/g, "")
+                                                        .slice(0, USERNAME_MAX_LENGTH),
+                                                )
+                                            }
+                                            maxLength={USERNAME_MAX_LENGTH}
+                                            spellCheck={false}
+                                            autoComplete="username"
+                                            className="w-full rounded-xl border border-white/10 bg-black/30 py-2.5 pl-8 pr-3 text-sm font-semibold text-white outline-none transition-colors placeholder:text-slate-600 focus:border-poke-blue/50 focus:ring-1 focus:ring-poke-blue/30"
+                                            placeholder="seu_username"
+                                        />
+                                    </div>
+                                </label>
+                            </div>
+
+                            <label className="flex flex-col gap-1.5">
+                                <span className="text-xs font-semibold text-slate-300">Descrição</span>
+                                <textarea value={bioDraft} onChange={(e) => setBioDraft(e.target.value.slice(0, BIO_MAX_LENGTH))} maxLength={BIO_MAX_LENGTH} rows={3} className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-3.5 py-2.5 text-sm text-white outline-none transition-colors placeholder:text-slate-600 focus:border-poke-blue/50 focus:ring-1 focus:ring-poke-blue/30" placeholder="Conte um pouco sobre a sua coleção" />
+                                <span className="text-[10px] text-slate-500">
+                                    {bioDraft.trim().length}/{BIO_MAX_LENGTH}
+                                </span>
+                            </label>
+
+                            <div className="flex justify-end">
+                                <button type="button" onClick={handleSaveProfile} disabled={isSavingProfile || !profileDirty} className="inline-flex items-center justify-center gap-2 rounded-xl border border-poke-blue/40 bg-poke-blue/15 px-4 py-2.5 text-xs font-bold text-white transition-all hover:border-poke-blue/60 hover:bg-poke-blue/25 disabled:cursor-not-allowed disabled:opacity-50">
+                                    <Check size={14} />
+                                    <span>{isSavingProfile ? "Salvando..." : "Salvar alterações"}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <button type="button" onClick={handleLogout} disabled={isLoggingOut} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs font-bold text-rose-400 transition-all hover:border-rose-500/60 hover:bg-rose-500/20 hover:text-rose-200 disabled:opacity-50 sm:hidden">
+                    <LogOut size={15} />
+                    <span>{isLoggingOut ? "Saindo..." : "Sair da conta"}</span>
+                </button>
+
+                <div className="profile-enter profile-enter-d1 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <section className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#12151d]/90 px-4 py-3.5 shadow-lg backdrop-blur-md">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-poke-blue/30 bg-poke-blue/10 text-poke-blue">{soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}</div>
+                            <div className="min-w-0">
+                                <h2 className="text-sm font-bold text-white">Sons do Binder</h2>
+                                <p className="text-[11px] text-slate-400">Impacto ao inserir cartas</p>
+                            </div>
+                        </div>
+
+                        <button type="button" role="switch" aria-checked={soundEnabled} onClick={handleToggleSound} className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${soundEnabled ? "bg-poke-blue" : "bg-white/20"}`}>
+                            <span className={`inline-block h-4 w-4 rounded-full bg-white transition-transform duration-200 ${soundEnabled ? "translate-x-4" : "translate-x-0"}`} />
+                        </button>
+                    </section>
+
+                    <section className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#12151d]/90 px-4 py-3.5 shadow-lg backdrop-blur-md">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-poke-blue/30 bg-poke-blue/10 text-poke-blue">{sparklesIcon}</div>
+                            <div className="min-w-0">
+                                <h2 className="text-sm font-bold text-white">Animações e Efeitos</h2>
+                                <p className="text-[11px] text-slate-400">Cartas 3D, folheamento e partículas</p>
+                            </div>
+                        </div>
+
+                        <button type="button" role="switch" aria-checked={animationsEnabled} onClick={handleToggleAnimations} className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${animationsEnabled ? "bg-poke-blue" : "bg-white/20"}`}>
+                            <span className={`inline-block h-4 w-4 rounded-full bg-white transition-transform duration-200 ${animationsEnabled ? "translate-x-4" : "translate-x-0"}`} />
+                        </button>
+                    </section>
+                </div>
+
+                <section className="profile-enter profile-enter-d2 rounded-2xl border border-white/10 bg-[#12151d]/90 p-4 shadow-xl backdrop-blur-md sm:p-6">
+                    <div className="flex items-center gap-2.5 border-b border-white/10 pb-3.5 sm:pb-4">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-poke-blue/30 bg-poke-blue/10 text-poke-blue">
+                            <Palette size={18} />
+                        </div>
+                        <div className="min-w-0">
+                            <h2 className="text-base font-bold text-white sm:text-lg">Tema do Treinador</h2>
+                            <p className="text-xs text-slate-400">Escolha a Pokébola e a cor de destaque</p>
+                        </div>
+                    </div>
+
+                    <div className="mt-4 sm:mt-5">
+                        <PokemonThemeSelector themeColor={themeColor} onSelectColor={setThemeColor} />
+                    </div>
+                </section>
+
+                <section className="profile-enter profile-enter-d3 rounded-2xl border border-rose-500/20 bg-[#12151d]/90 p-4 shadow-xl backdrop-blur-md sm:p-6">
+                    <div className="flex items-center gap-2.5 border-b border-white/10 pb-3.5 sm:pb-4">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-400">
+                            <Trash2 size={18} />
+                        </div>
+                        <div className="min-w-0">
+                            <h2 className="text-base font-bold text-white sm:text-lg">Zona de perigo</h2>
+                            <p className="text-xs text-slate-400">Exclusão permanente da conta e de todos os dados</p>
+                        </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-col gap-3 sm:mt-5 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="max-w-xl text-xs leading-relaxed text-slate-400">Apaga perfil, coleção, binder, preferências e o vínculo de login com o Google neste app. Esta ação não pode ser desfeita.</p>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setDeleteConfirmText("");
+                                setIsDeleteModalOpen(true);
+                            }}
+                            disabled={isDeletingAccount || isLoggingOut}
+                            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/15 px-4 py-2.5 text-xs font-bold text-rose-300 transition-all hover:border-rose-500/60 hover:bg-rose-500/25 hover:text-rose-100 disabled:opacity-50"
+                        >
+                            <Trash2 size={15} />
+                            <span>Excluir conta</span>
+                        </button>
+                    </div>
+                </section>
+            </main>
+
+            {isDeleteModalPresent && (
+                <div
+                    className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-0 sm:p-4 backdrop-blur-sm"
+                    data-overlay-state={deleteModalOverlayState}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Confirmar exclusão da conta"
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget && !isDeletingAccount) {
+                            setIsDeleteModalOpen(false);
+                            setDeleteConfirmText("");
+                        }
+                    }}
+                >
+                    <div className="modal-surface flex h-dvh max-h-none w-full max-w-none flex-col gap-4 overflow-y-auto rounded-none border-0 bg-[#141722] p-6 shadow-2xl sm:h-auto sm:max-w-md sm:rounded-2xl sm:border sm:border-rose-500/30">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-500/15 text-rose-400">
+                                <Trash2 size={22} />
+                            </div>
+                            <div>
+                                <h3 className="text-base font-bold text-white">Excluir conta permanentemente?</h3>
+                                <p className="text-xs text-slate-400">Todos os seus dados serão apagados.</p>
+                            </div>
+                        </div>
+
+                        <p className="text-xs leading-relaxed text-slate-300">
+                            Isso remove seu perfil, todas as cartas da coleção e do binder, preferências e a sessão vinculada ao Google. Digite <strong className="text-white">EXCLUIR</strong> para confirmar.
+                        </p>
+
+                        <label className="flex flex-col gap-1.5">
+                            <span className="sr-only">Confirmação</span>
+                            <input type="text" value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value)} disabled={isDeletingAccount} autoComplete="off" spellCheck={false} placeholder="EXCLUIR" className="w-full rounded-xl border border-white/10 bg-black/30 px-3.5 py-2.5 text-sm font-semibold tracking-wide text-white outline-none transition-colors placeholder:text-slate-600 focus:border-rose-500/50 focus:ring-1 focus:ring-rose-500/30 disabled:opacity-50" />
+                        </label>
+
+                        <div className="mt-1 flex items-center justify-end gap-3">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsDeleteModalOpen(false);
+                                    setDeleteConfirmText("");
+                                }}
+                                disabled={isDeletingAccount}
+                                className="cursor-pointer rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-slate-300 transition-colors hover:bg-white/10 disabled:opacity-50"
+                            >
+                                Cancelar
+                            </button>
+
+                            <button type="button" onClick={handleDeleteAccount} disabled={isDeletingAccount || deleteConfirmText.trim().toUpperCase() !== "EXCLUIR"} className="flex cursor-pointer items-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-rose-600/30 transition-all hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50">
+                                {isDeletingAccount && <Loader2 size={14} className="animate-spin" />}
+                                <span>{isDeletingAccount ? "Excluindo..." : "Sim, excluir conta"}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+const sparklesIcon = <Sparkles size={16} />;

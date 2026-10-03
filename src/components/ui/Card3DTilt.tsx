@@ -20,6 +20,7 @@ interface Card3DTiltProps {
     paused?: boolean;
     onClick?: () => void;
     enableTouch?: boolean;
+    isLoading?: boolean;
 }
 
 export const CARD_3D_REST_TRANSFORM = "none";
@@ -47,10 +48,12 @@ function applyRestStyles(el: HTMLDivElement) {
     el.style.setProperty("--card-glare-angle", "135deg");
 }
 
-export function Card3DTilt({ children, className = "", glareOpacity = 0.25, maxTilt = 15, scale = 1.05, perspective = 800, transitionDuration = 500, maxMove = 0, shineMode = "none", elementTypes, paused = false, onClick, enableTouch = false }: Card3DTiltProps) {
+export function Card3DTilt({ children, className = "", glareOpacity = 0.25, maxTilt = 15, scale = 1.05, perspective = 800, transitionDuration = 500, maxMove = 0, shineMode = "none", elementTypes, paused = false, onClick, enableTouch = false, isLoading = false }: Card3DTiltProps) {
     const settings = useContext(UserSettingsContext);
     const animationsEnabled = settings ? settings.animationsEnabled : true;
-    const isTiltDisabled = paused || !animationsEnabled;
+    const isTiltDisabled = paused || isLoading || !animationsEnabled;
+    const activeShineMode = isLoading ? "none" : shineMode;
+    const activeElementTypes = isLoading ? null : elementTypes;
 
     const containerRef = useRef<HTMLDivElement>(null);
     const isTouchingRef = useRef(false);
@@ -58,7 +61,7 @@ export function Card3DTilt({ children, className = "", glareOpacity = 0.25, maxT
     const rafRef = useRef<number | null>(null);
     const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [isHovering, setIsHovering] = useState(false);
-    const effectiveGlare = resolveGlareOpacity(shineMode, glareOpacity);
+    const effectiveGlare = resolveGlareOpacity(activeShineMode, glareOpacity);
 
     const resetTilt = useCallback(() => {
         if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -236,8 +239,8 @@ export function Card3DTilt({ children, className = "", glareOpacity = 0.25, maxT
 
     const sheenClass = !isTiltDisabled && shineMode === "prismatic" ? "prismatic-sheen" : !isTiltDisabled && shineMode === "holo" ? "holo-sheen" : !isTiltDisabled && shineMode === "foil" ? "foil-sheen" : null;
     const glareClass = !isTiltDisabled && shineMode === "prismatic" ? "card-glare card-glare--prismatic" : !isTiltDisabled && shineMode === "holo" ? "card-glare card-glare--holo" : !isTiltDisabled && shineMode === "foil" ? "card-glare card-glare--foil" : !isTiltDisabled ? "card-glare card-glare--soft" : null;
-    const idleClass = !animationsEnabled ? null : shineMode === "prismatic" ? "card-idle-prismatic" : shineMode === "holo" ? "card-idle-holo" : shineMode === "foil" ? "card-idle-foil" : null;
-    const elementType = resolveCardElementTypes(elementTypes)[0];
+    const idleClass = !animationsEnabled || isLoading ? null : shineMode === "prismatic" ? "card-idle-prismatic" : shineMode === "holo" ? "card-idle-holo" : shineMode === "foil" ? "card-idle-foil" : null;
+    const elementType = resolveCardElementTypes(activeElementTypes)[0];
     const showElementPattern = !isTiltDisabled && shineMode === "foil";
     const activeHover = isHovering && !isTiltDisabled;
 

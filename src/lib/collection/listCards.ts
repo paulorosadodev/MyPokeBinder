@@ -117,7 +117,7 @@ export function parseDexQuery(term: string): number | null {
     const cleanNum = trimmed.replace(/^#\s*/, "");
     if (!cleanNum) return null;
     const parsed = parseInt(cleanNum, 10);
-    return !isNaN(parsed) && parsed >= 1 && parsed <= 151 ? parsed : null;
+    return !isNaN(parsed) && parsed >= 1 && parsed <= 1025 ? parsed : null;
 }
 
 export function matchesCardNumber(rawLocalId: string | undefined | null, term: string): boolean {
@@ -129,13 +129,26 @@ export function matchesCardNumber(rawLocalId: string | undefined | null, term: s
     if (!cleanTerm || cleanTerm.startsWith("#")) return false;
 
     let targetPart = cleanTerm;
-    if (cleanTerm.includes("/")) {
-        const parts = cleanTerm.split("/");
-        if (parts.length !== 2) return false;
-        targetPart = parts[0].trim();
-        const totalPart = parts[1].trim();
-        if (!targetPart || !totalPart) return false;
-        if (!/^\d+[a-z]?$/i.test(totalPart)) {
+    const parenMatch = cleanTerm.match(/\(([^)]+)\)/);
+    if (parenMatch) {
+        const inside = parenMatch[1].trim();
+        if (/^[a-z]{0,4}\d+[a-z]?$/.test(inside)) {
+            targetPart = inside;
+        } else {
+            return false;
+        }
+    } else if (cleanTerm.includes("/")) {
+        const slashIdx = cleanTerm.indexOf("/");
+        const left = cleanTerm.slice(0, slashIdx).trim();
+        const right = cleanTerm.slice(slashIdx + 1).trim();
+        if (!left || !right) return false;
+        const leftIsLocalId = /^[a-z]{0,4}\d+[a-z]?$/.test(left);
+        const rightIsLocalId = /^[a-z]{0,4}\d+[a-z]?$/.test(right);
+        if (leftIsLocalId && rightIsLocalId) {
+            targetPart = left;
+        } else if (!leftIsLocalId && rightIsLocalId) {
+            targetPart = right;
+        } else {
             return false;
         }
     }

@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const fullscreenModalFiles = ["../src/components/modal/CardSearchModal.tsx", "../src/components/modal/BinderSlotSelectModal.tsx", "../src/components/modal/CardAllocateModal.tsx", "../src/components/profile/TrainerProfileView.tsx", "../src/app/cards/[id]/page.tsx", "../src/app/configuracoes/page.tsx", "../src/app/binders/[id]/edit/BinderEditClient.tsx"];
+const fullscreenModalFiles = ["../src/components/modal/CardSearchModal.tsx", "../src/components/modal/BinderSlotSelectModal.tsx", "../src/components/modal/CardAllocateModal.tsx", "../src/components/profile/TrainerProfileView.tsx", "../src/app/cards/[id]/CardDetailClient.tsx", "../src/app/configuracoes/SettingsClient.tsx", "../src/app/binders/[id]/edit/BinderEditClient.tsx"];
 
 const dismissibleOverlayFiles = [
     "../src/components/modal/CardSearchModal.tsx",
@@ -11,8 +11,8 @@ const dismissibleOverlayFiles = [
     "../src/components/binder/BinderStatisticsDrawer.tsx",
     "../src/components/binder/CoverPokemonSelector.tsx",
     "../src/components/profile/TrainerProfileView.tsx",
-    "../src/app/cards/[id]/page.tsx",
-    "../src/app/configuracoes/page.tsx",
+    "../src/app/cards/[id]/CardDetailClient.tsx",
+    "../src/app/configuracoes/SettingsClient.tsx",
     "../src/app/binders/[id]/edit/BinderEditClient.tsx",
     "../src/components/ui/CardLightbox.tsx",
 ];
@@ -24,8 +24,8 @@ const animatedOverlayFiles = [
     "../src/components/binder/BinderStatisticsDrawer.tsx",
     "../src/components/binder/CoverPokemonSelector.tsx",
     "../src/components/profile/TrainerProfileView.tsx",
-    "../src/app/cards/[id]/page.tsx",
-    "../src/app/configuracoes/page.tsx",
+    "../src/app/cards/[id]/CardDetailClient.tsx",
+    "../src/app/configuracoes/SettingsClient.tsx",
     "../src/app/binders/[id]/edit/BinderEditClient.tsx",
     "../src/components/ui/CardLightbox.tsx",
 ];
@@ -80,9 +80,51 @@ describe("Modais complexos no mobile", () => {
         expect(hookSource).toContain("OVERLAY_ENTER_DURATION");
         expect(hookSource).toContain("OVERLAY_EXIT_DURATION");
         expect(hookSource).not.toContain("requestAnimationFrame");
-        expect(hookSource).toContain('setState("closing")');
+        expect(hookSource).toContain('state: "closing"');
+        expect(hookSource).toContain('state: "closed"');
         expect(styles).toContain("@keyframes modal-surface-enter");
         expect(styles).toContain("@keyframes modal-surface-exit");
+    });
+
+    it("mantém o backdrop estável e sem transição na troca entre modais encadeados", () => {
+        const hookSource = readFileSync(join(import.meta.dir, "../src/lib/hooks/useOverlayPresence.ts"), "utf8");
+        const styles = readFileSync(join(import.meta.dir, "../src/app/globals.css"), "utf8");
+
+        expect(hookSource).toContain("hasOpenSibling = false");
+        expect(hookSource).toContain("skipEnterAnimation = false");
+        expect(hookSource).toContain("current.hasOpenSibling || skipEnterAnimation");
+        expect(hookSource).toContain('state: entersWithoutAnimation ? "open" : "opening"');
+        expect(hookSource).toContain("if (resolved !== presence) setPresence(resolved)");
+        expect(styles).not.toContain("modal-surface-handoff");
+        expect(styles).not.toContain("data-overlay-handoff");
+    });
+
+    it("abre sem animação nos modais encadeados e em todos os wrappers", () => {
+        const chainedModalFiles = ["../src/components/modal/CardSearchModal.tsx", "../src/components/modal/BinderSlotSelectModal.tsx"];
+
+        chainedModalFiles.forEach((relativePath) => {
+            const source = readFileSync(join(import.meta.dir, relativePath), "utf8");
+
+            expect(source).toContain("skipEnterAnimation");
+            expect(source).toContain("useOverlayPresence(isOpen, { hasOpenSibling, skipEnterAnimation })");
+            expect(source).not.toContain("data-overlay-handoff");
+            expect(source).not.toContain("isHandoff");
+        });
+
+        const wrapperSource = readFileSync(join(import.meta.dir, "../src/components/modal/UniversalSlotModal.tsx"), "utf8");
+        expect(wrapperSource).toContain("skipEnterAnimation");
+        expect(wrapperSource).toContain("skipEnterAnimation={skipEnterAnimation}");
+    });
+
+    it("mantém o seletor já aberto ao voltar da página de detalhe da carta", () => {
+        const legacyBinderSource = readFileSync(join(import.meta.dir, "../src/components/binder/BinderClientPage.tsx"), "utf8");
+        const viewerSource = readFileSync(join(import.meta.dir, "../src/components/binder/UniversalBinderViewer.tsx"), "utf8");
+
+        expect(legacyBinderSource).toContain("useState(shouldOpenSelectOnMount)");
+        expect(legacyBinderSource).toContain("skipEnterAnimation={isRestoredSelectModal}");
+        expect(legacyBinderSource).toContain("setIsRestoredSelectModal(false)");
+        expect(viewerSource).toContain("setIsRestoredSlotModal(true)");
+        expect(viewerSource).toContain("skipEnterAnimation={isRestoredSlotModal}");
     });
 
     it("mede os sliders sem herdar a escala visual do modal", () => {

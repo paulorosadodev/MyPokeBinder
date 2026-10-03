@@ -272,9 +272,12 @@ export function useAllCollectionCards() {
     };
 }
 
-export function useCardDetails(id?: string | null) {
+export function useCardDetails(id?: string | null, fallbackData?: CardDetailsResponse) {
     const key = id ? `/api/cards/${id}` : null;
-    const { data, error, isLoading, mutate } = useSWR<CardDetailsResponse>(key, fetcher, defaultSWRConfig);
+    const { data, error, isLoading, mutate } = useSWR<CardDetailsResponse>(key, fetcher, {
+        ...defaultSWRConfig,
+        ...(fallbackData ? { fallbackData } : {}),
+    });
     return {
         card: data?.card ?? null,
         copies: data?.copies ?? [],
@@ -300,24 +303,28 @@ export function useBinders(fallbackData?: { binders: Binder[] }) {
     const { data, error, isLoading, mutate } = useSWR<{ binders: Binder[] }>("/api/binders", fetcher, {
         ...defaultSWRConfig,
         fallbackData,
-        revalidateOnMount: true,
+        revalidateOnMount: typeof fallbackData === "undefined",
     });
     return {
         binders: data?.binders ?? fallbackData?.binders ?? [],
-        isLoading: isLoading && !data,
+        isLoading: isLoading && !data && !fallbackData,
         isError: error,
         mutate,
     };
 }
 
-export function useBinder(id?: string | null) {
+export function useBinder(id?: string | null, fallbackData?: BinderDetailResponse) {
     const key = id ? `/api/binders/${id}` : null;
-    const { data, error, isLoading, mutate } = useSWR<BinderDetailResponse>(key, fetcher, defaultSWRConfig);
+    const { data, error, isLoading, mutate } = useSWR<BinderDetailResponse>(key, fetcher, {
+        ...defaultSWRConfig,
+        ...(fallbackData ? { fallbackData } : {}),
+        revalidateOnMount: typeof fallbackData === "undefined",
+    });
     return {
-        binder: data?.binder ?? null,
-        slots: data?.slots ?? [],
-        otherBinders: data?.otherBinders ?? [],
-        isLoading: isLoading && !data,
+        binder: data?.binder ?? fallbackData?.binder ?? null,
+        slots: data?.slots ?? fallbackData?.slots ?? [],
+        otherBinders: data?.otherBinders ?? fallbackData?.otherBinders ?? [],
+        isLoading: isLoading && !data && !fallbackData,
         isError: error,
         mutate,
     };

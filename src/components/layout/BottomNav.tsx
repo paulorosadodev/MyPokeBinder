@@ -3,10 +3,13 @@
 import { useState, useEffect } from "react";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Layers, LayoutDashboard } from "lucide-react";
+import { BookOpen, Layers } from "lucide-react";
+import { useAuth } from "@/lib/context/AuthContext";
+import { shouldShowNavPages } from "@/lib/layout/appShell";
 
 export function BottomNav() {
     const pathname = usePathname();
+    const { user: authUser } = useAuth();
     const [optimisticIndex, setOptimisticIndex] = useState<number | null>(null);
 
     const items = [
@@ -28,6 +31,10 @@ export function BottomNav() {
         setOptimisticIndex(null);
     }, [pathname]);
 
+    if (!shouldShowNavPages(pathname, Boolean(authUser))) {
+        return null;
+    }
+
     const activeIndex = optimisticIndex !== null ? optimisticIndex : items.findIndex((item) => item.isActive);
 
     return (
@@ -47,7 +54,7 @@ export function BottomNav() {
                         const Icon = item.icon;
                         const isHighlighted = activeIndex === index;
                         return (
-                            <NextLink key={item.href} href={item.href} onClick={() => setOptimisticIndex(index)} aria-current={isHighlighted ? "page" : undefined} className={`relative z-10 flex min-h-[46px] flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1 px-2 transition-all duration-200 select-none active:scale-95 ${isHighlighted ? "text-white font-bold" : "text-slate-400 hover:text-slate-200"}`}>
+                            <NextLink key={item.href} href={item.href} prefetch={true} onClick={() => setOptimisticIndex(index)} aria-current={isHighlighted ? "page" : undefined} className={`relative z-10 flex min-h-[46px] flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1 px-2 transition-all duration-200 select-none active:scale-95 ${isHighlighted ? "text-white font-bold" : "text-slate-400 hover:text-slate-200"}`}>
                                 <Icon size={18} className={`transition-transform duration-200 ${isHighlighted ? "scale-105 text-[var(--theme-primary)] drop-shadow-sm" : "text-slate-400"}`} />
                                 <span className={`text-[11px] tracking-tight transition-colors duration-200 ${isHighlighted ? "font-bold text-white" : "font-medium text-slate-400"}`}>{item.label}</span>
                             </NextLink>

@@ -105,7 +105,7 @@ describe("Acabamento da capa", () => {
     it("atualiza a estante no cache antes de retornar à navegação do binder", () => {
         const editSource = readFileSync(join(import.meta.dir, "../src/app/binders/[id]/edit/BinderEditClient.tsx"), "utf8");
 
-        expect(editSource).toContain('await mutateCache("/api/binders");');
-        expect(editSource.indexOf('await mutateCache("/api/binders");')).toBeLessThan(editSource.indexOf("router.push(`/binders/${binder.id}`)"));
+        expect(editSource).toContain('void mutateCache("/api/binders");');
+        expect(editSource.indexOf('void mutateCache("/api/binders");')).toBeLessThan(editSource.indexOf('router.push(isFromShelf ? "/" : `/binders/${binder.id}?opened=1`)'));
     });
 });

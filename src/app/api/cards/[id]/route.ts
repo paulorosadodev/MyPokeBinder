@@ -5,6 +5,7 @@ import { isCardCondition } from "@/lib/pokemon/condition";
 import { revalidatePublicProfileForUserId } from "@/lib/profile/publicCache";
 import { formatTcgdexImageUrl, hasCardImage } from "@/lib/pokemon/tcgdex";
 import { resolveCardImageFallback } from "@/lib/pokemon/imageFallback";
+import { getCardDetailData } from "@/lib/cards/getCardDetail";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -21,59 +22,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     }
     const { user, supabase } = auth;
 
-    const { data: card, error } = await supabase.from("user_cards").select("*").eq("id", id).eq("user_id", user.id).maybeSingle();
-
-    if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    if (!card) {
+    const data = await getCardDetailData(supabase, user.id, id);
+    if (!data) {
         return NextResponse.json({ error: "Carta não encontrada" }, { status: 404 });
     }
 
-    if (!hasCardImage(card.card_image_url)) {
-        const fallbackImage = await resolveCardImageFallback(card.tcgdex_card_id);
-        if (fallbackImage) {
-            const formattedImage = formatTcgdexImageUrl(fallbackImage);
-            card.card_image_url = formattedImage;
-            await supabase.from("user_cards").update({ card_image_url: formattedImage }).eq("id", card.id);
-            await revalidatePublicProfileForUserId(supabase, user.id);
-        }
-    }
-
-    const cardVariant = isCardVariant(card.card_variant) ? card.card_variant : "normal";
-    const cardCondition = isCardCondition(card.card_condition) ? card.card_condition : "NM";
-
-    const copiesQuery = supabase.from("user_cards").select("*").eq("user_id", user.id).eq("tcgdex_card_id", card.tcgdex_card_id).eq("card_language", card.card_language).eq("card_variant", cardVariant).eq("card_condition", cardCondition).order("created_at", { ascending: true });
-    const allocationQuery = supabase.from("binder_slots").select("id, binder_id, page_number, slot_index, binders (id, name, grid_type)").eq("user_card_id", id).maybeSingle();
-
-    const [{ data: copies, error: copiesError }, { data: slotAllocation, error: allocationError }] = await Promise.all([copiesQuery, allocationQuery]);
-
-    if (copiesError) {
-        return NextResponse.json({ error: copiesError.message }, { status: 500 });
-    }
-
-    if (allocationError) {
-        return NextResponse.json({ error: allocationError.message }, { status: 500 });
-    }
-
-    const allocation = slotAllocation
-        ? {
-              slot_id: slotAllocation.id,
-              binder_id: slotAllocation.binder_id,
-              page_number: slotAllocation.page_number,
-              slot_index: slotAllocation.slot_index,
-              binder_name: (slotAllocation.binders as any)?.name || "Binder",
-              binder_grid: (slotAllocation.binders as any)?.grid_type || "3x3",
-          }
-        : null;
-
-    return NextResponse.json({
-        card,
-        copies: copies ?? [card],
-        availableVariants: ALL_CARD_VARIANTS,
-        allocation,
-    });
+    return NextResponse.json(data);
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {

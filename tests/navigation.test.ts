@@ -195,4 +195,30 @@ describe("Navigation and BottomNav Route Logic", () => {
         expect(inactiveProfileClass).toContain("border-transparent");
         expect(activeProfileClass).toContain("border-[var(--theme-primary)]/30");
     });
+
+    it("should suppress nav pages when unauthenticated user views someone profile or collection", () => {
+        const shouldRenderPages = (pathname: string, isAuthenticated: boolean) => {
+            if (!isAuthenticated) return false;
+            return true;
+        };
+
+        expect(shouldRenderPages("/perfil/ash", false)).toBe(false);
+        expect(shouldRenderPages("/colecao/ash", false)).toBe(false);
+        expect(shouldRenderPages("/perfil/ash", true)).toBe(true);
+        expect(shouldRenderPages("/colecao/ash", true)).toBe(true);
+    });
+
+    it("should show login button on opposite side of logo when unauthenticated user views shared profile or collection", () => {
+        const shouldShowGuestLoginButton = (pathname: string, isAuthenticated: boolean) => {
+            const isShared = pathname.startsWith("/perfil/") || pathname.startsWith("/colecao/");
+            return !isAuthenticated && isShared;
+        };
+
+        expect(shouldShowGuestLoginButton("/perfil/ash", false)).toBe(true);
+        expect(shouldShowGuestLoginButton("/colecao/ash", false)).toBe(true);
+        expect(shouldShowGuestLoginButton("/perfil/ash", true)).toBe(false);
+        expect(shouldShowGuestLoginButton("/colecao/ash", true)).toBe(false);
+        expect(shouldShowGuestLoginButton("/login", false)).toBe(false);
+        expect(shouldShowGuestLoginButton("/collection", false)).toBe(false);
+    });
 });

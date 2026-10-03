@@ -8,3 +8,5 @@ skills-lock.json
 public
 .scratch
 docs
+.next-*
+*.pack.gz

@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-import { chromium, type Browser, type Page } from "playwright";
+import { chromium, type Browser, type Locator, type Page } from "playwright";
 import postcss from "postcss";
 import tailwind from "@tailwindcss/postcss";
-import { cards } from "./fixtures/cards";
+import { cards, catalogCards, createAddedCard } from "./fixtures/cards";
 
 let browser: Browser;
 let server: ReturnType<typeof Bun.serve>;
@@ -51,12 +51,26 @@ beforeAll(async () => {
             if (pathname === "/app.css") return new Response(css.css, { headers: { "Content-Type": "text/css" } });
             if (pathname === "/pokemon-card-back.png") return new Response(Bun.file("public/pokemon-card-back.png"), { headers: { "Content-Type": "image/png" } });
             if (/^\/pokemon\/gen1\/\d+\.png$/.test(pathname)) return new Response(Bun.file(`public${pathname}`));
+            if (pathname === "/api/search") {
+                const term = (new URL(request.url).searchParams.get("name") ?? "").toLowerCase();
+                const results = term.includes("charm") ? [catalogCards[2]] : catalogCards;
+                return Response.json({ cards: results, hasMore: false, totalCount: results.length });
+            }
+            if (pathname === "/api/cards/ownership") {
+                const ids = (new URL(request.url).searchParams.get("ids") ?? "").split(",").filter(Boolean);
+                const counts = ids.includes("catalogo-3") ? { "catalogo-3_pt-br_normal_NM": 2, "catalogo-3_en_normal_NM": 3 } : {};
+                return Response.json({ counts });
+            }
+            if (pathname === "/api/cards" && request.method === "POST") return Response.json({ card: createAddedCard(await request.json()) });
+            if (pathname === "/api/binders") {
+                return Response.json({ binders: [{ id: "teste", user_id: "teste", name: "Kanto 151 Original", description: "", grid_type: "3x3", total_pages: 1, cover_theme: "red", cover_pokemon_dex_id: 94, is_public: false, is_featured: false, total_cards: 89, total_slots: 160, created_at: "", updated_at: "" }] });
+            }
             if (pathname.startsWith("/api/")) return Response.json({ cards, availableCounts: {} });
             return new Response('<html><head><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/app.css"></head><body><div id="root"></div><script>window.process={env:{}}</script><script type="module" src="/app.js"></script></body></html>', { headers: { "Content-Type": "text/html" } });
         },
     });
-    browser = await chromium.launch({ headless: true });
-}, 30000);
+    browser = await chromium.launch({ headless: true, args: ["--no-sandbox", "--disable-setuid-sandbox"] });
+}, 60000);
 
 afterAll(async () => {
     await browser?.close();
@@ -84,6 +98,16 @@ async function activePages(page: Page) {
     );
 }
 
+async function waitForOpacity(page: Page, locator: Locator, expected = 0.6, timeout = 3000) {
+    const startedAt = Date.now();
+    let opacity = Number(await locator.evaluate((element) => getComputedStyle(element).opacity));
+    while (opacity !== expected && Date.now() - startedAt < timeout) {
+        await page.waitForTimeout(50);
+        opacity = Number(await locator.evaluate((element) => getComputedStyle(element).opacity));
+    }
+    return opacity;
+}
+
 async function recordMobileTransition(page: Page) {
     await page.locator(".binder-mobile").evaluate((mobile) => {
         const frames: { phase: string | null; ids: string[]; images: (string | null)[] }[] = [];
@@ -101,102 +125,127 @@ async function transitionFrames(page: Page): Promise<{ phase: string; ids: strin
     return JSON.parse((await page.locator(".binder-mobile").getAttribute("data-test-frames")) ?? "[]");
 }
 
+type OverlayProbeFrame = { count: number; opacity: number; animations: string[] };
+
+async function recordOverlayPresence(page: Page, durationMs = 900) {
+    await page.evaluate((duration) => {
+        const frames: OverlayProbeFrame[] = [];
+        Object.assign(window, { overlayProbe: frames });
+        const sample = () => {
+            const backdrops = [...document.querySelectorAll<HTMLElement>(".modal-backdrop")];
+            frames.push({
+                count: backdrops.length,
+                opacity: backdrops.length ? Math.min(...backdrops.map((element) => Number(getComputedStyle(element).opacity))) : 0,
+                animations: backdrops.flatMap((element) => [getComputedStyle(element).animationName, ...[...element.querySelectorAll<HTMLElement>(".modal-surface, .drawer-surface")].map((surface) => getComputedStyle(surface).animationName)]),
+            });
+        };
+        sample();
+        const timer = window.setInterval(sample, 16);
+        window.setTimeout(() => window.clearInterval(timer), duration);
+    }, durationMs);
+}
+
+async function readOverlayPresence(page: Page): Promise<OverlayProbeFrame[]> {
+    return page.evaluate(() => (window as typeof window & { overlayProbe?: OverlayProbeFrame[] }).overlayProbe ?? []);
+}
+
 describe("Animação real do binder no navegador", () => {
-    it("abre a prévia da estante com o PageFlip depois de ampliar o binder sem mudar sua posição", async () => {
+    it("mantém a capa presente desde o primeiro frame ao entrar e voltar para a Estante", async () => {
+        const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+        try {
+            await page.addInitScript(() => {
+                const mounts: { animatedOnMount: boolean; coverOnMount: boolean; rawEngineHiddenOnMount: boolean }[] = [];
+                Object.assign(window, { shelfMounts: mounts });
+                const inspect = (node: Node) => {
+                    if (!(node instanceof Element)) return;
+                    const cards = node.matches('[aria-label^="Abrir Binder"]') ? [node] : [...node.querySelectorAll('[aria-label^="Abrir Binder"]')];
+                    for (const card of cards) {
+                        mounts.push({
+                            animatedOnMount: card.classList.contains("card-list-appear"),
+                            coverOnMount: Boolean(card.querySelector("[data-shelf-cover-fallback]")),
+                            rawEngineHiddenOnMount: getComputedStyle(card.querySelector(".binder-shelf-engine")!).visibility === "hidden",
+                        });
+                    }
+                };
+                const observer = new MutationObserver((records) => {
+                    for (const record of records) {
+                        for (const node of record.addedNodes) inspect(node);
+                    }
+                });
+                const start = () => observer.observe(document.documentElement, { childList: true, subtree: true });
+                if (document.documentElement) start();
+                else document.addEventListener("DOMContentLoaded", start, { once: true });
+            });
+
+            await page.goto(new URL("?shelfLifecycle", server.url).toString(), { waitUntil: "domcontentloaded" });
+            await page.locator('[aria-label="Abrir Binder Kanto 151 Original"]').waitFor({ state: "visible" });
+            await page.waitForFunction(() => document.querySelector(".binder-shelf-stage .stf__item"));
+            expect(await page.locator("[data-shelf-cover-fallback]").count()).toBe(1);
+
+            await page.locator("#leave-shelf").click();
+            await page.locator("#other-page").waitFor({ state: "visible" });
+            await page.locator("#return-shelf").click();
+            await page.locator('[aria-label="Abrir Binder Kanto 151 Original"]').waitFor({ state: "visible" });
+            await page.waitForFunction(() => document.querySelector(".binder-shelf-stage .stf__item"));
+
+            const mounts = await page.evaluate(() => (window as typeof window & { shelfMounts: { animatedOnMount: boolean; coverOnMount: boolean; rawEngineHiddenOnMount: boolean }[] }).shelfMounts);
+            expect(mounts).toHaveLength(2);
+            expect(mounts).toEqual([
+                { animatedOnMount: true, coverOnMount: true, rawEngineHiddenOnMount: true },
+                { animatedOnMount: true, coverOnMount: true, rawEngineHiddenOnMount: true },
+            ]);
+            expect(await page.locator("[data-shelf-cover-fallback]").count()).toBe(1);
+        } finally {
+            await page.close();
+        }
+    }, 20000);
+
+    it("revela a prévia da estante com a capa entreaberta sem ampliar o binder nem virar a página inteira", async () => {
         const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
         try {
             await page.goto(new URL("?shelf", server.url).toString(), { waitUntil: "domcontentloaded" });
             const card = page.locator("#shelf-card");
             const stage = card.locator(".binder-shelf-stage");
             await stage.waitFor({ state: "visible" });
-            await page.waitForFunction(() => document.querySelector(".binder-shelf-stage")?.querySelector(".stf__item"));
-            await stage.evaluate((element) => {
-                const frames: { state: string | null; insideLeft: number }[] = [];
-                let started = false;
-                const sample = () => {
-                    const state = element.getAttribute("data-shelf-state");
-                    if (state === "flipping") started = true;
-                    if (started) {
-                        const inside = element.querySelectorAll(".binder-book-page")[1]?.closest(".stf__item");
-                        const insideRect = inside?.getBoundingClientRect();
-                        frames.push({
-                            state,
-                            insideLeft: insideRect?.left ?? 0,
-                        });
-                    }
-                    if (!started || state !== "read") {
-                        requestAnimationFrame(sample);
-                        return;
-                    }
-                    element.setAttribute("data-test-flip-frames", JSON.stringify(frames));
-                };
-                requestAnimationFrame(sample);
-                element.addEventListener("transitionend", (event) => {
-                    if (event.propertyName === "transform" && !element.getAttribute("data-test-scale-ended-at")) {
-                        element.setAttribute("data-test-scale-ended-at", String(performance.now()));
-                    }
-                });
-                new MutationObserver(() => {
-                    if (element.getAttribute("data-shelf-state") === "flipping" && !element.getAttribute("data-test-flip-started-at")) {
-                        element.setAttribute("data-test-flip-started-at", String(performance.now()));
-                    }
-                }).observe(element, { attributes: true, attributeFilter: ["data-shelf-state"] });
+            const cover = stage.locator(".binder-shelf-cover");
+            await cover.waitFor({ state: "visible" });
+
+            const initialScale = await stage.evaluate((element) => {
+                const matrix = new DOMMatrixReadOnly(getComputedStyle(element).transform);
+                return Math.hypot(matrix.a, matrix.b);
             });
-            const stageCenterX = await stage.evaluate((element) => {
-                const rect = element.getBoundingClientRect();
-                return rect.left + rect.width / 2;
-            });
-            const closedPageWidth = await stage.locator(".binder-cover-front").evaluate((element) => element.getBoundingClientRect().width);
-            const restingCenterX = await stage.locator(".binder-cover-front").evaluate((element) => {
-                const rect = element.getBoundingClientRect();
-                return rect.left + rect.width / 2;
-            });
-            expect(Math.abs(restingCenterX - stageCenterX)).toBeLessThan(2);
+            expect(initialScale).toBe(1);
 
             await card.hover();
-            await page.waitForTimeout(180);
-            expect(await stage.getAttribute("data-shelf-page")).toBe("0");
-            expect(await card.evaluate((element) => getComputedStyle(element).zIndex)).toBe("60");
-            const engineClosedCenterX = await stage.locator(".binder-cover-front").evaluate((element) => {
-                const rect = element.getBoundingClientRect();
-                return rect.left + rect.width / 2;
-            });
-            expect(Math.abs(engineClosedCenterX - restingCenterX)).toBeLessThan(2);
+            await page.waitForTimeout(150);
 
-            await page.waitForFunction(() => document.querySelector(".binder-shelf-stage")?.getAttribute("data-shelf-state") === "flipping");
-            await page.waitForFunction(() => document.querySelector(".binder-shelf-stage")?.getAttribute("data-test-scale-ended-at"));
-            const transitionTiming = await stage.evaluate((element) => ({
-                scaleEndedAt: Number(element.getAttribute("data-test-scale-ended-at")),
-                flipStartedAt: Number(element.getAttribute("data-test-flip-started-at")),
-            }));
-            expect(transitionTiming.flipStartedAt).toBeGreaterThanOrEqual(transitionTiming.scaleEndedAt);
-            await page.waitForFunction(() => document.querySelector(".binder-shelf-stage")?.getAttribute("data-shelf-page") !== "0" && document.querySelector(".binder-shelf-stage")?.getAttribute("data-shelf-state") === "read");
-            const flipFrames = JSON.parse((await stage.getAttribute("data-test-flip-frames")) ?? "[]") as { state: string; insideLeft: number }[];
-            const settledFrame = flipFrames.at(-1)!;
-            const lastTurningFrame = flipFrames.findLast((frame) => frame.state === "flipping")!;
-            expect(Math.abs(lastTurningFrame.insideLeft - settledFrame.insideLeft)).toBeLessThan(4);
+            const hoveredScale = await stage.evaluate((element) => {
+                const matrix = new DOMMatrixReadOnly(getComputedStyle(element).transform);
+                return Math.hypot(matrix.a, matrix.b);
+            });
+            expect(hoveredScale).toBe(1);
 
-            const openGeometry = await stage.locator(".stf__item").evaluateAll((items) => {
-                const rects = items.filter((item) => getComputedStyle(item).display !== "none").map((item) => item.getBoundingClientRect());
-                return { widths: rects.map((rect) => rect.width) };
+            await page.waitForFunction(() => {
+                const coverEl = document.querySelector(".binder-shelf-cover");
+                if (!coverEl) return false;
+                const transform = getComputedStyle(coverEl).transform;
+                return transform !== "none" && transform !== "matrix(1, 0, 0, 1, 0, 0)";
             });
-            expect(openGeometry.widths.length).toBeGreaterThanOrEqual(2);
-            expect(Math.min(...openGeometry.widths)).toBeGreaterThan(closedPageWidth);
-            const catalogCenterX = await stage.getByText("Página 1").evaluate((element) => {
-                const rect = element.closest(".stf__item")!.getBoundingClientRect();
-                return rect.left + rect.width / 2;
-            });
-            expect(Math.abs(catalogCenterX - restingCenterX)).toBeLessThan(2);
+
             expect(await stage.getByText("Página 1").isVisible()).toBe(true);
 
             await page.mouse.move(1200, 820);
-            await page.waitForFunction(() => document.querySelector(".binder-shelf-stage")?.getAttribute("data-shelf-state") === "flipping");
-            expect(await card.evaluate((element) => getComputedStyle(element).zIndex)).toBe("60");
-            await page.waitForFunction(() => document.querySelector(".binder-shelf-stage")?.getAttribute("data-shelf-page") === "0" && document.querySelector(".binder-shelf-stage")?.getAttribute("data-shelf-state") === "read");
+            await page.waitForTimeout(300);
+
+            const resetScale = await stage.evaluate((element) => {
+                const matrix = new DOMMatrixReadOnly(getComputedStyle(element).transform);
+                return Math.hypot(matrix.a, matrix.b);
+            });
+            expect(resetScale).toBe(1);
         } finally {
             await page.close();
         }
-    }, 10000);
+    }, 15000);
 
     it("mantém a entrada do modal estável e alinha os sliders durante todo o ciclo", async () => {
         const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
@@ -262,6 +311,89 @@ describe("Animação real do binder no navegador", () => {
             await page.close();
         }
     }, 10000);
+
+    it("mantém o catálogo aberto após cada carta adicionada e agrupa cópias idênticas", async () => {
+        const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+        try {
+            await page.goto(new URL("?cardSearch", server.url).toString(), { waitUntil: "domcontentloaded" });
+            await page.locator("#open-card-search").click();
+
+            const modal = page.getByRole("dialog", { name: "Buscar carta" });
+            await modal.waitFor({ state: "visible" });
+            await modal.locator("input[aria-placeholder]").fill("bulba");
+            await modal
+                .getByRole("button", { name: /^Adicionar Bulbasaur \(PT-BR · Normal · NM\) à Coleção$/ })
+                .first()
+                .waitFor({ state: "visible" });
+            await modal
+                .getByRole("button", { name: /^Adicionar Bulbasaur \(PT-BR · Normal · NM\) à Coleção$/ })
+                .first()
+                .click();
+            await modal
+                .getByRole("button", { name: /Adicionar mais 1 cópia de Bulbasaur/ })
+                .first()
+                .waitFor({ state: "visible" });
+            expect(await modal.getAttribute("data-overlay-state")).toBe("open");
+            await modal.getByText("1 adicionada").waitFor({ state: "visible" });
+            await modal
+                .getByRole("button", { name: /Adicionar mais 1 cópia de Bulbasaur/ })
+                .first()
+                .click();
+            await modal.getByText("2 adicionadas").waitFor({ state: "visible" });
+            expect(await modal.getByRole("button", { name: /Adicionar mais 1 cópia de Bulbasaur/ }).count()).toBe(1);
+            await modal.getByRole("button", { name: /^Adicionar Bulbasaur Holo \(PT-BR · Normal · NM\) à Coleção$/ }).click();
+            await modal.getByText("3 adicionadas").waitFor({ state: "visible" });
+            expect(await modal.getByRole("button", { name: /Adicionar mais 1 cópia de Bulbasaur/ }).count()).toBe(2);
+            expect(await modal.getAttribute("data-overlay-state")).toBe("open");
+
+            const addedIds = await page.locator("#added-cards").textContent();
+            expect(addedIds?.split(",")).toEqual(["carta-adicionada-catalogo-1-pt-br-normal-NM", "carta-adicionada-catalogo-1-pt-br-normal-NM", "carta-adicionada-catalogo-2-pt-br-normal-NM"]);
+        } finally {
+            await page.close();
+        }
+    }, 20000);
+
+    it("esmaece as cartas que ainda não constam na Coleção e troca a quantidade conforme idioma e estado", async () => {
+        const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+        try {
+            await page.goto(new URL("?cardSearch", server.url).toString(), { waitUntil: "domcontentloaded" });
+            await page.locator("#open-card-search").click();
+
+            const modal = page.getByRole("dialog", { name: "Buscar carta" });
+            await modal.waitFor({ state: "visible" });
+            await modal.locator("input[aria-placeholder]").fill("bulba");
+
+            const missingArtwork = modal.locator('[data-missing="true"]');
+            await missingArtwork.first().waitFor({ state: "attached" });
+            await modal.locator('[data-owned-count="matching"]').waitFor({ state: "visible" });
+            expect(await missingArtwork.count()).toBe(2);
+            expect(await missingArtwork.first().evaluate((element) => getComputedStyle(element).opacity)).toBe("0.6");
+            expect(await missingArtwork.first().evaluate((element) => getComputedStyle(element).filter)).toContain("saturate");
+
+            await modal.locator("input[aria-placeholder]").fill("charm");
+
+            await missingArtwork.first().waitFor({ state: "detached" });
+            expect(await modal.locator("[data-owned-count]").count()).toBe(1);
+
+            const badge = modal.locator('[data-owned-count="matching"]');
+            await badge.waitFor({ state: "visible" });
+            expect(await badge.textContent()).toBe("x2");
+            expect(await modal.getByRole("button", { name: /Adicionar mais 1 cópia de Charmander \(PT-BR · Normal · NM\).*você já tem 2 exemplares/ }).count()).toBe(1);
+
+            await modal.getByRole("radio", { name: "EN", exact: true }).click();
+            await modal.locator('[data-owned-count="matching"]').filter({ hasText: "x3" }).waitFor({ state: "visible" });
+
+            await modal.getByRole("radio", { name: /^Mint$/ }).click();
+            await modal.locator('[data-owned-count="matching"]').waitFor({ state: "detached" });
+            expect(await modal.locator("[data-owned-count]").count()).toBe(0);
+            const fadedArtwork = modal.locator('[data-missing="true"]');
+            await fadedArtwork.waitFor({ state: "attached" });
+            expect(await waitForOpacity(page, fadedArtwork)).toBe(0.6);
+            expect(await modal.getByRole("button", { name: /^Adicionar Charmander \([^)]*\) à Coleção$/ }).count()).toBe(1);
+        } finally {
+            await page.close();
+        }
+    }, 20000);
 
     it("mantém o loading mobile visível e revela o binder com uma entrada própria", async () => {
         const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
@@ -438,54 +570,111 @@ describe("Animação real do binder no navegador", () => {
         }
     }, 20000);
 
-    it("mantém a prévia do spread ao mover o cursor entre botões vizinhos", async () => {
+    it("mantém um overlay presente ao alternar entre seletor de slot e catálogo", async () => {
         const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
         try {
             await page.goto(new URL("?universal&universalViewer", server.url).toString());
-            const selector = page.getByRole("navigation", { name: "Navegação rápida de páginas" });
-            const pageOne = selector.locator("button").nth(0);
-            const pageTwo = selector.locator("button").nth(1);
-            const pageThree = selector.locator("button").nth(2);
-            await pageTwo.hover();
-            await selector.evaluate((element) => {
-                const pageOneButton = element.querySelectorAll("button")[0];
-                let mutations = 0;
-                const observer = new MutationObserver((entries) => {
-                    mutations += entries.filter((entry) => entry.target === pageOneButton && entry.attributeName === "class").length;
-                });
-                observer.observe(element, { attributes: true, attributeFilter: ["class"], subtree: true });
-                element.setAttribute("data-page-one-hover-mutations", String(mutations));
-                window.setTimeout(() => {
-                    observer.disconnect();
-                    element.setAttribute("data-page-one-hover-mutations", String(mutations));
-                }, 250);
-            });
-            const pageTwoBox = await pageTwo.boundingBox();
-            const pageThreeBox = await pageThree.boundingBox();
-            if (!pageTwoBox || !pageThreeBox) throw new Error("Botões de página não renderizados");
-            await page.mouse.move((pageTwoBox.x + pageTwoBox.width + pageThreeBox.x) / 2, pageTwoBox.y + pageTwoBox.height / 2);
-            await page.waitForTimeout(30);
-            await pageThree.hover();
-            await page.waitForTimeout(300);
-            expect(await selector.getAttribute("data-page-one-hover-mutations")).toBe("0");
+            await page.locator(".binder-book-stage").waitFor({ state: "visible" });
+            await page.locator("#binder-slot-slot-2").click();
+
+            const slotModal = page.getByRole("dialog", { name: /^Selecionar carta para/ });
+            await slotModal.waitFor({ state: "visible" });
+            await page.waitForFunction(() => document.querySelector('[data-overlay-state="open"]'));
+
+            await recordOverlayPresence(page);
+            await slotModal
+                .getByRole("button", { name: /^(Adicionar Carta|Buscar no catálogo)$/ })
+                .first()
+                .click();
+            const catalogModal = page.getByRole("dialog", { name: "Buscar carta" });
+            await catalogModal.waitFor({ state: "visible" });
+            await page.waitForTimeout(950);
+            const toCatalog = await readOverlayPresence(page);
+
+            await recordOverlayPresence(page);
+            await catalogModal.getByRole("button", { name: "Voltar ao seletor do binder" }).click();
+            await slotModal.waitFor({ state: "visible" });
+            await page.waitForTimeout(950);
+            const toSlotModal = await readOverlayPresence(page);
+
+            for (const frames of [toCatalog, toSlotModal]) {
+                expect(frames.length).toBeGreaterThan(10);
+                expect(Math.min(...frames.map((frame) => frame.count))).toBe(1);
+                expect(Math.min(...frames.map((frame) => frame.opacity))).toBe(1);
+                expect(frames.flatMap((frame) => frame.animations).filter((name) => name !== "none")).toEqual([]);
+            }
         } finally {
             await page.close();
         }
-    }, 10000);
+    }, 25000);
 
-    it("faz a troca de brilho do seletor sem alterar a geometria dos botões", async () => {
+    it("exibe o seletor de slot já aberto ao voltar da página de detalhe da carta", async () => {
         const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
         try {
-            await page.goto(new URL("?universal&universalViewer", server.url).toString());
-            const selector = page.getByRole("navigation", { name: "Navegação rápida de páginas" });
-            const styles = await selector.locator("button").evaluateAll((buttons) =>
-                buttons.map((button) => {
-                    const style = getComputedStyle(button);
-                    return { borderWidth: style.borderTopWidth, transitionProperty: style.transitionProperty };
-                }),
-            );
-            expect(styles.every((style) => style.borderWidth === "1px")).toBe(true);
-            expect(styles.every((style) => style.transitionProperty === "all" || style.transitionProperty.includes("box-shadow"))).toBe(true);
+            await page.addInitScript(() => {
+                const states: string[] = [];
+                const animations: string[] = [];
+                Object.assign(window, { entryProbe: { states, animations } });
+                const sample = () => {
+                    const dialog = document.querySelector<HTMLElement>('[aria-label^="Selecionar carta para"]');
+                    if (dialog) {
+                        const state = dialog.getAttribute("data-overlay-state") ?? "";
+                        if (states.at(-1) !== state) states.push(state);
+                        const surface = dialog.querySelector<HTMLElement>(".modal-surface");
+                        if (surface) animations.push(getComputedStyle(surface).animationName, getComputedStyle(dialog).animationName);
+                    }
+                    requestAnimationFrame(sample);
+                };
+                requestAnimationFrame(sample);
+            });
+
+            await page.goto(new URL("?dexId=150&openSelect=true", server.url).toString());
+            const slotModal = page.getByRole("dialog", { name: /^Selecionar carta para/ });
+            await slotModal.waitFor({ state: "visible" });
+            await page.waitForTimeout(300);
+
+            const probe = await page.evaluate(() => (window as typeof window & { entryProbe: { states: string[]; animations: string[] } }).entryProbe);
+            expect(probe.states.length).toBeGreaterThan(0);
+            expect(probe.states).not.toContain("opening");
+            expect(probe.animations.filter((name) => name !== "none")).toEqual([]);
+            expect(await slotModal.getAttribute("data-overlay-state")).toBe("open");
+        } finally {
+            await page.close();
+        }
+    }, 20000);
+
+    it("navega diretamente para a primeira e última página através dos atalhos laterais", async () => {
+        const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+        try {
+            await page.goto(new URL("?universal&universalViewer&opened=1", server.url).toString());
+            await waitForPage(page, 1);
+            const goToLastButton = page.getByRole("button", { name: "Ir para a última página" });
+            const goToFirstButton = page.getByRole("button", { name: "Ir para a primeira página" });
+            expect(await goToFirstButton.isDisabled()).toBe(true);
+            expect(await goToLastButton.isDisabled()).toBe(false);
+            await goToLastButton.click();
+            await waitForPage(page, 4);
+            expect(await goToLastButton.isDisabled()).toBe(true);
+            expect(await goToFirstButton.isDisabled()).toBe(false);
+            await goToFirstButton.click();
+            await waitForPage(page, 1);
+            expect(await goToFirstButton.isDisabled()).toBe(true);
+        } finally {
+            await page.close();
+        }
+    }, 15000);
+
+    it("mantém a geometria e consistência de bordas dos botões de navegação lateral", async () => {
+        const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+        try {
+            await page.goto(new URL("?universal&universalViewer&opened=1", server.url).toString());
+            const navButtons = [page.getByRole("button", { name: "Ir para a primeira página" }), page.getByRole("button", { name: "Página anterior" }), page.getByRole("button", { name: "Próxima página" }), page.getByRole("button", { name: "Ir para a última página" })];
+            for (const button of navButtons) {
+                const box = await button.boundingBox();
+                expect(box).not.toBeNull();
+                expect(box!.width).toBeGreaterThanOrEqual(36);
+                expect(box!.height).toBeGreaterThanOrEqual(36);
+            }
         } finally {
             await page.close();
         }

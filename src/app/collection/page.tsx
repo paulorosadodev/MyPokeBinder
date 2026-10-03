@@ -1,27 +1,31 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
+import NextLink from "next/link";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
+import { useSWRConfig } from "swr";
 import { PokeballLoader } from "@/components/loading/PokeballLoader";
+import { CollectionGridSkeleton } from "@/components/loading/CollectionGridSkeleton";
 import { FlagIcon } from "@/components/ui/FlagIcon";
 import { SearchInput } from "@/components/ui/SearchInput";
-
-import { Card3DTilt } from "@/components/ui/Card3DTilt";
+import { CardArtwork } from "@/components/ui/CardArtwork";
+import { CardBadgeStack } from "@/components/ui/CardBadgeStack";
+import { CardBadgeVisibilityToggle } from "@/components/ui/CardBadgeVisibilityToggle";
 import { Select, SelectOption } from "@/components/ui/Select";
 import { CardSearchModal } from "@/components/modal/CardSearchModal";
 import { formatTcgdexImageUrl } from "@/lib/pokemon/tcgdex";
-import { getRarityBadgeStyle, RARITY_FILTER_OPTIONS } from "@/lib/pokemon/rarity";
+import { RARITY_FILTER_OPTIONS } from "@/lib/pokemon/rarity";
 import { resolveCardShine, VARIANT_FILTER_OPTIONS } from "@/lib/pokemon/variant";
 import { resolveCardElementTypes } from "@/lib/pokemon/cardTypes";
-import { getConditionBadgeStyle } from "@/lib/pokemon/condition";
-import { ConditionBadge } from "@/components/ui/ConditionBadge";
+import { formatConditionLabel } from "@/lib/pokemon/condition";
 import { ALL_EXPANSIONS_FILTER, ALL_ARTISTS_FILTER, buildCollectionFilterResetKey, buildExpansionFilterOptions, buildArtistFilterOptions, type CollectionSortDirection, type CollectionSortField } from "@/lib/collection/listCards";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
+import { useCardBadgeVisibility } from "@/lib/hooks/useCardBadgeVisibility";
 import { getCardAppearProps } from "@/lib/ui/cardAppear";
-import { useInfiniteCollectionGroups, useUserExpansions, useUserArtists } from "@/lib/swr";
-import { UserCard, CardLanguage, BinderStatusFilter } from "@/types/binder";
-import { Search, Plus, Sparkles, Gem, BookOpen, Layers, X, ArrowUpDown, ArrowUp, ArrowDown, Globe, SlidersHorizontal, RefreshCw, Palette } from "lucide-react";
+import { fetcher, useInfiniteCollectionGroups, useUserExpansions, useUserArtists } from "@/lib/swr";
+import { ALL_CARD_VARIANTS } from "@/lib/pokemon/variant";
+import { CardDetailsResponse, UserCard, BinderStatusFilter } from "@/types/binder";
+import { Search, Plus, Sparkles, Gem, BookOpen, Layers, X, ArrowUpDown, ArrowUp, ArrowDown, Globe, SlidersHorizontal, Palette } from "lucide-react";
 
 type SortField = CollectionSortField;
 type SortDirection = CollectionSortDirection;
@@ -47,6 +51,7 @@ const SORT_FIELD_OPTIONS: SelectOption<SortField>[] = [
 
 export default function CollectionPage() {
     const router = useRouter();
+    const { mutate: mutateGlobal, cache } = useSWRConfig();
     const [searchTerm, setSearchTerm] = useState("");
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<BinderStatusFilter>("all");
@@ -58,6 +63,7 @@ export default function CollectionPage() {
     const [sortField, setSortField] = useState<SortField>("recent");
     const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
     const [showFilters, setShowFilters] = useState(false);
+    const { showCardBadges, setCardBadgeVisibility } = useCardBadgeVisibility();
     const isFiltersRestored = useRef(false);
 
     useEffect(() => {
@@ -173,15 +179,61 @@ export default function CollectionPage() {
         } catch {}
     }, [searchTerm, statusFilter, languageFilter, rarityFilter, expansionFilter, artistFilter, variantFilter, sortField, sortDirection]);
 
-    const handleCardAdded = (newCard: UserCard) => {
-        mutate();
-        mutateExpansions();
-        mutateArtists();
+    const collectionRevalidateTimerRef = useRef<number | null>(null);
+    const prefetchingCardsRef = useRef(new Set<string>());
+
+    const scheduleCollectionRevalidation = () => {
+        if (collectionRevalidateTimerRef.current !== null) window.clearTimeout(collectionRevalidateTimerRef.current);
+        collectionRevalidateTimerRef.current = window.setTimeout(() => {
+            collectionRevalidateTimerRef.current = null;
+            void mutate();
+            void mutateExpansions();
+            void mutateArtists();
+        }, 300);
+    };
+
+    useEffect(
+        () => () => {
+            if (collectionRevalidateTimerRef.current !== null) window.clearTimeout(collectionRevalidateTimerRef.current);
+        },
+        [],
+    );
+
+    const handleCardAdded = () => {
+        scheduleCollectionRevalidation();
+    };
+
+    const prefetchCardDetails = (card: UserCard, copies: UserCard[]) => {
+        const route = `/cards/${card.id}?from=collection`;
+        const cacheKey = `/api/cards/${card.id}`;
+        const cached = cache.get(cacheKey)?.data as CardDetailsResponse | undefined;
+
+        router.prefetch(route);
+
+        if (!cached) {
+            void mutateGlobal(
+                cacheKey,
+                {
+                    card,
+                    copies,
+                    availableVariants: ALL_CARD_VARIANTS,
+                    allocation: null,
+                } satisfies CardDetailsResponse,
+                false,
+            );
+        }
+
+        if (!cached && !prefetchingCardsRef.current.has(cacheKey)) {
+            prefetchingCardsRef.current.add(cacheKey);
+            void mutateGlobal(cacheKey, fetcher<CardDetailsResponse>(cacheKey), { revalidate: false })
+                .catch(() => undefined)
+                .finally(() => prefetchingCardsRef.current.delete(cacheKey));
+        }
     };
 
     return (
         <div className="flex min-h-screen flex-col">
-            <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 pb-28 md:pb-16">
+            <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 pb-28 md:pb-16">
                 <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                     <div>
                         <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">Minha Coleção</h1>
@@ -217,19 +269,21 @@ export default function CollectionPage() {
                             <span className="inline">Filtros</span>
                             {activeFilterCount > 0 && <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-poke-blue px-1 text-[10px] font-bold text-white">{activeFilterCount}</span>}
                         </button>
+
+                        <CardBadgeVisibilityToggle showBadges={showCardBadges} onChange={setCardBadgeVisibility} />
                     </div>
 
                     <div className={`grid transition-all duration-300 ease-in-out ${showFilters ? "grid-rows-[1fr] opacity-100 border-t border-white/10 pt-3" : "grid-rows-[0fr] opacity-0 border-t-0 pt-0 pointer-events-none"}`}>
                         <div className="overflow-hidden">
-                            <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5 w-full">
-                                <Select<BinderStatusFilter> value={statusFilter} onChange={setStatusFilter} options={STATUS_FILTER_OPTIONS} icon={<BookOpen size={13} />} ariaLabel="Filtrar coleção por status no binder" className="w-full min-w-0 sm:flex-1 sm:min-w-[140px]" size="sm" />
-                                <Select<string> value={languageFilter} onChange={setLanguageFilter} options={LANGUAGE_FILTER_OPTIONS} icon={<Globe size={13} />} ariaLabel="Filtrar coleção por idioma da carta" className="w-full min-w-0 sm:flex-1 sm:min-w-[145px]" menuClassName="sm:left-0 sm:right-auto" align="right" size="sm" />
-                                <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Gem size={13} />} ariaLabel="Filtrar coleção por raridade" className="w-full min-w-0 sm:flex-1 sm:min-w-[155px]" size="sm" />
-                                <Select<string> value={variantFilter} onChange={setVariantFilter} options={VARIANT_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar coleção por versão" className="w-full min-w-0 sm:flex-1 sm:min-w-[185px]" size="sm" />
-                                <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar coleção por expansão" className="w-full min-w-0 sm:col-span-1 sm:flex-1 sm:min-w-[170px]" size="sm" />
-                                <Select<string> value={artistFilter} onChange={setArtistFilter} options={artistOptions} icon={<Palette size={13} />} ariaLabel="Filtrar coleção por ilustrador" className="w-full min-w-0 sm:col-span-1 sm:flex-1 sm:min-w-[170px]" size="sm" />
+                            <div className="grid w-full grid-cols-2 gap-1.5 lg:grid-cols-4 lg:gap-2.5">
+                                <Select<BinderStatusFilter> value={statusFilter} onChange={setStatusFilter} options={STATUS_FILTER_OPTIONS} icon={<BookOpen size={13} />} ariaLabel="Filtrar coleção por status no binder" className="w-full min-w-0" size="sm" />
+                                <Select<string> value={languageFilter} onChange={setLanguageFilter} options={LANGUAGE_FILTER_OPTIONS} icon={<Globe size={13} />} ariaLabel="Filtrar coleção por idioma da carta" className="w-full min-w-0" menuClassName="sm:left-0 sm:right-auto" align="right" size="sm" />
+                                <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Gem size={13} />} ariaLabel="Filtrar coleção por raridade" className="w-full min-w-0" size="sm" />
+                                <Select<string> value={variantFilter} onChange={setVariantFilter} options={VARIANT_FILTER_OPTIONS} icon={<Sparkles size={13} />} ariaLabel="Filtrar coleção por versão" className="w-full min-w-0" size="sm" />
+                                <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar coleção por expansão" className="w-full min-w-0" size="sm" />
+                                <Select<string> value={artistFilter} onChange={setArtistFilter} options={artistOptions} icon={<Palette size={13} />} ariaLabel="Filtrar coleção por ilustrador" className="w-full min-w-0" size="sm" />
 
-                                <div className="col-span-2 flex w-full min-w-0 items-center gap-1.5 sm:col-span-1 sm:flex-1 sm:min-w-[190px]">
+                                <div className="col-span-2 flex w-full min-w-0 items-center gap-1.5 lg:col-span-2">
                                     <Select<SortField> value={sortField} onChange={setSortField} options={SORT_FIELD_OPTIONS} icon={<ArrowUpDown size={13} />} ariaLabel="Ordenar coleção" className="flex-1 min-w-0" size="sm" align="right" />
                                     <button
                                         type="button"
@@ -247,9 +301,7 @@ export default function CollectionPage() {
                 </div>
 
                 {isLoading ? (
-                    <div className="flex h-64 flex-col items-center justify-center">
-                        <PokeballLoader message="Carregando sua coleção..." size="lg" />
-                    </div>
+                    <CollectionGridSkeleton count={18} />
                 ) : isError ? (
                     <div className="flex h-96 flex-col items-center justify-center gap-4 text-center">
                         <p className="text-sm text-red-300">Falha ao carregar suas cartas.</p>
@@ -304,62 +356,29 @@ export default function CollectionPage() {
                             {visibleItems.map((group, index) => {
                                 const card = group.card;
                                 const appear = getCardAppearProps(index);
+                                const imageSrc = formatTcgdexImageUrl(card.card_image_url);
+                                const shineMode = resolveCardShine(card.card_variant, card.card_rarity, card.card_image_url, card.card_name);
+                                const elementTypes = resolveCardElementTypes(card.card_types, card.pokemon_dex_id);
+                                const conditionLabel = card.card_condition ? formatConditionLabel(card.card_condition) : null;
+                                const countLabel = group.totalCount > 1 ? `${group.totalCount} cópias idênticas` : null;
+                                const languageLabel = card.card_language === "pt-br" ? "PT-BR" : card.card_language.toUpperCase();
 
                                 return (
-                                    <div key={`${filterResetKey}-${group.key}`} onClick={() => router.push(`/cards/${card.id}?from=collection`)} className={`group relative flex cursor-pointer flex-col justify-between rounded-xl border border-white/10 bg-white/[0.03] p-1.5 transition-all duration-200 hover:border-poke-blue/50 hover:bg-white/[0.06] sm:p-2.5 ${appear.className}`} style={appear.style}>
-                                        <div className="z-10 flex min-h-[20px] items-center justify-between gap-1 sm:min-h-[26px]">
-                                            <span className="flex h-4.5 sm:h-5 items-center shrink-0 rounded bg-black/60 px-1 text-[9px] font-bold text-slate-300 backdrop-blur-sm sm:px-1.5 sm:text-[10px]">{card.pokemon_dex_id != null ? `#${String(card.pokemon_dex_id).padStart(3, "0")}` : "TCG"}</span>
-
-                                            <div className="flex items-center gap-0.5 sm:gap-1">
-                                                {card.card_condition && <ConditionBadge condition={card.card_condition} />}
-                                                {card.card_variant === "holo" && (
-                                                    <span title="Foil" aria-label="Foil" className="flex h-4.5 sm:h-5 w-4.5 sm:w-5 items-center justify-center rounded border border-amber-500/40 bg-amber-500/20 text-amber-300">
-                                                        <Sparkles size={11} className="sm:h-3 sm:w-3" />
-                                                    </span>
-                                                )}
-                                                {card.card_variant === "reverse" && (
-                                                    <span title="Reverse Foil" aria-label="Reverse Foil" className="flex h-4.5 sm:h-5 w-4.5 sm:w-5 items-center justify-center rounded border border-cyan-500/40 bg-cyan-500/20 text-cyan-300">
-                                                        <RefreshCw size={11} className="sm:h-3 sm:w-3" />
-                                                    </span>
-                                                )}
-
-                                                {group.hasInBinder && (
-                                                    <span title="No Binder" aria-label="No Binder" className="flex h-4.5 sm:h-5 w-4.5 sm:w-5 items-center justify-center rounded border border-poke-blue/40 bg-poke-blue/20 text-poke-blue">
-                                                        <BookOpen size={11} className="sm:h-3 sm:w-3" />
-                                                    </span>
-                                                )}
-
-                                                {group.totalCount > 1 && (
-                                                    <span title={`${group.totalCount} cópias idênticas`} className="flex h-4.5 sm:h-5 items-center rounded bg-poke-blue px-1 font-mono text-[8px] font-extrabold text-white shadow-md sm:px-1.5 sm:text-[10px]">
-                                                        x{group.totalCount}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <div className="relative my-1 aspect-[8/11] w-full sm:my-2">
-                                            <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={resolveCardShine(card.card_variant, card.card_rarity, card.card_image_url, card.card_name)} elementTypes={resolveCardElementTypes(card.card_types, card.pokemon_dex_id)}>
-                                                <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill unoptimized sizes="(max-width: 640px) 30vw, (max-width: 768px) 33vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" priority={index === 0} />
-                                            </Card3DTilt>
-                                        </div>
-
-                                        <div className="flex min-h-[30px] flex-col justify-center gap-0.5 sm:min-h-[38px] sm:gap-1">
-                                            <div className="flex items-center justify-between gap-1">
-                                                <span className="truncate text-[10px] font-semibold text-white transition-colors group-hover:text-poke-blue sm:text-xs">{card.card_name}</span>
-                                                {card.card_rarity && <span className={`shrink-0 rounded px-1 text-[7px] font-semibold border sm:text-[8px] ${getRarityBadgeStyle(card.card_rarity, card.card_name).badgeClasses}`}>{getRarityBadgeStyle(card.card_rarity, card.card_name).label}</span>}
-                                            </div>
-
-                                            <div className="flex items-center justify-between text-[8px] text-slate-400 sm:text-[10px]">
-                                                <span className="max-w-[65%] truncate" title={card.card_artist ? `${card.card_set_name || "Coleção"} · ${card.card_artist}` : card.card_set_name || "Coleção"}>
-                                                    {card.card_set_name || "Coleção"}
-                                                </span>
-                                                <div className="flex items-center gap-0.5 sm:gap-1">
-                                                    <FlagIcon country={card.card_language as CardLanguage} />
-                                                    <span className="hidden text-[7px] font-bold uppercase sm:inline sm:text-[9px]">{card.card_language}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <NextLink
+                                        key={`${filterResetKey}-${group.key}`}
+                                        href={`/cards/${card.id}?from=collection`}
+                                        prefetch={true}
+                                        onPointerEnter={() => prefetchCardDetails(card, group.copies)}
+                                        onPointerDown={() => prefetchCardDetails(card, group.copies)}
+                                        onFocus={() => prefetchCardDetails(card, group.copies)}
+                                        aria-label={`Editar carta ${card.card_name}${conditionLabel ? `, condição ${conditionLabel}` : ""}${countLabel ? `, ${countLabel}` : ""}, idioma ${languageLabel}`}
+                                        className={`group relative isolate block aspect-[8/11] w-full cursor-pointer transition-colors duration-200 ${appear.className}`}
+                                        style={appear.style}
+                                    >
+                                        <CardArtwork src={imageSrc} alt={card.card_name} sizes="(max-width: 640px) 30vw, (max-width: 768px) 33vw, 200px" shineMode={shineMode} elementTypes={elementTypes} priority={index === 0}>
+                                            {showCardBadges ? <CardBadgeStack condition={card.card_condition} count={group.totalCount} language={card.card_language} /> : null}
+                                        </CardArtwork>
+                                    </NextLink>
                                 );
                             })}
                         </div>

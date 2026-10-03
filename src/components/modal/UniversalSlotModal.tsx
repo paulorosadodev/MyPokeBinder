@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef } from "react";
 import { toast } from "sonner";
 import { BinderSlotSelectModal } from "@/components/modal/BinderSlotSelectModal";
 import { POKEMON_MAP } from "@/lib/pokemon/constants";
@@ -8,6 +8,8 @@ import type { BinderSlot, GridType, UserCard } from "@/types/binder";
 
 interface UniversalSlotModalProps {
     isOpen: boolean;
+    hasOpenSibling?: boolean;
+    skipEnterAnimation?: boolean;
     onClose: () => void;
     slot: BinderSlot | null;
     binderId: string;
@@ -18,8 +20,8 @@ interface UniversalSlotModalProps {
     onOpenCatalogSearch: (prefillName?: string, dexId?: number) => void;
 }
 
-export function UniversalSlotModal({ isOpen, onClose, slot, binderId, binderName, binderGrid, onAssignSuccess, onUnassignSuccess, onOpenCatalogSearch }: UniversalSlotModalProps) {
-    const [isSubmitting, setIsSubmitting] = useState(false);
+export function UniversalSlotModal({ isOpen, hasOpenSibling = false, skipEnterAnimation = false, onClose, slot, binderId, binderName, binderGrid, onAssignSuccess, onUnassignSuccess, onOpenCatalogSearch }: UniversalSlotModalProps) {
+    const isSubmittingRef = useRef(false);
 
     if (!slot) return null;
 
@@ -29,9 +31,9 @@ export function UniversalSlotModal({ isOpen, onClose, slot, binderId, binderName
     const description = slot.slot_type === "free" ? "Selecione uma carta guardada na sua coleção para exibir neste compartimento" : "Selecione uma carta da sua coleção para exibir no binder";
 
     const handleAssign = async (card: UserCard) => {
-        if (isSubmitting) return;
+        if (isSubmittingRef.current) return false;
 
-        setIsSubmitting(true);
+        isSubmittingRef.current = true;
         try {
             const response = await fetch(`/api/binders/${binderId}/slots/${slot.id}/assign`, {
                 method: "POST",
@@ -42,45 +44,49 @@ export function UniversalSlotModal({ isOpen, onClose, slot, binderId, binderName
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
                 toast.error(errorData.error || "Erro ao alocar carta no compartimento");
-                return;
+                return false;
             }
 
             toast.success("Carta alocada no binder!");
             onAssignSuccess(slot.id, card);
-            onClose();
+            return true;
         } catch {
             toast.error("Erro inesperado ao alocar carta");
+            return false;
         } finally {
-            setIsSubmitting(false);
+            isSubmittingRef.current = false;
         }
     };
 
     const handleRemove = async () => {
-        if (isSubmitting) return;
+        if (isSubmittingRef.current) return false;
 
-        setIsSubmitting(true);
+        isSubmittingRef.current = true;
         try {
             const response = await fetch(`/api/binders/${binderId}/slots/${slot.id}/assign`, { method: "DELETE" });
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
                 toast.error(errorData.error || "Erro ao remover carta do compartimento");
-                return;
+                return false;
             }
 
             toast.success("Carta devolvida para guardadas na coleção!");
             onUnassignSuccess(slot.id);
-            onClose();
+            return true;
         } catch {
             toast.error("Erro inesperado ao remover carta");
+            return false;
         } finally {
-            setIsSubmitting(false);
+            isSubmittingRef.current = false;
         }
     };
 
     return (
         <BinderSlotSelectModal
             isOpen={isOpen}
+            hasOpenSibling={hasOpenSibling}
+            skipEnterAnimation={skipEnterAnimation}
             dexId={dexId}
             pokemonName={pokemonName}
             title={title}

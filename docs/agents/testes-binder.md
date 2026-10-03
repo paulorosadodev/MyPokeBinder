@@ -20,6 +20,7 @@ A suíte também participa de `bun run test`. Ambientes Linux sem as bibliotecas
 ## Comportamentos verificados
 
 - No binder universal, as capas e seus forros têm fundo opaco e densidade rígida; a verificação inclui as viradas da capa frontal e da contracapa no desktop.
+- Na Estante, cada card inicia sua animação no primeiro frame, mantém uma capa estática sob o motor PageFlip e deixa as folhas cruas ocultas até `onInit`, sem intervalo vazio nem flash ampliado na primeira entrada ou após sair e voltar para a rota.
 - A abertura inicial aguarda as imagens; no celular mantém a Pokébola por no mínimo 400 ms e revela a grade com uma entrada de 280 ms, enquanto no desktop começa pela capa. O limite de espera de cinco segundos e o tratamento de falhas do preloader permanecem. O retorno direto do seletor mantém seu comportamento existente.
 - Depois da primeira montagem, a navegação não exibe novamente o loader de abertura.
 - Setas, busca, gestos e seleção de páginas não interrompem a abertura nem uma virada em andamento. Comandos repetidos durante esse período são ignorados; após o assentamento, a navegação fica disponível novamente.

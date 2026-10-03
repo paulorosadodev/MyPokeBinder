@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getServerUser } from "@/lib/supabase/serverUser";
 import { safeDecodeParam, UUID_REGEX } from "@/lib/profile/username";
 import { BinderEditClient } from "./BinderEditClient";
 import type { Binder, BinderSlot } from "@/types/binder";
@@ -18,22 +18,19 @@ export default async function BinderEditPage({ params }: { params: Promise<{ id:
         notFound();
     }
 
-    const supabase = await createClient();
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+    const { user, supabase } = await getServerUser();
 
     if (!user) {
         redirect("/login");
     }
 
-    const { data: binder, error: binderError } = await supabase.from("binders").select("*").eq("id", binderId).eq("user_id", user.id).maybeSingle();
+    const [binderResult, slotsResult] = await Promise.all([supabase.from("binders").select("*").eq("id", binderId).eq("user_id", user.id).maybeSingle(), supabase.from("binder_slots").select("id, binder_id, page_number, slot_index, slot_type, user_card_id").eq("binder_id", binderId).not("user_card_id", "is", null)]);
+
+    const { data: binder, error: binderError } = binderResult;
 
     if (binderError || !binder) {
         notFound();
     }
 
-    const { data: slots } = await supabase.from("binder_slots").select("id, binder_id, page_number, slot_index, slot_type, user_card_id").eq("binder_id", binderId);
-
-    return <BinderEditClient binder={binder as Binder} initialSlots={(slots as BinderSlot[]) ?? []} />;
+    return <BinderEditClient binder={binder as Binder} initialSlots={(slotsResult.data as BinderSlot[]) ?? []} />;
 }

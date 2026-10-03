@@ -1,6 +1,6 @@
 "use client";
 
-import { useContext, useEffect, useRef } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { UserCard, BinderSlot as BinderSlotType } from "@/types/binder";
 import { getPokemonSilhouetteUrl, getPokemonGlowColors, POKEMON_MAP, markSilhouetteLoaded } from "@/lib/pokemon/constants";
@@ -13,7 +13,7 @@ import { resolveCardElementTypes } from "@/lib/pokemon/cardTypes";
 import { UserSettingsContext } from "@/lib/context/UserSettingsContext";
 import { playCardDropSound } from "@/lib/audio/cardSounds";
 import { getRarityImpactTier } from "@/lib/pokemon/rarity";
-import { FILLED_BINDER_SLOT_CELL_CLASS, FILLED_BINDER_SLOT_FRAME_CLASS, getBinderSlotHighlightClass, shouldShowSlotGlow } from "@/lib/pokemon/binderHighlight";
+import { BINDER_CARD_CLIP_CLASS, BINDER_CARD_IMAGE_CLASS, FILLED_BINDER_SLOT_CELL_CLASS, FILLED_BINDER_SLOT_FRAME_CLASS, getBinderSlotHighlightClass, shouldShowSlotGlow } from "@/lib/pokemon/binderHighlight";
 
 export interface UniversalBinderSlotProps {
     slot: BinderSlotType;
@@ -95,15 +95,29 @@ export function UniversalBinderSlot({ slot, card, availableCount = 0, isHighligh
         }
     };
 
+    const [imageLoaded, setImageLoaded] = useState(false);
+
+    const handleImageRef = useCallback((node: HTMLImageElement | null) => {
+        if (node?.complete && node.naturalWidth > 0) {
+            setImageLoaded(true);
+        }
+    }, []);
+
+    useEffect(() => {
+        setImageLoaded(false);
+    }, [card?.id]);
+
     if (isFilled && card) {
         const pokemonInfo = targetDex ? POKEMON_MAP.get(targetDex) : null;
         const pokemonType = pokemonInfo?.type ?? "normal";
+        const shineMode = resolveCardShine(card.card_variant, card.card_rarity, card.card_image_url, card.card_name);
+        const elementTypes = resolveCardElementTypes(card.card_types, card.pokemon_dex_id);
 
         return (
             <div ref={divRef} className={`${FILLED_BINDER_SLOT_CELL_CLASS} ${showDropEffects ? "z-40" : ""} ${showGlow ? "z-30" : ""}`}>
                 <div className={`${FILLED_BINDER_SLOT_FRAME_CLASS} ${showGlow ? "z-20" : ""} ${highlightClass}`} style={glowStyle}>
                     <div className={`relative h-full w-full ${showDropEffects ? "card-drop" : ""}`}>
-                        <Card3DTilt key={card.id} className="relative h-full w-full overflow-hidden rounded-lg bg-transparent" maxTilt={12} scale={1.15} glareOpacity={0.25} shineMode={resolveCardShine(card.card_variant, card.card_rarity, card.card_image_url, card.card_name)} elementTypes={resolveCardElementTypes(card.card_types, card.pokemon_dex_id)} paused={pauseTilt}>
+                        <Card3DTilt key={card.id} className={`relative h-full w-full overflow-hidden bg-transparent shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${BINDER_CARD_CLIP_CLASS}`} maxTilt={12} scale={1.15} glareOpacity={0.25} shineMode={shineMode} elementTypes={elementTypes} paused={pauseTilt} isLoading={!imageLoaded}>
                             <button
                                 type="button"
                                 id={`binder-slot-${slot.id}`}
@@ -113,9 +127,9 @@ export function UniversalBinderSlot({ slot, card, availableCount = 0, isHighligh
                                 onTouchStartCapture={stopPageFlip}
                                 onKeyDown={handleKeyDown}
                                 aria-label={`${card.card_name}${targetDex ? `, #${targetDex}` : ""}`}
-                                className="relative flex h-full min-h-0 w-full cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent p-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-poke-blue"
+                                className={`relative flex h-full min-h-0 w-full cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-poke-blue ${BINDER_CARD_CLIP_CLASS}`}
                             >
-                                {mountImage ? <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill sizes="(max-width: 768px) 30vw, 15vw" className="pointer-events-none object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" unoptimized priority={priority} /> : null}
+                                {mountImage ? <Image ref={handleImageRef} src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill sizes="(max-width: 768px) 30vw, 15vw" className={BINDER_CARD_IMAGE_CLASS} unoptimized priority={priority} onLoad={() => setImageLoaded(true)} onError={() => setImageLoaded(true)} /> : null}
                             </button>
                         </Card3DTilt>
                     </div>

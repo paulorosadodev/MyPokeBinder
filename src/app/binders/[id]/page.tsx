@@ -1,9 +1,16 @@
+import { cache } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getServerUser } from "@/lib/supabase/serverUser";
 import { safeDecodeParam, UUID_REGEX } from "@/lib/profile/username";
 import { UniversalBinderViewer } from "@/components/binder/UniversalBinderViewer";
-import type { Binder, BinderSlot, GridType } from "@/types/binder";
+import type { Binder, BinderSlot } from "@/types/binder";
+
+const getCachedBinder = cache(async (binderId: string) => {
+    const supabase = await createClient();
+    return supabase.from("binders").select("*").eq("id", binderId).maybeSingle();
+});
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
     const rawParams = await params;
@@ -13,8 +20,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
         return { title: "Binder não encontrado | MyPokeBinder" };
     }
 
-    const supabase = await createClient();
-    const { data: binder } = await supabase.from("binders").select("name, description").eq("id", binderId).maybeSingle();
+    const { data: binder } = await getCachedBinder(binderId);
 
     if (!binder) {
         return { title: "Binder não encontrado | MyPokeBinder" };
@@ -34,12 +40,10 @@ export default async function BinderViewerPage({ params }: { params: Promise<{ i
         notFound();
     }
 
-    const supabase = await createClient();
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+    const { user, supabase } = await getServerUser();
+    const [binderResult, slotsResult] = await Promise.all([getCachedBinder(binderId), supabase.from("binder_slots").select("*").eq("binder_id", binderId).order("page_number", { ascending: true }).order("slot_index", { ascending: true })]);
 
-    const { data: binder, error: binderError } = await supabase.from("binders").select("*").eq("id", binderId).maybeSingle();
+    const { data: binder, error: binderError } = binderResult;
 
     if (binderError || !binder) {
         notFound();
@@ -50,30 +54,22 @@ export default async function BinderViewerPage({ params }: { params: Promise<{ i
         notFound();
     }
 
-    const { data: rawSlots } = await supabase.from("binder_slots").select("*").eq("binder_id", binderId).order("page_number", { ascending: true }).order("slot_index", { ascending: true });
+    const rawSlots = slotsResult.data ?? [];
+    const cardIds = rawSlots.map((s) => s.user_card_id).filter((cid): cid is string => typeof cid === "string" && Boolean(cid));
 
-    const cardIds = (rawSlots ?? []).map((s) => s.user_card_id).filter((cid): cid is string => typeof cid === "string" && Boolean(cid));
+    const [cardsResult, othersResult] = await Promise.all([cardIds.length > 0 ? supabase.from("user_cards").select("*").in("id", cardIds) : Promise.resolve({ data: [] }), user && isOwner ? supabase.from("binders").select("id, name, description, grid_type, cover_theme, cover_pokemon_dex_id").eq("user_id", user.id).order("created_at", { ascending: true }) : Promise.resolve({ data: [] })]);
 
-    let cardsMap = new Map<string, any>();
-    if (cardIds.length > 0) {
-        const { data: cards } = await supabase.from("user_cards").select("*").in("id", cardIds);
-
-        for (const card of cards ?? []) {
-            cardsMap.set(card.id, card);
-        }
+    const cardsMap = new Map<string, any>();
+    for (const card of cardsResult.data ?? []) {
+        cardsMap.set(card.id, card);
     }
 
-    const slots: BinderSlot[] = (rawSlots ?? []).map((s) => ({
+    const slots: BinderSlot[] = rawSlots.map((s) => ({
         ...s,
         card: s.user_card_id ? cardsMap.get(s.user_card_id) || null : null,
     }));
 
-    let otherBinders: Array<{ id: string; name: string; grid_type: GridType }> = [];
-    if (user && isOwner) {
-        const { data: others } = await supabase.from("binders").select("id, name, grid_type").eq("user_id", user.id).order("created_at", { ascending: true });
-
-        otherBinders = others ?? [];
-    }
+    const otherBinders = (othersResult.data ?? []) as Array<Pick<Binder, "id" | "name" | "description" | "grid_type" | "cover_theme" | "cover_pokemon_dex_id">>;
 
     return <UniversalBinderViewer binder={binder as Binder} initialSlots={slots} otherBinders={otherBinders} isOwner={isOwner} />;
 }

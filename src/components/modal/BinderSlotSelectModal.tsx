@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, startTransition } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useSWRConfig } from "swr";
@@ -11,22 +11,22 @@ import { useCollectionCards } from "@/lib/swr";
 import { PokeballLoader } from "@/components/loading/PokeballLoader";
 import { FlagIcon } from "@/components/ui/FlagIcon";
 import { ModalSearchFilters } from "@/components/ui/ModalSearchFilters";
-import { Card3DTilt } from "@/components/ui/Card3DTilt";
+import { CardArtwork } from "@/components/ui/CardArtwork";
 import { Select, type SelectOption } from "@/components/ui/Select";
 import { getCardAppearProps } from "@/lib/ui/cardAppear";
-import { ALL_CARD_VARIANTS, VARIANT_FILTER_OPTIONS, cardCopyGroupKey, formatVariantLabel, resolveCardShine } from "@/lib/pokemon/variant";
+import { ALL_CARD_VARIANTS, VARIANT_FILTER_OPTIONS, cardCopyGroupKey, resolveCardShine } from "@/lib/pokemon/variant";
 import { RARITY_FILTER_OPTIONS } from "@/lib/pokemon/rarity";
-import { getConditionBadgeStyle } from "@/lib/pokemon/condition";
-import { ConditionBadge } from "@/components/ui/ConditionBadge";
 import { ALL_EXPANSIONS_FILTER, ALL_ARTISTS_FILTER, CollectionSortDirection, CollectionSortField, buildExpansionFilterOptions, buildArtistFilterOptions, filterAndSortCollectionGroups } from "@/lib/collection/listCards";
 import { isCardMatchingPokemon } from "@/lib/pokemon/match";
 import { useDismissibleOverlay } from "@/lib/hooks/useDismissibleOverlay";
 import { useOverlayPresence } from "@/lib/hooks/useOverlayPresence";
 import { resolveCardElementTypes } from "@/lib/pokemon/cardTypes";
-import { X, Sparkles, Gem, Check, Search, Plus, BookOpen, Pencil, Loader2, Globe, Layers, ArrowUpDown, ArrowUp, ArrowDown, Palette } from "lucide-react";
+import { X, Sparkles, Gem, Search, Plus, BookOpen, Pencil, Loader2, Globe, Layers, ArrowUpDown, ArrowUp, ArrowDown, Palette } from "lucide-react";
 
 interface BinderSlotSelectModalProps {
     isOpen: boolean;
+    hasOpenSibling?: boolean;
+    skipEnterAnimation?: boolean;
     dexId?: number;
     pokemonName: string;
     activeCardId?: string;
@@ -39,8 +39,8 @@ interface BinderSlotSelectModalProps {
     description?: string;
     editSearchParams?: Record<string, string | number | undefined>;
     onClose: () => void;
-    onCardSelected: (card: UserCard) => void;
-    onCardRemoved?: (card: UserCard) => void;
+    onCardSelected: (card: UserCard) => boolean | void | Promise<boolean | void>;
+    onCardRemoved?: (card: UserCard) => boolean | void | Promise<boolean | void>;
     onOpenCatalogSearch: () => void;
 }
 
@@ -65,10 +65,10 @@ const SORT_FIELD_OPTIONS: SelectOption<CollectionSortField>[] = [
     { value: "dex", label: "Pokédex" },
 ];
 
-export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId, activeCard, activeCardAllocation, targetCardId, matchesDexIdExactly = false, onlyUnallocatedCards = false, title, description, editSearchParams, onClose, onCardSelected, onCardRemoved, onOpenCatalogSearch }: BinderSlotSelectModalProps) {
+export function BinderSlotSelectModal({ isOpen, hasOpenSibling = false, skipEnterAnimation = false, dexId, pokemonName, activeCardId, activeCard, activeCardAllocation, targetCardId, matchesDexIdExactly = false, onlyUnallocatedCards = false, title, description, editSearchParams, onClose, onCardSelected, onCardRemoved, onOpenCatalogSearch }: BinderSlotSelectModalProps) {
     const router = useRouter();
     const { mutate: mutateGlobal } = useSWRConfig();
-    const { cards: collection, isLoading } = useCollectionCards(isOpen ? dexId : null, isOpen && !dexId);
+    const { cards: collection, isLoading, mutate: mutateCollection } = useCollectionCards(isOpen ? dexId : null, isOpen && !dexId);
 
     const [selectedCardId, setSelectedCardId] = useState<string | undefined>(activeCardId);
     const [previewCard, setPreviewCard] = useState<UserCard | undefined>(activeCard);
@@ -83,9 +83,11 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
     const [sortField, setSortField] = useState<CollectionSortField>("name");
     const [sortDirection, setSortDirection] = useState<CollectionSortDirection>("asc");
     const [showFilters, setShowFilters] = useState(false);
+    const [pendingActionId, setPendingActionId] = useState<string | null>(null);
+    const wasOpenRef = useRef(false);
 
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && !wasOpenRef.current) {
             setSelectedCardId(activeCardId);
             setPreviewCard(activeCard);
             setUserDeselected(false);
@@ -99,17 +101,19 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
             setSortField("name");
             setSortDirection("asc");
             setShowFilters(false);
-            return;
+        } else if (!isOpen) {
+            setSelectedCardId(undefined);
+            setPreviewCard(undefined);
+            setUserDeselected(false);
+            setEditingCardId(null);
+            setShowFilters(false);
+            setPendingActionId(null);
         }
-        setSelectedCardId(undefined);
-        setPreviewCard(undefined);
-        setUserDeselected(false);
-        setEditingCardId(null);
-        setShowFilters(false);
+        wasOpenRef.current = isOpen;
     }, [isOpen, activeCardId, activeCard]);
 
-    useDismissibleOverlay(isOpen, onClose, editingCardId !== null);
-    const { isPresent, state } = useOverlayPresence(isOpen);
+    useDismissibleOverlay(isOpen, onClose, editingCardId !== null || pendingActionId !== null);
+    const { isPresent, state } = useOverlayPresence(isOpen, { hasOpenSibling, skipEnterAnimation });
 
     const validCollection = useMemo(
         () =>
@@ -206,19 +210,45 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
     const hasActiveFilters = Boolean(searchTerm.trim()) || languageFilter !== "all" || rarityFilter !== "all" || variantFilter !== "all" || expansionFilter !== ALL_EXPANSIONS_FILTER || artistFilter !== ALL_ARTISTS_FILTER;
     const activeFilterCount = (languageFilter !== "all" ? 1 : 0) + (rarityFilter !== "all" ? 1 : 0) + (variantFilter !== "all" ? 1 : 0) + (expansionFilter !== ALL_EXPANSIONS_FILTER ? 1 : 0) + (artistFilter !== ALL_ARTISTS_FILTER ? 1 : 0);
 
-    const handleSelectCard = (card: UserCard) => {
-        if (card.id === selectedCardId) return;
-        setUserDeselected(false);
-        setSelectedCardId(card.id);
-        setPreviewCard(card);
-        onCardSelected(card);
+    const updateCollectionCardBinderStatus = (cardId: string, isInBinder: boolean) => {
+        void mutateCollection((current) => {
+            if (!current) return current;
+            return { cards: current.cards.map((card) => (card.id === cardId ? { ...card, is_in_binder: isInBinder } : card)) };
+        }, false);
     };
 
-    const handleRemoveCard = (card: UserCard) => {
-        setUserDeselected(true);
-        setSelectedCardId(undefined);
-        setPreviewCard(undefined);
-        onCardRemoved?.(card);
+    const handleSelectCard = async (card: UserCard) => {
+        if (card.id === selectedCardId || pendingActionId) return;
+
+        setPendingActionId(card.id);
+        try {
+            const assigned = await onCardSelected(card);
+            if (assigned === false) return;
+
+            setUserDeselected(false);
+            setSelectedCardId(card.id);
+            setPreviewCard(card);
+            updateCollectionCardBinderStatus(card.id, true);
+        } finally {
+            setPendingActionId(null);
+        }
+    };
+
+    const handleRemoveCard = async (card: UserCard) => {
+        if (!onCardRemoved || pendingActionId) return;
+
+        setPendingActionId(card.id);
+        try {
+            const removed = await onCardRemoved(card);
+            if (removed === false) return;
+
+            setUserDeselected(false);
+            setSelectedCardId(undefined);
+            setPreviewCard(undefined);
+            updateCollectionCardBinderStatus(card.id, false);
+        } finally {
+            setPendingActionId(null);
+        }
     };
 
     const buildCardDetailUrl = (targetCardId: string, pokemonDexId: number | undefined) => {
@@ -230,8 +260,15 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
         return `/cards/${targetCardId}?${params.toString()}`;
     };
 
+    useEffect(() => {
+        if (!isOpen) return;
+        for (const group of filteredGroupedCards.slice(0, 6)) {
+            router.prefetch(buildCardDetailUrl(group.activeCard.id, dexId));
+        }
+    }, [isOpen, filteredGroupedCards, dexId, router]);
+
     const handleEditCard = (targetCard: UserCard, pokemonDexId: number | undefined, groupKey: string) => {
-        if (editingCardId) return;
+        if (editingCardId || pendingActionId) return;
         setEditingCardId(targetCard.id);
         mutateGlobal(
             `/api/cards/${targetCard.id}`,
@@ -243,9 +280,7 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
             },
             false,
         );
-        startTransition(() => {
-            router.push(buildCardDetailUrl(targetCard.id, pokemonDexId));
-        });
+        router.push(buildCardDetailUrl(targetCard.id, pokemonDexId));
     };
 
     const handlePrefetchCard = (cardId: string, pokemonDexId: number | undefined) => {
@@ -262,22 +297,20 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
             aria-modal="true"
             aria-label={`Selecionar carta para ${title ?? pokemonName}`}
             onClick={(e) => {
-                if (!editingCardId && e.target === e.currentTarget) onClose();
+                if (!editingCardId && !pendingActionId && e.target === e.currentTarget) onClose();
             }}
         >
-            <div className="modal-surface flex h-dvh max-h-none w-full max-w-none flex-col items-center justify-center gap-0 sm:h-[85vh] sm:max-h-[820px] sm:max-w-2xl sm:gap-5 lg:max-w-4xl lg:flex-row lg:items-center xl:max-w-5xl 2xl:max-w-6xl">
+            <div className="modal-surface modal-transient-content flex h-dvh max-h-none w-full max-w-none flex-col items-center justify-center gap-0 sm:h-[85vh] sm:max-h-[820px] sm:max-w-2xl sm:gap-5 lg:max-w-4xl lg:flex-row lg:items-center xl:max-w-5xl 2xl:max-w-6xl">
                 <div className="hidden lg:flex lg:w-[240px] xl:w-[300px] 2xl:w-[340px] shrink-0 flex-col items-center justify-center transition-all duration-200">
                     {previewCard ? (
                         <>
                             <div className="relative aspect-[8/11] w-full select-none">
-                                <Card3DTilt key={previewCard.id} className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={10} maxMove={4} scale={1} glareOpacity={0.25} perspective={1000} shineMode={resolveCardShine(previewCard.card_variant, previewCard.card_rarity, previewCard.card_image_url, previewCard.card_name)} elementTypes={resolveCardElementTypes(previewCard.card_types, previewCard.pokemon_dex_id)}>
-                                    <Image key={previewCard.id} src={formatTcgdexImageUrl(previewCard.card_image_url)} alt={previewCard.card_name} fill sizes="(max-width: 1280px) 240px, 340px" className="object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.9)]" unoptimized />
-                                </Card3DTilt>
+                                <CardArtwork key={previewCard.id} src={formatTcgdexImageUrl(previewCard.card_image_url)} alt={previewCard.card_name} sizes="(max-width: 1280px) 240px, 340px" maxTilt={10} perspective={1000} glareOpacity={0.25} shineMode={resolveCardShine(previewCard.card_variant, previewCard.card_rarity, previewCard.card_image_url, previewCard.card_name)} elementTypes={resolveCardElementTypes(previewCard.card_types, previewCard.pokemon_dex_id)} imageClassName="object-contain" />
                             </div>
                             <div className="mt-3 flex flex-col items-center gap-0.5 text-center">
-                                <div className="flex items-center justify-center gap-1.5">
+                                <div className="flex items-center justify-center gap-1.5 text-sm font-bold text-white">
                                     <span className="truncate max-w-[200px] xl:max-w-[260px] text-sm font-bold text-white">{previewCard.card_name}</span>
-                                    {previewCard.card_condition && <ConditionBadge condition={previewCard.card_condition} size="sm" />}
+                                    <span className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-300">{previewCard.pokemon_dex_id != null ? `#${String(previewCard.pokemon_dex_id).padStart(3, "0")}` : "TCG"}</span>
                                 </div>
                                 <span className="truncate max-w-[240px] xl:max-w-[300px] text-xs text-slate-400">{previewCard.card_artist ? `${previewCard.card_set_name || "Coleção"} · ${previewCard.card_artist}` : previewCard.card_set_name || "Coleção"}</span>
                             </div>
@@ -325,7 +358,7 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
                             <p className="mt-0.5 text-xs text-slate-400">{description ?? "Selecione uma carta da sua coleção para exibir no binder"}</p>
                         </div>
 
-                        <button type="button" onClick={onClose} disabled={Boolean(editingCardId)} aria-label="Fechar" className={`flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-slate-400 transition-colors ${editingCardId ? "cursor-not-allowed opacity-40" : "cursor-pointer hover:bg-white/10 hover:text-white"}`}>
+                        <button type="button" onClick={onClose} disabled={Boolean(editingCardId || pendingActionId)} aria-label="Fechar" className={`flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-slate-400 transition-colors ${editingCardId || pendingActionId ? "cursor-not-allowed opacity-40" : "cursor-pointer hover:bg-white/10 hover:text-white"}`}>
                             <X size={18} />
                         </button>
                     </div>
@@ -418,82 +451,48 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
                                     const isCurrent = group.hasInBinder;
                                     const isEditingThisCard = editingCardId === group.activeCard.id;
                                     const isNavigating = Boolean(editingCardId);
+                                    const isActionPending = Boolean(pendingActionId);
+                                    const isInteractionBlocked = isNavigating || isActionPending;
                                     const appear = getCardAppearProps(index);
+                                    const imageSrc = formatTcgdexImageUrl(card.card_image_url);
+                                    const shineMode = resolveCardShine(card.card_variant, card.card_rarity, card.card_image_url, card.card_name);
 
                                     return (
-                                        <div key={group.key} className={`group relative flex flex-col justify-between gap-2 rounded-xl border p-2.5 transition-all duration-200 ${isCurrent ? "border-poke-blue bg-poke-blue/10 ring-2 ring-poke-blue/40" : "border-white/10 bg-white/[0.03] hover:border-poke-blue/50 hover:bg-white/[0.06]"} ${appear.className}`} style={appear.style}>
-                                            <div className="z-10 flex min-h-[22px] items-center justify-between">
-                                                <span className="rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-bold text-slate-300 backdrop-blur-sm">#{String(card.pokemon_dex_id).padStart(3, "0")}</span>
-
-                                                <div className="flex items-center gap-1">
-                                                    {card.card_condition && <ConditionBadge condition={card.card_condition} size="sm" />}
-                                                    {isCurrent && (
-                                                        <span title="No Binder" aria-label="No Binder" className="flex items-center justify-center rounded border border-poke-blue/40 bg-poke-blue/20 p-1 text-poke-blue">
-                                                            <BookOpen size={13} />
-                                                        </span>
-                                                    )}
-
-                                                    {group.totalCount > 1 && (
-                                                        <span title={`${group.totalCount} cópias idênticas`} className="rounded bg-poke-blue px-1.5 py-0.5 text-[10px] font-extrabold text-white">
-                                                            x{group.totalCount}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-
+                                        <div key={group.key} className={`group relative isolate flex flex-col gap-2 ${appear.className}`} style={appear.style}>
                                             <div
                                                 role="button"
-                                                tabIndex={isNavigating ? -1 : 0}
+                                                tabIndex={isInteractionBlocked ? -1 : 0}
                                                 onClick={() => {
-                                                    if (isNavigating) return;
-                                                    if (isCurrent) {
-                                                        handleRemoveCard(group.activeCard);
-                                                    } else {
-                                                        handleSelectCard(group.activeCard);
+                                                    if (isInteractionBlocked) return;
+                                                    if (!isCurrent) {
+                                                        void handleSelectCard(group.activeCard);
                                                     }
                                                 }}
-                                                className={`relative aspect-[8/11] w-full ${isNavigating ? "cursor-not-allowed opacity-80" : "cursor-pointer"}`}
+                                                onKeyDown={(event) => {
+                                                    if (isInteractionBlocked || isCurrent || (event.key !== "Enter" && event.key !== " ")) return;
+                                                    event.preventDefault();
+                                                    void handleSelectCard(group.activeCard);
+                                                }}
+                                                aria-label={isCurrent ? `${card.card_name}, carta atualmente no Binder. Use Remover para desvincular.` : `Exibir ${card.card_name} no Binder`}
+                                                className={`relative isolate aspect-[8/11] w-full outline-none focus-visible:ring-2 focus-visible:ring-poke-blue/70 ${isInteractionBlocked ? "cursor-not-allowed opacity-80" : isCurrent ? "cursor-default" : "cursor-pointer"}`}
                                             >
-                                                <Card3DTilt className="relative h-full w-full overflow-hidden rounded-lg" maxTilt={8} maxMove={3} scale={1} glareOpacity={0.2} perspective={900} shineMode={resolveCardShine(card.card_variant, card.card_rarity, card.card_image_url, card.card_name)} elementTypes={resolveCardElementTypes(card.card_types, card.pokemon_dex_id)}>
-                                                    <Image src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill sizes="(max-width: 768px) 50vw, 200px" className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" unoptimized />
-                                                </Card3DTilt>
-                                            </div>
-
-                                            <div className="flex flex-col gap-0.5">
-                                                <span className="truncate text-xs font-semibold text-white group-hover:text-poke-blue transition-colors">{card.card_name}</span>
-
-                                                <div className="flex items-center justify-between gap-1 text-[11px] text-slate-400">
-                                                    <span className="truncate min-w-0 text-[10px] sm:text-[11px]" title={card.card_artist ? `${card.card_set_name || "Coleção"} · ${card.card_artist}` : card.card_set_name || "Coleção"}>
-                                                        {card.card_set_name || "Coleção"}
-                                                    </span>
-                                                    <div className="flex shrink-0 items-center gap-1 whitespace-nowrap">
-                                                        <span className="rounded border border-white/10 bg-white/5 px-1 py-0.5 text-[9px] font-bold text-slate-300">{formatVariantLabel(card.card_variant)}</span>
-                                                        <FlagIcon country={card.card_language} />
-                                                        <span className="hidden uppercase text-[9px] font-bold whitespace-nowrap sm:inline sm:text-[10px]">{card.card_language}</span>
-                                                    </div>
-                                                </div>
+                                                <CardArtwork src={imageSrc} alt="" sizes="(max-width: 768px) 50vw, 200px" shineMode={shineMode} elementTypes={resolveCardElementTypes(card.card_types, card.pokemon_dex_id)} imageClassName="object-contain" />
                                             </div>
 
                                             <div className="mt-1 flex items-center gap-1.5">
                                                 <button
                                                     type="button"
-                                                    disabled={isNavigating}
-                                                    onClick={() => (isCurrent ? handleRemoveCard(group.activeCard) : handleSelectCard(group.activeCard))}
+                                                    disabled={isInteractionBlocked}
+                                                    onClick={() => void (isCurrent ? handleRemoveCard(group.activeCard) : handleSelectCard(group.activeCard))}
                                                     className={`group/btn flex flex-1 min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 px-2 text-xs font-semibold leading-none transition-colors duration-150 ${
-                                                        isNavigating ? "cursor-not-allowed opacity-50 bg-white/5 text-slate-500 border border-white/5" : isCurrent ? "cursor-pointer border border-poke-blue/40 bg-poke-blue/20 text-poke-blue hover:border-red-500/40 hover:bg-red-500/20 hover:text-red-300" : "cursor-pointer bg-white/10 text-white hover:bg-poke-blue hover:shadow-md hover:shadow-poke-blue/20"
+                                                        isInteractionBlocked ? "cursor-not-allowed opacity-50 bg-white/5 text-slate-500 border border-white/5" : isCurrent ? "cursor-pointer border border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20" : "cursor-pointer bg-white/10 text-white hover:bg-poke-blue hover:shadow-md hover:shadow-poke-blue/20"
                                                     }`}
-                                                    title={isCurrent ? "Clique para remover do binder" : "Exibir no binder"}
+                                                    title={isCurrent ? "Remover do Binder" : "Exibir no Binder"}
                                                 >
                                                     {isCurrent ? (
                                                         <>
-                                                            <span className="flex items-center gap-1.5 group-hover/btn:hidden">
-                                                                <Check size={13} className="shrink-0" />
-                                                                <span className="truncate whitespace-nowrap leading-none">Em exibição</span>
-                                                            </span>
-                                                            <span className="hidden items-center gap-1.5 group-hover/btn:flex">
-                                                                <X size={13} className="shrink-0" />
-                                                                <span className="truncate whitespace-nowrap leading-none">Remover</span>
-                                                            </span>
+                                                            <X size={13} className="shrink-0" />
+                                                            <span className="truncate whitespace-nowrap leading-none">Remover</span>
                                                         </>
                                                     ) : (
                                                         <>
@@ -507,12 +506,13 @@ export function BinderSlotSelectModal({ isOpen, dexId, pokemonName, activeCardId
                                                     type="button"
                                                     title={isEditingThisCard ? "Abrindo edição..." : "Editar exemplar"}
                                                     aria-label={isEditingThisCard ? "Abrindo edição..." : "Editar exemplar"}
-                                                    disabled={isNavigating}
+                                                    disabled={isInteractionBlocked}
                                                     onMouseEnter={() => handlePrefetchCard(group.activeCard.id, dexId)}
+                                                    onPointerDown={() => handlePrefetchCard(group.activeCard.id, dexId)}
                                                     onFocus={() => handlePrefetchCard(group.activeCard.id, dexId)}
                                                     onClick={() => handleEditCard(group.activeCard, dexId, group.key)}
                                                     className={`flex shrink-0 items-center justify-center gap-1 rounded-lg border px-2 py-2 text-xs font-semibold leading-none transition-colors duration-150 ${
-                                                        isEditingThisCard ? "border-poke-blue/40 bg-poke-blue/20 text-poke-blue cursor-wait" : isNavigating ? "border-white/5 bg-white/[0.02] text-slate-600 cursor-not-allowed opacity-50" : "border-white/10 bg-white/5 text-slate-300 transition-colors duration-150 hover:border-white/20 hover:bg-white/15 hover:text-white cursor-pointer"
+                                                        isEditingThisCard ? "border-poke-blue/40 bg-poke-blue/20 text-poke-blue cursor-wait" : isInteractionBlocked ? "border-white/5 bg-white/[0.02] text-slate-600 cursor-not-allowed opacity-50" : "border-white/10 bg-white/5 text-slate-300 transition-colors duration-150 hover:border-white/20 hover:bg-white/15 hover:text-white cursor-pointer"
                                                     }`}
                                                 >
                                                     {isEditingThisCard ? (

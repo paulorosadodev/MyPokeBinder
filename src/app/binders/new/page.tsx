@@ -3,9 +3,10 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import NextLink from "next/link";
+import dynamic from "next/dynamic";
 import { ArrowLeft, ArrowRight, Check, Sparkles, BookOpen, Layers, Grid, Shield, Globe, Lock, HelpCircle } from "lucide-react";
 import { BinderCoverArt } from "@/components/binder/BinderCoverArt";
-import { CoverPokemonSelector } from "@/components/binder/CoverPokemonSelector";
+const CoverPokemonSelector = dynamic(() => import("@/components/binder/CoverPokemonSelector").then((mod) => mod.CoverPokemonSelector), { ssr: false });
 import { BINDER_COVER_THEMES } from "@/lib/binder/themes";
 import { getBinderSlotPageCount } from "@/lib/binder/pageCapacity";
 import { GridType, SlotType } from "@/types/binder";
@@ -180,9 +181,9 @@ export default function NewBinderPage() {
 
     return (
         <div className="flex min-h-screen flex-col bg-[#0a0c10] text-slate-100">
-            <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 pb-28 md:pb-16">
+            <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 pb-28 md:pb-16">
                 <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                    <NextLink href="/" className="flex items-center gap-2 text-xs font-semibold text-slate-400 transition-colors hover:text-white">
+                    <NextLink href="/" prefetch={true} className="flex items-center gap-2 text-xs font-semibold text-slate-400 transition-colors hover:text-white">
                         <ArrowLeft size={16} />
                         <span>Voltar para a Estante</span>
                     </NextLink>
@@ -202,7 +203,7 @@ export default function NewBinderPage() {
                 <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
                     <div className="lg:col-span-7 flex flex-col gap-6">
                         {step === 1 && (
-                            <div className="flex flex-col gap-5">
+                            <div className="profile-enter flex flex-col gap-5">
                                 <div>
                                     <h1 className="text-xl font-black text-white sm:text-2xl">Identidade e Capa</h1>
                                     <p className="mt-1 text-xs text-slate-400">Dê um título especial ao seu binder e escolha a textura da capa.</p>
@@ -259,7 +260,7 @@ export default function NewBinderPage() {
                         )}
 
                         {step === 2 && (
-                            <div className="flex flex-col gap-5">
+                            <div className="profile-enter flex flex-col gap-5">
                                 <div>
                                     <h1 className="text-xl font-black text-white sm:text-2xl">Formato do Grid e Páginas</h1>
                                     <p className="mt-1 text-xs text-slate-400">Escolha a disposição visual das cartas em cada folha e a quantidade de páginas.</p>
@@ -304,7 +305,7 @@ export default function NewBinderPage() {
                         )}
 
                         {step === 3 && (
-                            <div className="flex flex-col gap-5">
+                            <div className="profile-enter flex flex-col gap-5">
                                 <div>
                                     <h1 className="text-xl font-black text-white sm:text-2xl">Estrutura Inicial dos Slots</h1>
                                     <p className="mt-1 text-xs text-slate-400">Pré-configure as metas de cada slot ou comece com um binder livre.</p>
@@ -403,7 +404,7 @@ export default function NewBinderPage() {
                         </div>
                     </div>
 
-                    <div className="lg:col-span-5 flex flex-col gap-4">
+                    <div className="profile-enter profile-enter-d1 lg:col-span-5 flex flex-col gap-4">
                         <div className="rounded-2xl border border-white/10 bg-[#121520]/80 p-5 shadow-xl backdrop-blur-md">
                             <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Pré-visualização da Capa</span>
 

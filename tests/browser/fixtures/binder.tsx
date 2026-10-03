@@ -19,18 +19,20 @@ const settings: UserSettingsContextType | null = new URLSearchParams(location.se
     : null;
 
 const params = new URLSearchParams(location.search);
-const universalModule = params.has("universal") || params.has("shelf") ? await import("./universal-binder") : null;
-const UniversalFixture = params.has("shelf") ? universalModule?.BinderShelfBookFixture : params.has("universalViewer") ? universalModule?.UniversalBinderViewerFixture : universalModule?.UniversalBinderFixture;
+const universalModule = params.has("universal") || params.has("shelf") || params.has("shelfLifecycle") ? await import("./universal-binder") : null;
+const UniversalFixture = params.has("shelfLifecycle") ? universalModule?.BinderShelfLifecycleFixture : params.has("shelf") ? universalModule?.BinderShelfBookFixture : params.has("universalViewer") ? universalModule?.UniversalBinderViewerFixture : universalModule?.UniversalBinderFixture;
 
 function CardSearchFixture() {
     const [isOpen, setIsOpen] = useState(false);
+    const [addedIds, setAddedIds] = useState<string[]>([]);
 
     return (
         <>
             <button id="open-card-search" type="button" onClick={() => setIsOpen(true)}>
                 Abrir catálogo
             </button>
-            <CardSearchModal isOpen={isOpen} onClose={() => setIsOpen(false)} onCardAdded={() => setIsOpen(false)} />
+            <span id="added-cards">{addedIds.join(",")}</span>
+            <CardSearchModal isOpen={isOpen} onClose={() => setIsOpen(false)} onCardAdded={(card) => setAddedIds((previous) => [...previous, card.id])} />
         </>
     );
 }

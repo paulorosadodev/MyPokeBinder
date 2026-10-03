@@ -80,7 +80,7 @@ test("adiciona uma cópia somente na página que já contém o grupo corresponde
 });
 
 test("sincroniza a Coleção antes da requisição de edição e não bloqueia no GET de confirmação", () => {
-    const source = readFileSync(join(import.meta.dir, "../../app/cards/[id]/page.tsx"), "utf8");
+    const source = readFileSync(join(import.meta.dir, "../../app/cards/[id]/CardDetailClient.tsx"), "utf8");
     const handlers = [source.slice(source.indexOf("const handleChangeLanguage"), source.indexOf("const handleChangeVariant")), source.slice(source.indexOf("const handleChangeVariant"), source.indexOf("const handleChangeCondition")), source.slice(source.indexOf("const handleChangeCondition"), source.indexOf("const handleToggleBinder"))];
 
     for (const handler of handlers) {

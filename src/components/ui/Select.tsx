@@ -42,11 +42,6 @@ export function Select<T extends string = string>({ value, onChange, options, pl
     const selectedOption = options.find((opt) => opt.value === value);
     const isSm = size === "sm";
 
-    const setOpen = (next: boolean) => {
-        setIsOpen(next);
-        onOpenChange?.(next);
-    };
-
     const updateMenuPosition = useCallback(() => {
         const trigger = containerRef.current;
         if (!trigger) return;
@@ -63,6 +58,13 @@ export function Select<T extends string = string>({ value, onChange, options, pl
         left = Math.min(Math.max(viewportPadding, left), window.innerWidth - width - viewportPadding);
 
         const top = openUpward ? Math.max(viewportPadding, rect.top - estimatedMenuHeight - gap) : rect.bottom + gap;
+        const computedStyle = window.getComputedStyle(trigger);
+        const themeStyle = {
+            ["--theme-primary" as string]: computedStyle.getPropertyValue("--theme-primary"),
+            ["--color-poke-blue" as string]: computedStyle.getPropertyValue("--color-poke-blue"),
+            ["--theme-primary-hover" as string]: computedStyle.getPropertyValue("--theme-primary-hover"),
+            ["--theme-primary-glow" as string]: computedStyle.getPropertyValue("--theme-primary-glow"),
+        };
 
         setMenuStyle({
             position: "fixed",
@@ -70,8 +72,17 @@ export function Select<T extends string = string>({ value, onChange, options, pl
             left,
             width,
             zIndex: 200,
+            ...themeStyle,
         });
     }, [align, options.length]);
+
+    const setOpen = (next: boolean) => {
+        if (next) {
+            updateMenuPosition();
+        }
+        setIsOpen(next);
+        onOpenChange?.(next);
+    };
 
     const handleToggle = () => {
         if (!disabled) {

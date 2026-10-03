@@ -13,3 +13,13 @@ export function shouldShowAppHeader(pathname: string, isAuthenticated: boolean):
     if (pathname === "/colecao" || pathname.startsWith("/colecao/")) return true;
     return false;
 }
+
+export function isSharedProfileOrCollectionRoute(pathname: string): boolean {
+    if (!pathname) return false;
+    return pathname.startsWith("/perfil/") || pathname.startsWith("/colecao/");
+}
+
+export function shouldShowNavPages(pathname: string, isAuthenticated: boolean): boolean {
+    if (!isAuthenticated) return false;
+    return true;
+}

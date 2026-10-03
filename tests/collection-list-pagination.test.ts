@@ -413,7 +413,9 @@ describe("slicePagedWindow + reset key", () => {
         expect(collectionPage).toContain('placeholder={isMobile ? "Buscar cartas..." : "Buscar por pokémon, número, coleção ou pokédex..."}');
         expect(collectionPage).toContain('aria-label="Alternar filtros"');
         expect(collectionPage).toContain("showFilters || activeFilterCount > 0");
-        expect(collectionPage).toContain('span className="hidden text-[7px] font-bold uppercase sm:inline sm:text-[9px]"');
+        expect(collectionPage).toContain("<CardArtwork");
+        expect(collectionPage).toContain("<CardBadgeStack");
+        expect(collectionPage).toContain("aspect-[8/11] w-full cursor-pointer");
 
         expect(publicCollectionView).toContain('placeholder={isMobile ? "Buscar cartas..." : "Buscar por pokémon, número, coleção ou pokédex..."}');
         expect(publicCollectionView).toContain('aria-label="Alternar filtros"');
@@ -424,7 +426,7 @@ describe("slicePagedWindow + reset key", () => {
         const publicCollectionView = readFileSync(join(import.meta.dir, "../src/components/profile/PublicCollectionView.tsx"), "utf8");
 
         expect(publicCollectionView).toContain("Carregando total de cartas");
-        expect(publicCollectionView).toContain('<PokeballLoader message="Carregando coleção..." size="lg" />');
+        expect(publicCollectionView).toContain("<CardGridSkeleton");
         expect(publicCollectionView).toContain("{isLoading ? (");
     });
 });
@@ -598,7 +600,7 @@ describe("Card condition domain logic", () => {
 
     it("configures ConditionBadge with letters by default and both icon + letters in edit page", () => {
         const badgeFile = readFileSync(join(import.meta.dir, "../src/components/ui/ConditionBadge.tsx"), "utf8");
-        const cardDetailPage = readFileSync(join(import.meta.dir, "../src/app/cards/[id]/page.tsx"), "utf8");
+        const cardDetailPage = readFileSync(join(import.meta.dir, "../src/app/cards/[id]/CardDetailClient.tsx"), "utf8");
         const trainerProfileView = readFileSync(join(import.meta.dir, "../src/components/profile/TrainerProfileView.tsx"), "utf8");
 
         expect(badgeFile).toContain("title={badge.fullLabel}");
@@ -640,7 +642,7 @@ describe("Sort direction button icons and filter counter exclusion", () => {
         expect(selectComponent).toContain("px-1.5 sm:px-3");
     });
 
-    it("uses compact 2-column mobile and 3-column desktop layout for filters in CardSearchModal and collection views", () => {
+    it("uses compact 2-column mobile and fixed two-row desktop layout for filters in CardSearchModal and collection views", () => {
         const cardSearchModal = readFileSync(join(import.meta.dir, "../src/components/modal/CardSearchModal.tsx"), "utf8");
         const collectionPage = readFileSync(join(import.meta.dir, "../src/app/collection/page.tsx"), "utf8");
         const publicCollectionView = readFileSync(join(import.meta.dir, "../src/components/profile/PublicCollectionView.tsx"), "utf8");
@@ -650,9 +652,11 @@ describe("Sort direction button icons and filter counter exclusion", () => {
         expect(cardSearchModal).not.toContain("sm:w-52");
         expect(cardSearchModal).not.toContain("sm:w-48");
 
-        expect(collectionPage).toContain('className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5 w-full"');
+        expect(collectionPage).toContain('className="grid w-full grid-cols-2 gap-1.5 lg:grid-cols-4 lg:gap-2.5"');
+        expect(collectionPage).toContain('className="col-span-2 flex w-full min-w-0 items-center gap-1.5 lg:col-span-2"');
         expect(collectionPage).not.toContain('expansionFilter" options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar coleção por expansão" className="w-full col-span-2');
-        expect(publicCollectionView).toContain('className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5 w-full"');
+        expect(publicCollectionView).toContain('className="grid w-full grid-cols-2 gap-1.5 lg:grid-cols-4 lg:gap-2.5"');
+        expect(publicCollectionView).toContain('className="col-span-2 flex w-full min-w-0 items-center gap-1.5 lg:col-span-2"');
     });
 
     it("uses distinct icons for rarity and variant filters to avoid icon repetition", () => {

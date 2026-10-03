@@ -52,31 +52,22 @@ test("garante que o botão de criar binder na estante não possui scale no hover
     expect(createBinderCardBlock).not.toContain("hover:scale");
 });
 
-test("abre visualmente a primeira página do binder no hover de desktop da estante", () => {
+test("revela visualmente uma prévia da primeira página do binder no hover de desktop da estante", () => {
     const shelfSource = readFileSync(join(import.meta.dir, "../src/components/shelf/BinderShelf.tsx"), "utf8");
     const shelfBookSource = readFileSync(join(import.meta.dir, "../src/components/shelf/BinderShelfBook.tsx"), "utf8");
     const stylesSource = readFileSync(join(import.meta.dir, "../src/app/globals.css"), "utf8");
 
     expect(shelfSource).toContain("<BinderShelfBook");
     expect(shelfSource).toContain("binder-shelf-card");
-    expect(shelfBookSource).toContain('from "react-pageflip"');
-    expect(shelfBookSource).toContain("flip.flipNext()");
-    expect(shelfBookSource).toContain("flip.flipPrev()");
-    expect(shelfBookSource).toContain("flippingTime={BINDER_FLIP_MS}");
-    expect(shelfBookSource).toContain("binder-shelf-engine");
+    expect(shelfSource).toContain("from=shelf");
+    expect(shelfSource).toContain("<Settings size={14}");
+    expect(shelfBookSource).toContain("binder-shelf-cover");
     expect(shelfBookSource).toContain("Página 1");
-    expect(stylesSource).toContain(".binder-shelf-card:is(:hover, :focus-within)");
-    expect(stylesSource).toContain("z-index: 60");
-    expect(stylesSource).toContain(".binder-shelf-card:is(:hover, :focus-within) .binder-shelf-stage");
-    expect(stylesSource).toContain(':has(.binder-shelf-stage[data-shelf-state="flipping"])');
-    expect(stylesSource).toContain(':not([data-shelf-page="0"])');
-    expect(stylesSource).toContain("transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1)");
-    expect(stylesSource).toContain("transform: scale(1.06)");
-    expect(stylesSource).not.toContain("translateY(-28px)");
-    expect(stylesSource).toContain(".binder-shelf-flipbook-root .stf__wrapper");
-    expect(stylesSource).toContain("height: 372px !important");
-    expect(stylesSource).toContain("padding-bottom: 0 !important");
-    expect(stylesSource).not.toContain("scale(0.68)");
+    expect(shelfBookSource).not.toContain("flip.flipNext()");
+    expect(stylesSource).toContain(".binder-shelf-cover--peek");
+    expect(stylesSource).not.toContain(".binder-shelf-card:is(:hover, :focus-within) .binder-shelf-cover");
+    expect(stylesSource).toContain("rotateY(-32deg)");
+    expect(stylesSource).not.toContain("transform: scale(1.06)");
 });
 
 test("renderiza a última face como página real de slots livres persistidos", () => {
@@ -102,14 +93,11 @@ test("restaura a busca do binder no visualizador universal", () => {
     expect(source).toContain("<BinderControls onSearch={handleSearchPokemon} />");
 });
 
-test("antecipa no seletor inferior as duas páginas do spread desktop", () => {
+test("não renderiza o seletor inferior de navegação rápida de páginas", () => {
     const source = readFileSync(join(import.meta.dir, "../src/components/binder/UniversalBinderViewer.tsx"), "utf8");
 
-    expect(source).toContain("const hoveredDesktopSpreadPages = useMemo");
-    expect(source).toContain("getUniversalPhysicalForPage(hoveredPage, binder.total_pages, false)");
-    expect(source).toContain("getUniversalPageForPhysical(targetPhysicalPage, binder.total_pages, false)");
-    expect(source).toContain("new Set([firstPageInSpread, firstPageInSpread + 1])");
-    expect(source).toContain("onMouseEnter={() => setHoveredPage(page)}");
+    expect(source).not.toContain("Navegação rápida de páginas");
+    expect(source).not.toContain("hoveredDesktopSpreadPages");
 });
 
 test("não escala os círculos de inserir carta no hover", () => {
@@ -124,4 +112,32 @@ test("aguarda o fim do folheamento antes do destaque vindo da busca ou estatíst
     expect(source).toContain("requestSlotHighlight(pageNumber, slotId)");
     expect(source).toContain("bookRef.current?.isBusy()");
     expect(source).toContain("isBinderSlotPainted(element)");
+});
+
+test("alinha o ícone de visibilidade diretamente ao nome e remove rótulo público/privado", () => {
+    const shelfSource = readFileSync(join(import.meta.dir, "../src/components/shelf/BinderShelf.tsx"), "utf8");
+
+    expect(shelfSource).not.toContain("<span>Público</span>");
+    expect(shelfSource).not.toContain("<span>Privado</span>");
+    expect(shelfSource).toContain("<Globe size={14}");
+    expect(shelfSource).toContain("<Lock size={13}");
+});
+
+test("retorna para a estante após salvar a edição quando acessado pelo botão de ajustes da estante", () => {
+    const shelfSource = readFileSync(join(import.meta.dir, "../src/components/shelf/BinderShelf.tsx"), "utf8");
+    const editSource = readFileSync(join(import.meta.dir, "../src/app/binders/[id]/edit/BinderEditClient.tsx"), "utf8");
+
+    expect(shelfSource).toContain("/edit?from=shelf");
+    expect(editSource).toContain('searchParams?.get("from") === "shelf"');
+    expect(editSource).toContain('router.push(isFromShelf ? "/" : `/binders/${binder.id}?opened=1`)');
+    expect(editSource).toContain('isFromShelf ? "Voltar para a Estante" : "Voltar ao Binder"');
+});
+
+test("utiliza o mesmo ícone Settings na estante e na página do binder", () => {
+    const shelfSource = readFileSync(join(import.meta.dir, "../src/components/shelf/BinderShelf.tsx"), "utf8");
+    const viewerSource = readFileSync(join(import.meta.dir, "../src/components/binder/UniversalBinderViewer.tsx"), "utf8");
+
+    expect(shelfSource).not.toContain("Settings2");
+    expect(shelfSource).toContain("<Settings size={14}");
+    expect(viewerSource).toContain("<Settings size={15}");
 });

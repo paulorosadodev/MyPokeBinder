@@ -23,6 +23,6 @@ export default [
         },
     },
     {
-        ignores: [".next/**", "out/**", "build/**", "next-env.d.ts"],
+        ignores: [".next/**", ".next-previous-build/**", "out/**", "build/**", "next-env.d.ts"],
     },
 ];

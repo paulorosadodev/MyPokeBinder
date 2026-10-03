@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { UniversalBinderBook, type UniversalBinderNavigationHandle } from "@/components/binder/UniversalBinderBook";
 import { UniversalBinderViewer } from "@/components/binder/UniversalBinderViewer";
+import { BinderShelf } from "@/components/shelf/BinderShelf";
 import { BinderShelfBook } from "@/components/shelf/BinderShelfBook";
 import type { Binder } from "@/types/binder";
 
@@ -54,11 +55,31 @@ export function BinderShelfBookFixture() {
     return (
         <div className="relative min-h-[900px] bg-[#080b10] px-12 pt-40">
             <div className="absolute top-16 right-8 left-8 z-20 h-20 rounded-2xl border border-white/10 bg-[#121520]" />
-            <div id="shelf-card" tabIndex={0} className="binder-shelf-card relative flex w-[300px] flex-col rounded-[20px] border border-white/10 bg-[#10131b] p-3" onMouseEnter={() => setActive(true)} onMouseLeave={() => setActive(false)} onFocus={() => setActive(true)} onBlur={() => setActive(false)}>
-                <BinderShelfBook binder={shelfBinder} active={active} />
-                <div className="h-36 pt-5 text-white">Kanto 151 Original</div>
+            <div id="shelf-card" tabIndex={0} className="binder-shelf-card relative flex w-[300px] flex-col overflow-hidden rounded-[20px] border border-white/10 bg-[#10131b]" onMouseEnter={() => setActive(true)} onMouseLeave={() => setActive(false)} onFocus={() => setActive(true)} onBlur={() => setActive(false)}>
+                <div className="relative w-full aspect-[264/372] overflow-hidden rounded-t-[19px] bg-[#090c12]">
+                    <BinderShelfBook binder={shelfBinder} active={active} />
+                </div>
+                <div className="h-28 p-4 text-white">Kanto 151 Original</div>
             </div>
             <div className="absolute top-40 left-[330px] z-10 h-[520px] w-[300px] rounded-[20px] border border-white/10 bg-[#151923]" />
+        </div>
+    );
+}
+
+export function BinderShelfLifecycleFixture() {
+    const [showShelf, setShowShelf] = useState(true);
+
+    return (
+        <div>
+            <div className="fixed top-2 left-2 z-[100] flex gap-2">
+                <button id="leave-shelf" type="button" onClick={() => setShowShelf(false)}>
+                    Sair da Estante
+                </button>
+                <button id="return-shelf" type="button" onClick={() => setShowShelf(true)}>
+                    Voltar à Estante
+                </button>
+            </div>
+            {showShelf ? <BinderShelf initialBinders={[shelfBinder]} /> : <div id="other-page">Outra página</div>}
         </div>
     );
 }

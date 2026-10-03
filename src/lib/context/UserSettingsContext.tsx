@@ -97,6 +97,7 @@ export interface UserSettingsContextType {
     setThemeColor: (color: string) => Promise<void>;
     setSoundEnabled: (enabled: boolean) => Promise<void>;
     setAnimationsEnabled: (enabled: boolean) => Promise<void>;
+    setPublicThemeColor: (color: string | null) => void;
 }
 
 export const UserSettingsContext = createContext<UserSettingsContextType | null>(null);
@@ -179,6 +180,25 @@ export function UserSettingsProvider({ children, initialTheme }: { children: Rea
         return true;
     });
     const [isLoading, setIsLoading] = useState(true);
+    const [publicThemeColor, setPublicThemeColorState] = useState<string | null>(null);
+
+    const setPublicThemeColor = useCallback(
+        (color: string | null) => {
+            if (color) {
+                const validColor = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(color) ? color : "#ef4444";
+                setPublicThemeColorState(validColor);
+                applyThemeToDom(validColor);
+            } else {
+                setPublicThemeColorState(null);
+                const cached = typeof window !== "undefined" ? localStorage.getItem("mypokebinder_theme_color") : null;
+                applyThemeToDom(cached || initialTheme || "#ef4444");
+            }
+        },
+        [initialTheme],
+    );
+
+    const activeThemeColor = publicThemeColor || themeColor;
+    const activeBallType = getBallTypeForTheme(activeThemeColor);
 
     const applyAndPersistTheme = useCallback((color: string) => {
         setThemeColorState(color);
@@ -205,8 +225,8 @@ export function UserSettingsProvider({ children, initialTheme }: { children: Rea
     }, [applyAndPersistTheme]);
 
     useEffect(() => {
-        updateFavicon(themeColor);
-    }, [pathname, themeColor]);
+        updateFavicon(activeThemeColor);
+    }, [pathname, activeThemeColor]);
 
     useEffect(() => {
         if (typeof document === "undefined") return;
@@ -363,19 +383,18 @@ export function UserSettingsProvider({ children, initialTheme }: { children: Rea
         }
     }, []);
 
-    const ballType = getBallTypeForTheme(themeColor);
-
     return (
         <UserSettingsContext.Provider
             value={{
-                themeColor,
-                ballType,
+                themeColor: activeThemeColor,
+                ballType: activeBallType,
                 soundEnabled,
                 animationsEnabled,
                 isLoading,
                 setThemeColor,
                 setSoundEnabled,
                 setAnimationsEnabled,
+                setPublicThemeColor,
             }}
         >
             {children}
@@ -389,4 +408,16 @@ export function useUserSettings() {
         throw new Error("useUserSettings must be used within a UserSettingsProvider");
     }
     return context;
+}
+
+export function usePublicProfileTheme(themeColor?: string | null, isGuest: boolean = true) {
+    const { setPublicThemeColor } = useUserSettings();
+
+    useEffect(() => {
+        if (!isGuest || !themeColor) return;
+        setPublicThemeColor(themeColor);
+        return () => {
+            setPublicThemeColor(null);
+        };
+    }, [themeColor, isGuest, setPublicThemeColor]);
 }

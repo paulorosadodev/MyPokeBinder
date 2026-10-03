@@ -1,10 +1,10 @@
 import { describe, it, expect } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { shouldShowAppHeader } from "../src/lib/layout/appShell";
+import { isSharedProfileOrCollectionRoute, shouldShowAppHeader, shouldShowNavPages } from "../src/lib/layout/appShell";
 
 const appDir = join(import.meta.dir, "../src/app");
-const stackedRouteLoaders = ["loading.tsx", "dashboard/loading.tsx", "collection/loading.tsx", "cards/[id]/loading.tsx", "configuracoes/loading.tsx", "perfil/loading.tsx", "perfil/[username]/loading.tsx", "colecao/[username]/loading.tsx"];
+const stackedRouteLoaders = ["dashboard/loading.tsx", "perfil/loading.tsx", "perfil/[username]/loading.tsx", "colecao/[username]/loading.tsx"];
 
 describe("AppShell header visibility", () => {
     it("hides the app Header on landing, login, legal, and auth routes", () => {
@@ -26,6 +26,25 @@ describe("AppShell header visibility", () => {
         expect(shouldShowAppHeader("/configuracoes", true)).toBe(true);
         expect(shouldShowAppHeader("/perfil/ash", false)).toBe(true);
         expect(shouldShowAppHeader("/colecao/ash", false)).toBe(true);
+    });
+
+    it("identifies shared profile and collection routes", () => {
+        expect(isSharedProfileOrCollectionRoute("/perfil/ash")).toBe(true);
+        expect(isSharedProfileOrCollectionRoute("/colecao/ash")).toBe(true);
+        expect(isSharedProfileOrCollectionRoute("/perfil")).toBe(false);
+        expect(isSharedProfileOrCollectionRoute("/colecao")).toBe(false);
+        expect(isSharedProfileOrCollectionRoute("/collection")).toBe(false);
+        expect(isSharedProfileOrCollectionRoute("/")).toBe(false);
+    });
+
+    it("hides nav pages when user is not authenticated on shared routes", () => {
+        expect(shouldShowNavPages("/perfil/ash", false)).toBe(false);
+        expect(shouldShowNavPages("/colecao/ash", false)).toBe(false);
+        expect(shouldShowNavPages("/", false)).toBe(false);
+        expect(shouldShowNavPages("/perfil/ash", true)).toBe(true);
+        expect(shouldShowNavPages("/colecao/ash", true)).toBe(true);
+        expect(shouldShowNavPages("/", true)).toBe(true);
+        expect(shouldShowNavPages("/collection", true)).toBe(true);
     });
 });
 

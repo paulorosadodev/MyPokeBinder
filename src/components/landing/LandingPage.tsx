@@ -154,7 +154,7 @@ export function LandingPage() {
                 <PublicHeader />
 
                 <section className="relative overflow-hidden pt-8 pb-16 md:flex md:min-h-[calc(100dvh-4rem)] md:flex-col md:justify-center md:pt-14 md:pb-24">
-                    <div className="mx-auto grid w-full max-w-7xl items-center gap-12 px-4 sm:gap-14 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-8">
+                    <div className="mx-auto grid w-full max-w-[1440px] items-center gap-12 px-4 sm:gap-14 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-8">
                         {/* Cards first on mobile for product-led hero */}
                         <div className="order-1 relative mx-auto flex w-full max-w-lg items-end justify-center gap-1 sm:max-w-xl sm:gap-2 lg:order-2 lg:max-w-none lg:gap-4 xl:gap-5">
                             {HERO_CARDS.map((card, index) => (
@@ -180,7 +180,7 @@ export function LandingPage() {
                     </div>
                 </section>
 
-                <section className="relative mx-auto w-full max-w-7xl px-4 pb-20 sm:px-6 sm:pb-24 lg:px-8">
+                <section className="relative mx-auto w-full max-w-[1440px] px-4 pb-20 sm:px-6 sm:pb-24 lg:px-8">
                     <LandingReveal className="max-w-2xl">
                         <div className="flex items-center gap-2.5 text-[#ef4444]">
                             <Grid3x3 size={20} strokeWidth={1.75} />
@@ -215,7 +215,7 @@ export function LandingPage() {
                     </div>
                 </section>
 
-                <LandingReveal className="relative mx-auto w-full max-w-7xl px-4 pb-24 sm:px-6 sm:pb-28 lg:px-8">
+                <LandingReveal className="relative mx-auto w-full max-w-[1440px] px-4 pb-24 sm:px-6 sm:pb-28 lg:px-8">
                     <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">O que o binder faz</h2>
                     <ul className="landing-reveal-stagger mt-10 divide-y divide-white/10 border-y border-white/10">
                         {CAPABILITIES.map((item) => {

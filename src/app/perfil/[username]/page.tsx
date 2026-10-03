@@ -35,5 +35,19 @@ async function SharedProfilePageContent({ params }: { params: Promise<{ username
         data: { user: viewer },
     } = await supabase.auth.getUser();
 
-    return <TrainerProfileView username={username} fallbackData={cached ? hydratePublicProfile(buildCachedPublicProfile(cached), viewer) : undefined} />;
+    const isGuest = !viewer;
+    const themeColor = cached?.owner?.themeColor || "#ef4444";
+
+    return (
+        <>
+            {isGuest && (
+                <style
+                    dangerouslySetInnerHTML={{
+                        __html: `:root { --theme-primary: ${themeColor}; --color-poke-blue: ${themeColor}; --theme-primary-hover: color-mix(in srgb, ${themeColor} 85%, black); --theme-primary-glow: color-mix(in srgb, ${themeColor} 40%, transparent); }`,
+                    }}
+                />
+            )}
+            <TrainerProfileView username={username} fallbackData={cached ? hydratePublicProfile(buildCachedPublicProfile(cached), viewer) : undefined} publicGuestTheme={isGuest ? themeColor : undefined} />
+        </>
+    );
 }

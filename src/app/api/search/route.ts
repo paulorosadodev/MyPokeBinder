@@ -41,6 +41,51 @@ interface CachedCardDetail {
     image?: string;
 }
 
+const LOCAL_ID_PATTERN = /^[A-Za-z]{0,4}\d+[A-Za-z]?$/;
+
+function parseQueryParts(raw: string): { nameQuery: string | null; localIdHint: string | null } {
+    const parenMatch = raw.match(/\(([^)]+)\)/);
+    if (parenMatch) {
+        const inside = parenMatch[1].trim();
+        if (LOCAL_ID_PATTERN.test(inside)) {
+            const nameRaw = raw.replace(parenMatch[0], "").trim();
+            return { localIdHint: inside, nameQuery: nameRaw || null };
+        }
+    }
+    if (raw.includes("/")) {
+        const parts = raw
+            .split("/")
+            .map((p) => p.trim())
+            .filter(Boolean);
+        if (parts.length >= 2) {
+            if (LOCAL_ID_PATTERN.test(parts[0])) {
+                return { localIdHint: parts[0], nameQuery: parts.slice(1).join(" ") || null };
+            }
+            const last = parts[parts.length - 1];
+            if (LOCAL_ID_PATTERN.test(last)) {
+                return { localIdHint: last, nameQuery: parts.slice(0, -1).join(" ") || null };
+            }
+        }
+        return { nameQuery: raw, localIdHint: null };
+    }
+    if (raw.includes(" ")) {
+        const parts = raw.split(/\s+/);
+        const last = parts[parts.length - 1];
+        const first = parts[0];
+        if (LOCAL_ID_PATTERN.test(last)) {
+            return { nameQuery: parts.slice(0, -1).join(" "), localIdHint: last };
+        }
+        if (LOCAL_ID_PATTERN.test(first)) {
+            return { nameQuery: parts.slice(1).join(" "), localIdHint: first };
+        }
+        return { nameQuery: raw, localIdHint: null };
+    }
+    if (LOCAL_ID_PATTERN.test(raw)) {
+        return { nameQuery: null, localIdHint: raw };
+    }
+    return { nameQuery: raw, localIdHint: null };
+}
+
 export async function GET(request: NextRequest) {
     const auth = await getAuthenticatedUser(request);
     if (auth.response) {
@@ -57,6 +102,7 @@ export async function GET(request: NextRequest) {
     }
 
     const trimmedName = name.trim();
+    const { nameQuery, localIdHint } = parseQueryParts(trimmedName);
     let targetDexId: number | undefined;
 
     if (dexIdParam) {
@@ -70,21 +116,11 @@ export async function GET(request: NextRequest) {
         if (!isNaN(parsed) && parsed >= 1 && parsed <= 1025) {
             targetDexId = parsed;
         }
-    } else {
-        const cleanName = trimmedName.replace(/[♀♂]/g, "").trim().toLowerCase();
+    } else if (nameQuery) {
+        const cleanName = nameQuery.replace(/[♀♂]/g, "").trim().toLowerCase();
         const matched = POKEMON_1025.find((p) => p.name.toLowerCase().replace(/[♀♂]/g, "").trim() === cleanName);
         if (matched) {
             targetDexId = matched.dexId;
-        }
-    }
-
-    const isSlashSearch = trimmedName.includes("/");
-    let slashLocalId: string | null = null;
-    if (isSlashSearch) {
-        const [numPart] = trimmedName.split("/");
-        const cleaned = numPart.trim();
-        if (/^\d+$/.test(cleaned)) {
-            slashLocalId = cleaned;
         }
     }
 
@@ -94,8 +130,7 @@ export async function GET(request: NextRequest) {
     const pageSize = !isNaN(parsedPageSize) && parsedPageSize > 0 && parsedPageSize <= 100 ? parsedPageSize : 36;
 
     try {
-        const encodedName = encodeURIComponent(trimmedName);
-        const searchCacheKey = targetDexId ? `search_dex_${targetDexId}_${encodedName}` : `search_${encodedName}`;
+        const searchCacheKey = targetDexId ? `search_dex_${targetDexId}` : localIdHint ? `search_lid_${localIdHint}${nameQuery ? `_n_${encodeURIComponent(nameQuery)}` : ""}` : `search_${encodeURIComponent(nameQuery ?? trimmedName)}`;
 
         const data = await coalesceRequest<unknown>(searchCacheKey, async () => {
             const fetchCards = async (url: string): Promise<TcgDexCardSummary[]> => {
@@ -112,17 +147,21 @@ export async function GET(request: NextRequest) {
 
             if (targetDexId) {
                 const dexPokemon = getPokemonByDexId(targetDexId);
-                const queryName = dexPokemon ? encodeURIComponent(dexPokemon.name) : encodedName;
+                const queryName = dexPokemon ? encodeURIComponent(dexPokemon.name) : encodeURIComponent(nameQuery ?? trimmedName);
                 const [nameCards, dexCards] = await Promise.all([fetchCards(`https://api.tcgdex.net/v2/en/cards?name=${queryName}`), fetchCards(`https://api.tcgdex.net/v2/en/cards?dexId=eq:${targetDexId}`)]);
                 return [...nameCards, ...dexCards];
             }
 
-            if (slashLocalId) {
-                const [localCards, nameCards] = await Promise.all([fetchCards(`https://api.tcgdex.net/v2/en/cards?localId=${encodeURIComponent(slashLocalId)}`), fetchCards(`https://api.tcgdex.net/v2/en/cards?name=${encodedName}`)]);
+            if (localIdHint && nameQuery) {
+                const [localCards, nameCards] = await Promise.all([fetchCards(`https://api.tcgdex.net/v2/en/cards?localId=${encodeURIComponent(localIdHint)}`), fetchCards(`https://api.tcgdex.net/v2/en/cards?name=${encodeURIComponent(nameQuery)}`)]);
                 return [...localCards, ...nameCards];
             }
 
-            return await fetchCards(`https://api.tcgdex.net/v2/en/cards?name=${encodedName}`);
+            if (localIdHint) {
+                return await fetchCards(`https://api.tcgdex.net/v2/en/cards?localId=${encodeURIComponent(localIdHint)}`);
+            }
+
+            return await fetchCards(`https://api.tcgdex.net/v2/en/cards?name=${encodeURIComponent(nameQuery ?? trimmedName)}`);
         });
 
         if (!Array.isArray(data)) {
@@ -148,9 +187,10 @@ export async function GET(request: NextRequest) {
                 continue;
             }
 
-            if (slashLocalId) {
-                const unpadded = slashLocalId.replace(/^0+/, "") || "0";
-                const matchesLocal = card.localId === slashLocalId || card.localId === unpadded || card.id.endsWith(`-${slashLocalId}`) || card.id.endsWith(`-${unpadded}`);
+            if (localIdHint) {
+                const isNumericId = /^\d+$/.test(localIdHint);
+                const unpadded = isNumericId ? localIdHint.replace(/^0+/, "") || "0" : localIdHint;
+                const matchesLocal = card.localId === localIdHint || card.localId === unpadded || card.id.endsWith(`-${localIdHint}`) || (isNumericId && card.id.endsWith(`-${unpadded}`));
                 if (!matchesLocal) {
                     continue;
                 }

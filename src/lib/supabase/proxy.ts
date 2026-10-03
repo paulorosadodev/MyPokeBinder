@@ -2,8 +2,14 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.delete("x-user-id");
+    requestHeaders.delete("x-user-email");
+
     let supabaseResponse = NextResponse.next({
-        request,
+        request: {
+            headers: requestHeaders,
+        },
     });
 
     const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)!, {
@@ -17,7 +23,9 @@ export async function updateSession(request: NextRequest) {
                 });
 
                 supabaseResponse = NextResponse.next({
-                    request,
+                    request: {
+                        headers: requestHeaders,
+                    },
                 });
 
                 cookiesToSet.forEach(({ name, value, options }) => {
@@ -30,6 +38,13 @@ export async function updateSession(request: NextRequest) {
     const {
         data: { user },
     } = await supabase.auth.getUser();
+
+    if (user) {
+        requestHeaders.set("x-user-id", user.id);
+        if (user.email) {
+            requestHeaders.set("x-user-email", user.email);
+        }
+    }
 
     const pathname = request.nextUrl.pathname;
     const isSharedProfilePage = /^\/perfil\/[^/]+\/?$/.test(pathname);
@@ -62,9 +77,19 @@ export async function updateSession(request: NextRequest) {
         return redirectResponse;
     }
 
+    const finalResponse = NextResponse.next({
+        request: {
+            headers: requestHeaders,
+        },
+    });
+
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+        finalResponse.cookies.set(cookie);
+    });
+
     if (!pathname.startsWith("/api/search")) {
-        supabaseResponse.headers.set("Cache-Control", "private, no-store");
+        finalResponse.headers.set("Cache-Control", "private, no-store");
     }
 
-    return supabaseResponse;
+    return finalResponse;
 }

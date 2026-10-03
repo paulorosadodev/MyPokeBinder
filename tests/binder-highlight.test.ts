@@ -99,7 +99,7 @@ describe("Binder slot highlight", () => {
         expect(FILLED_BINDER_SLOT_FRAME_CLASS).toContain("aspect-[8/11]");
         expect(FILLED_BINDER_SLOT_FRAME_CLASS).toContain("100cqw*11/8");
         expect(FILLED_BINDER_SLOT_FRAME_CLASS).toContain("100cqh*8/11");
-        expect(FILLED_BINDER_SLOT_FRAME_CLASS).toContain("rounded-lg");
+        expect(FILLED_BINDER_SLOT_FRAME_CLASS).toContain("rounded-[5.5%/4%]");
         expect(getBinderSlotHighlightClass(true)).toBe("slot-glow");
         expect(getBinderSlotHighlightClass(true)).not.toContain("ring-2");
         expect(getBinderSlotHighlightClass(true)).not.toContain("border-black");

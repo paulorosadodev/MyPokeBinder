@@ -1,9 +1,12 @@
 import { getPageForDexId, isElementFullyVisibleInViewport } from "@/lib/pokemon/constants";
 import { getActiveCatalogPages } from "@/lib/pokemon/binderImageWindow";
+import { CARD_FRAME_IMAGE_CLASS, CARD_FRAME_RADIUS_CLASS } from "@/lib/pokemon/cardFrame";
 
 export const BINDER_HIGHLIGHT_DURATION_MS = 3400;
 export const FILLED_BINDER_SLOT_CELL_CLASS = "relative flex h-full min-h-0 w-full min-w-0 items-center justify-center binder-filled-slot [container-type:size] hover:z-30 focus-within:z-30";
-export const FILLED_BINDER_SLOT_FRAME_CLASS = "relative aspect-[8/11] h-[min(100%,calc(100cqw*11/8))] w-[min(100%,calc(100cqh*8/11))] rounded-lg";
+export const FILLED_BINDER_SLOT_FRAME_CLASS = "relative aspect-[8/11] h-[min(100%,calc(100cqw*11/8))] w-[min(100%,calc(100cqh*8/11))] rounded-[5.5%/4%]";
+export const BINDER_CARD_CLIP_CLASS = CARD_FRAME_RADIUS_CLASS;
+export const BINDER_CARD_IMAGE_CLASS = CARD_FRAME_IMAGE_CLASS;
 
 export function shouldResetBinderReadyForViewportChange(previousIsMobile: boolean | null, nextIsMobile: boolean): boolean {
     return previousIsMobile !== null && previousIsMobile !== nextIsMobile;

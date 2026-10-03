@@ -4,7 +4,7 @@ import { PokeballLogo } from "@/components/ui/PokeballLogo";
 export function PublicFooter() {
     return (
         <footer className="relative z-20 border-t border-white/10 bg-[#07090e] py-12 text-slate-400">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
                 <div className="grid grid-cols-1 gap-10 md:grid-cols-3 lg:gap-12">
                     <div className="md:col-span-1">
                         <div className="flex items-center gap-3">

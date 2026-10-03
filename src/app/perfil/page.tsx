@@ -1,26 +1,16 @@
-"use client";
-
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/context/AuthContext";
-import { ProfileRouteLoading } from "@/components/profile/ProfileRouteLoading";
+import { redirect } from "next/navigation";
+import { getServerUser } from "@/lib/supabase/serverUser";
 import { usernameFromEmail } from "@/lib/profile/username";
 
-export default function ProfileIndexPage() {
-    const router = useRouter();
-    const { user, isLoading } = useAuth();
+export default async function ProfileIndexPage() {
+    const { user, supabase } = await getServerUser();
 
-    useEffect(() => {
-        if (isLoading) return;
+    if (!user) {
+        redirect("/login");
+    }
 
-        if (!user) {
-            router.replace("/login");
-            return;
-        }
+    const { data: profile } = await supabase.from("profiles").select("username").eq("id", user.id).maybeSingle();
 
-        const username = user.username || usernameFromEmail(user.email);
-        router.replace(`/perfil/${username}`);
-    }, [user, isLoading, router]);
-
-    return <ProfileRouteLoading />;
+    const username = profile?.username || usernameFromEmail(user.email);
+    redirect(`/perfil/${username}`);
 }

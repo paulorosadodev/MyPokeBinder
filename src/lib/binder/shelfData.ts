@@ -37,7 +37,8 @@ export function enrichBindersForShelf(binders: Binder[], slots: BinderSlotSummar
             .flatMap((slot) => {
                 const card = slot.user_card_id ? cardsById.get(slot.user_card_id) : undefined;
                 return card ? [{ ...card, slot_index: slot.slot_index }] : [];
-            });
+            })
+            .slice(0, 3);
 
         const completionPercentage = goals.length > 0 ? Math.round((filledGoals / goals.length) * 100) : totalSlots > 0 ? Math.round((totalCards / totalSlots) * 100) : 0;
 

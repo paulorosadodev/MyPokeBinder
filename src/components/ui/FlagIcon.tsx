@@ -9,7 +9,7 @@ interface FlagIconProps {
 export function FlagIcon({ country, className = "" }: FlagIconProps) {
     if (country === "pt-br") {
         return (
-            <svg viewBox="0 0 20 14" width="18" height="13" className={`overflow-hidden rounded-xs shadow-xs ${className}`}>
+            <svg viewBox="0 0 20 14" width="18" height="13" className={`overflow-hidden rounded-xs ${className}`}>
                 <rect width="20" height="14" fill="#009c3b" />
                 <polygon points="10,2 18,7 10,12 2,7" fill="#ffdf00" />
                 <circle cx="10" cy="7" r="3.2" fill="#002776" />
@@ -20,7 +20,7 @@ export function FlagIcon({ country, className = "" }: FlagIconProps) {
 
     if (country === "en") {
         return (
-            <svg viewBox="0 0 20 14" width="18" height="13" className={`overflow-hidden rounded-xs shadow-xs ${className}`}>
+            <svg viewBox="0 0 20 14" width="18" height="13" className={`overflow-hidden rounded-xs ${className}`}>
                 <rect width="20" height="14" fill="#b22234" />
                 <rect y="1.08" width="20" height="1.08" fill="#ffffff" />
                 <rect y="3.24" width="20" height="1.08" fill="#ffffff" />
@@ -42,7 +42,7 @@ export function FlagIcon({ country, className = "" }: FlagIconProps) {
     }
 
     return (
-        <svg viewBox="0 0 20 14" width="18" height="13" className={`overflow-hidden rounded-xs shadow-xs border border-white/20 ${className}`}>
+        <svg viewBox="0 0 20 14" width="18" height="13" className={`overflow-hidden rounded-xs border border-white/20 ${className}`}>
             <rect width="20" height="14" fill="#ffffff" />
             <circle cx="10" cy="7" r="4.2" fill="#bc002d" />
         </svg>
