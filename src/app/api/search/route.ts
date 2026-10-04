@@ -146,6 +146,22 @@ function matchesCardLocalId(card: { id: string; localId?: string }, localIdHint:
     return false;
 }
 
+function getCardRecencyTier(cardId: string): number {
+    const id = cardId.toLowerCase();
+    if (id.startsWith("30th") || id.startsWith("me")) return 100;
+    if (id.startsWith("sv")) return 90;
+    if (id.startsWith("swsh")) return 80;
+    if (id.startsWith("sm")) return 70;
+    if (id.startsWith("xy")) return 60;
+    if (id.startsWith("bw")) return 50;
+    if (id.startsWith("hgss") || id.startsWith("col")) return 40;
+    if (id.startsWith("dp") || id.startsWith("pl")) return 30;
+    if (id.startsWith("ex") || id.startsWith("np")) return 20;
+    if (id.startsWith("neo") || id.startsWith("gym")) return 10;
+    if (id.startsWith("base") || id.startsWith("bs")) return 5;
+    return 0;
+}
+
 export async function GET(request: NextRequest) {
     const auth = await getAuthenticatedUser(request);
     if (auth.response) {
@@ -164,6 +180,7 @@ export async function GET(request: NextRequest) {
     const trimmedName = name.trim();
     const { nameQuery, localIdHint } = parseQueryParts(trimmedName);
     let targetDexId: number | undefined;
+    let extraQueryTerm: string | null = null;
 
     if (dexIdParam) {
         const parsed = parseInt(dexIdParam, 10);
@@ -188,6 +205,13 @@ export async function GET(request: NextRequest) {
         });
         if (matched) {
             targetDexId = matched.dexId;
+        } else if (cleanName.includes(" ")) {
+            const prefixMatched = POKEMON_1025.find((p) => cleanName.startsWith(`${p.name.toLowerCase().replace(/[♀♂]/g, "").trim()} `));
+            if (prefixMatched) {
+                targetDexId = prefixMatched.dexId;
+                const base = prefixMatched.name.toLowerCase().replace(/[♀♂]/g, "").trim();
+                extraQueryTerm = cleanName.slice(base.length).trim();
+            }
         }
     }
 
@@ -197,7 +221,7 @@ export async function GET(request: NextRequest) {
     const pageSize = !isNaN(parsedPageSize) && parsedPageSize > 0 && parsedPageSize <= 100 ? parsedPageSize : 36;
 
     try {
-        const searchCacheKey = targetDexId ? `search_dex_${targetDexId}` : localIdHint ? `search_lid_${localIdHint.toLowerCase()}${nameQuery ? `_n_${encodeURIComponent(nameQuery.toLowerCase())}` : ""}` : `search_${encodeURIComponent((nameQuery ?? trimmedName).toLowerCase())}`;
+        const searchCacheKey = targetDexId ? `search_dex_${targetDexId}${extraQueryTerm ? `_eq_${encodeURIComponent(extraQueryTerm)}` : ""}` : localIdHint ? `search_lid_${localIdHint.toLowerCase()}${nameQuery ? `_n_${encodeURIComponent(nameQuery.toLowerCase())}` : ""}` : `search_${encodeURIComponent((nameQuery ?? trimmedName).toLowerCase())}`;
 
         const data = await coalesceRequest<unknown>(searchCacheKey, async () => {
             const fetchCards = async (url: string): Promise<TcgDexCardSummary[]> => {
@@ -310,6 +334,26 @@ export async function GET(request: NextRequest) {
                 ...card,
                 image: typeof card.image === "string" && card.image.trim().length > 0 ? card.image : POKEMON_CARD_BACK_URL,
             });
+        }
+
+        const resolvedExtraTerm: string | null = extraQueryTerm;
+        if (resolvedExtraTerm) {
+            const extraTokens = resolvedExtraTerm
+                .toLowerCase()
+                .split(/\s+/)
+                .filter((t: string) => t.length > 0 && t !== "anos" && t !== "de");
+            const matchesExtra = (c: TcgDexCardSummary) => {
+                const cId = c.id.toLowerCase();
+                const cName = c.name.toLowerCase();
+                return extraTokens.some((t: string) => cId.includes(t) || cName.includes(t));
+            };
+            const priorityCards = validCards.filter(matchesExtra);
+            if (priorityCards.length > 0) {
+                validCards.length = 0;
+                validCards.push(...priorityCards);
+            }
+        } else if (targetDexId && !localIdHint) {
+            validCards.sort((a, b) => getCardRecencyTier(b.id) - getCardRecencyTier(a.id));
         }
 
         const totalCount = validCards.length;

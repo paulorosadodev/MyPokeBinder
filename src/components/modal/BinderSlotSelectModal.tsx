@@ -461,7 +461,7 @@ export function BinderSlotSelectModal({ isOpen, hasOpenSibling = false, skipEnte
                                     const shineMode = resolveCardShine(card.card_variant, card.card_rarity, card.card_image_url, card.card_name);
 
                                     return (
-                                        <div key={group.key} className={`group relative isolate flex flex-col gap-2 rounded-xl transition-all duration-200 ${isPendingThisCard ? "z-10 ring-2 ring-poke-blue ring-offset-2 ring-offset-slate-900 shadow-xl shadow-poke-blue/25 scale-[1.02]" : ""} ${appear.className}`} style={appear.style}>
+                                        <div key={group.key} className={`group relative isolate flex flex-col gap-2 rounded-xl transition-all duration-200 ${isPendingThisCard ? "z-10 shadow-xl shadow-poke-blue/25 scale-[1.02]" : ""} ${appear.className}`} style={appear.style}>
                                             <div
                                                 role="button"
                                                 tabIndex={isInteractionBlocked ? -1 : 0}
@@ -481,9 +481,8 @@ export function BinderSlotSelectModal({ isOpen, hasOpenSibling = false, skipEnte
                                             >
                                                 <CardArtwork src={imageSrc} alt="" sizes="(max-width: 768px) 50vw, 200px" shineMode={shineMode} elementTypes={resolveCardElementTypes(card.card_types, card.pokemon_dex_id)} imageClassName="object-contain" />
                                                 {isPendingThisCard && (
-                                                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 rounded-xl bg-black/60 p-2 text-center backdrop-blur-[2px] animate-in fade-in duration-150">
-                                                        <Loader2 size={24} className="animate-spin text-poke-blue" />
-                                                        <span className="text-[11px] font-semibold text-white drop-shadow sm:text-xs">{isCurrent ? "Removendo..." : "Alocando..."}</span>
+                                                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-xl bg-black/60 p-2 text-center backdrop-blur-[2px] animate-in fade-in duration-150">
+                                                        <PokeballLoader size="sm" message={isCurrent ? "Removendo..." : "Alocando..."} />
                                                     </div>
                                                 )}
                                             </div>

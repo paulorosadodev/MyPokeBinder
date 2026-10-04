@@ -221,4 +221,26 @@ describe("GET /api/search", () => {
         const boosterCard = jsonBooster.cards.find((c: { id: string }) => c.id === "bw10-92");
         expect(boosterCard).toBeDefined();
     }, 15000);
+
+    it("should prioritize 30th celebration Unown on page 1 and support set hints like unown 30th", async () => {
+        const reqUnown = new NextRequest("http://localhost:3000/api/search?name=unown&page=1&pageSize=36", {
+            headers: { "x-test-user-id": "test-user-id" },
+        });
+        const resUnown = await GET(reqUnown);
+        expect(resUnown.status).toBe(200);
+        const jsonUnown = await resUnown.json();
+        expect(Array.isArray(jsonUnown.cards)).toBe(true);
+        const unownCard = jsonUnown.cards.find((c: { id: string }) => c.id === "30th-072");
+        expect(unownCard).toBeDefined();
+
+        const req30th = new NextRequest("http://localhost:3000/api/search?name=unown%2030th&page=1&pageSize=36", {
+            headers: { "x-test-user-id": "test-user-id" },
+        });
+        const res30th = await GET(req30th);
+        expect(res30th.status).toBe(200);
+        const json30th = await res30th.json();
+        expect(Array.isArray(json30th.cards)).toBe(true);
+        const card30th = json30th.cards.find((c: { id: string }) => c.id === "30th-072");
+        expect(card30th).toBeDefined();
+    }, 15000);
 });

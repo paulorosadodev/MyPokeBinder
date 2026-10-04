@@ -19,7 +19,6 @@ import { FlagIcon } from "@/components/ui/FlagIcon";
 import { Select, type SelectOption } from "@/components/ui/Select";
 import { CardArtwork } from "@/components/ui/CardArtwork";
 import { CardBadgeStack } from "@/components/ui/CardBadgeStack";
-import { Spinner } from "@/components/ui/Spinner";
 import { ModalSearchFilters } from "@/components/ui/ModalSearchFilters";
 import { getCardAppearProps } from "@/lib/ui/cardAppear";
 import { useDismissibleOverlay } from "@/lib/hooks/useDismissibleOverlay";
@@ -978,7 +977,7 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
                                                     {isMissing && !isSubmittingThis ? <span className="pointer-events-none absolute inset-0 rounded-[3px] bg-black/25" aria-hidden="true" /> : null}
                                                     {isSubmittingThis ? (
                                                         <span className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center" aria-hidden="true">
-                                                            <Spinner size={18} className="text-white" />
+                                                            <PokeballLoader size="sm" />
                                                         </span>
                                                     ) : null}
                                                     {confirmTokens[card.id] ? (
@@ -996,13 +995,8 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
                                 </div>
                             </div>
 
-                            <div ref={sentinelRef} className="flex min-h-8 items-center justify-center">
-                                {loadingMore && (
-                                    <div className="flex items-center gap-2 text-xs text-slate-400">
-                                        <Spinner size={16} />
-                                        <span>Carregando mais cartas...</span>
-                                    </div>
-                                )}
+                            <div ref={sentinelRef} className="flex min-h-8 items-center justify-center py-4">
+                                {loadingMore && <PokeballLoader message="Carregando mais cartas..." size="sm" />}
                             </div>
                         </div>
                     )}

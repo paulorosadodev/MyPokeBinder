@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BookOpen, Loader2, X } from "lucide-react";
+import { BookOpen, X } from "lucide-react";
 import { BinderShelfBook } from "@/components/shelf/BinderShelfBook";
+import { PokeballLoader } from "@/components/loading/PokeballLoader";
 import { useDismissibleOverlay } from "@/lib/hooks/useDismissibleOverlay";
 import { useOverlayPresence } from "@/lib/hooks/useOverlayPresence";
 import type { Binder } from "@/types/binder";
@@ -83,7 +84,7 @@ export function CardAllocateModal({ isOpen, onClose }: CardAllocateModalProps) {
 
                     {isLoading ? (
                         <div className="flex h-32 items-center justify-center">
-                            <Loader2 size={20} className="animate-spin text-poke-blue" />
+                            <PokeballLoader size="sm" message="Carregando binders..." />
                         </div>
                     ) : binders.length === 0 ? (
                         <div className="py-6 text-center text-xs text-slate-400">Você ainda não possui nenhum binder.</div>

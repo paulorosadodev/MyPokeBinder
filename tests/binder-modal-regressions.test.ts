@@ -65,15 +65,23 @@ describe("Regressões do fluxo de seleção e catálogo do Binder", () => {
         expect(catalog).toContain("const uniqueIncoming = (data.cards ?? []).filter((c) => !existingIds.has(c.id));");
     });
 
-    it("destaca a carta selecionada e atenua as demais durante o carregamento de alocação no binder", () => {
+    it("destaca a carta selecionada e atenua as demais durante o carregamento de alocação no binder sem borda azul", () => {
         const selector = readSource("../src/components/modal/BinderSlotSelectModal.tsx");
 
         expect(selector).toContain("isPendingThisCard = pendingActionId === group.activeCard.id");
         expect(selector).toContain("isOtherActionPending = (isActionPending && !isPendingThisCard) || (isNavigating && !isEditingThisCard)");
-        expect(selector).toContain('isPendingThisCard ? "z-10 ring-2 ring-poke-blue ring-offset-2 ring-offset-slate-900 shadow-xl shadow-poke-blue/25 scale-[1.02]"');
-        expect(selector).toContain('<Loader2 size={24} className="animate-spin text-poke-blue" />');
-        expect(selector).toContain('isPendingThisCard ? (isCurrent ? "Removendo..." : "Alocando...")');
+        expect(selector).toContain('isPendingThisCard ? "z-10 shadow-xl shadow-poke-blue/25 scale-[1.02]"');
+        expect(selector).not.toContain("ring-2 ring-poke-blue");
+        expect(selector).toContain('<PokeballLoader size="sm" message={isCurrent ? "Removendo..." : "Alocando..."} />');
         expect(selector).toContain('isOtherActionPending ? "cursor-not-allowed opacity-40 transition-opacity duration-200"');
+    });
+
+    it("utiliza PokeballLoader no carregamento de paginação e envio do catálogo", () => {
+        const catalog = readSource("../src/components/modal/CardSearchModal.tsx");
+
+        expect(catalog).toContain('<PokeballLoader message="Carregando mais cartas..." size="sm" />');
+        expect(catalog).toContain('<PokeballLoader size="sm" />');
+        expect(catalog).not.toContain('from "@/components/ui/Spinner"');
     });
 
     it("utiliza CardImageSkeleton e fade-in no slot do binder enquanto a imagem carrega", () => {
