@@ -4,6 +4,7 @@ import { UniversalBinderViewer } from "@/components/binder/UniversalBinderViewer
 import { BinderShelf } from "@/components/shelf/BinderShelf";
 import { BinderShelfBook } from "@/components/shelf/BinderShelfBook";
 import type { Binder } from "@/types/binder";
+import { cards } from "./cards";
 
 const binder: Binder = { id: "teste", user_id: "teste", name: "Capa de teste", description: "", grid_type: "3x3", total_pages: 1, cover_theme: "red", is_public: false, is_featured: false, created_at: "", updated_at: "" };
 const slots: [] = [];
@@ -16,6 +17,36 @@ export function UniversalBinderFixture() {
         <div style={{ width: 1100, height: 760 }}>
             <button onClick={() => ref.current?.flipNext()}>Avançar teste</button>
             <UniversalBinderBook ref={ref} binder={binder} slots={slots} currentPage={page} entryTargetPage={1} isMobile={false} onPageChange={setPage} onSlotClick={onSlotClick} />
+        </div>
+    );
+}
+
+const motionBinder: Binder = { ...binder, total_pages: 4 };
+const motionSlots = Array.from({ length: 36 }, (_, index) => {
+    const pageNumber = Math.floor(index / 9) + 1;
+    const slotIndex = (index % 9) + 1;
+    const isFilled = slotIndex === 1;
+    return {
+        id: `motion-${pageNumber}-${slotIndex}`,
+        binder_id: motionBinder.id,
+        page_number: pageNumber,
+        slot_index: slotIndex,
+        slot_type: "free" as const,
+        user_card_id: isFilled ? cards[index].id : null,
+        card: isFilled ? cards[index] : null,
+        created_at: "",
+        updated_at: "",
+    };
+});
+
+export function UniversalBinderMotionFixture() {
+    const ref = useRef<UniversalBinderNavigationHandle>(null);
+    const [page, setPage] = useState(1);
+    return (
+        <div style={{ width: 1100, height: 760 }}>
+            <button onClick={() => ref.current?.flipPrev()}>Voltar teste</button>
+            <button onClick={() => ref.current?.flipNext()}>Avançar teste</button>
+            <UniversalBinderBook ref={ref} binder={motionBinder} slots={motionSlots} currentPage={page} entryTargetPage={1} isMobile={false} initiallyOpened onPageChange={setPage} onSlotClick={onSlotClick} />
         </div>
     );
 }

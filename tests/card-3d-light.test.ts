@@ -90,7 +90,7 @@ describe("Lightweight 3D Card Tilt Logic", () => {
     it("should match every foil surface to the 600 by 825 TCGdex card contour", () => {
         expect(600 / 825).toBe(8 / 11);
 
-        const cardSurfaceFiles = ["../src/app/collection/page.tsx", "../src/app/cards/[id]/CardDetailClient.tsx", "../src/app/login/page.tsx", "../src/components/landing/LandingPage.tsx", "../src/components/modal/BinderSlotSelectModal.tsx", "../src/components/modal/CardSearchModal.tsx", "../src/components/profile/PublicCollectionView.tsx", "../src/components/profile/TrainerProfileView.tsx", "../src/components/ui/CardLightbox.tsx"];
+        const cardSurfaceFiles = ["../src/app/colecao/page.tsx", "../src/app/cartas/[id]/CardDetailClient.tsx", "../src/app/login/page.tsx", "../src/components/landing/LandingPage.tsx", "../src/components/modal/BinderSlotSelectModal.tsx", "../src/components/modal/CardSearchModal.tsx", "../src/components/profile/PublicCollectionView.tsx", "../src/components/profile/TrainerProfileView.tsx", "../src/components/ui/CardLightbox.tsx"];
 
         for (const relativePath of cardSurfaceFiles) {
             const source = readFileSync(join(import.meta.dir, relativePath), "utf8");

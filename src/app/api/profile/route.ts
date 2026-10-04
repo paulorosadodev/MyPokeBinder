@@ -2,13 +2,16 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { buildProfileFromCards } from "@/lib/profile/buildProfile";
 import { revalidatePublicProfileTags } from "@/lib/profile/publicCache";
-import { RESERVED_USERNAMES, usernameFromEmail, validateBio, validateDisplayName, validateUsername } from "@/lib/profile/username";
+import { RESERVED_USERNAMES, sanitizeAvatarUrl, usernameFromEmail, validateBio, validateDisplayName, validateUsername } from "@/lib/profile/username";
 import type { UserCard } from "@/types/binder";
+import { enforceRateLimit } from "@/lib/security/rateLimit";
+
+const PROFILE_UPDATE_RATE_LIMIT = { limit: 30, windowMs: 3_600_000 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 async function ensureOwnProfile(supabase: Awaited<ReturnType<typeof getAuthenticatedUser>>["supabase"], user: NonNullable<Awaited<ReturnType<typeof getAuthenticatedUser>>["user"]>) {
-    const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
+    const avatarUrl = sanitizeAvatarUrl(user.user_metadata?.avatar_url) ?? sanitizeAvatarUrl(user.user_metadata?.picture);
     const defaultUsername = usernameFromEmail(user.email);
 
     const { data: existing } = await supabase.from("profiles").select("id, username, theme_color").eq("id", user.id).maybeSingle();
@@ -121,6 +124,11 @@ export async function PATCH(request: NextRequest) {
         return auth.response;
     }
     const { user, supabase } = auth;
+
+    const limited = enforceRateLimit(request, "profile-update", PROFILE_UPDATE_RATE_LIMIT, user.id);
+    if (limited) {
+        return limited;
+    }
 
     try {
         const body = await request.json();

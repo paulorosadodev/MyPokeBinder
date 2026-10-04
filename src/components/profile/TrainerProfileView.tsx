@@ -142,8 +142,8 @@ function FeaturedPickerCard({ card, selectedPosition, onToggle }: { card: UserCa
                         <span className="mt-2 text-[10px] font-semibold tracking-wide">Remover</span>
                     </span>
                 ) : (
-                    <span aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 hidden flex-col items-center justify-center bg-black/45 text-white group-hover/featured-picker:flex group-focus-visible/featured-picker:flex">
-                        <span className="flex h-12 w-12 items-center justify-center rounded-full border border-white/35 bg-black/35 backdrop-blur-sm">
+                    <span aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/45 text-white opacity-0 transition-opacity duration-200 ease-out group-hover/featured-picker:opacity-100 group-focus-visible/featured-picker:opacity-100">
+                        <span className="flex h-12 w-12 scale-90 items-center justify-center rounded-full border border-white/40 bg-poke-blue shadow-lg shadow-poke-blue/40 transition-transform duration-200 ease-out group-hover/featured-picker:scale-100 group-focus-visible/featured-picker:scale-100">
                             <Plus size={22} strokeWidth={2.5} />
                         </span>
                         <span className="mt-2 text-[10px] font-semibold tracking-wide">Adicionar</span>
@@ -933,7 +933,7 @@ export function TrainerProfileView({ username, fallbackData, publicGuestTheme }:
                                 <div className="flex h-full flex-col items-center justify-center gap-2 py-12 text-center">
                                     <Layers2 size={28} className="text-slate-600" />
                                     <p className="text-sm text-slate-400">Nenhuma carta na coleção ainda.</p>
-                                    <NextLink href="/collection" prefetch={true} className="mt-2 text-xs font-semibold text-poke-blue">
+                                    <NextLink href="/colecao" prefetch={true} className="mt-2 text-xs font-semibold text-poke-blue">
                                         Ir para a Coleção
                                     </NextLink>
                                 </div>

@@ -21,10 +21,10 @@ describe("Thematic 404 Not Found Page Logic", () => {
 
     it("should validate recovery route targets for lost trainers", () => {
         const primaryRecoveryRoute = "/";
-        const secondaryRecoveryRoute = "/collection";
+        const secondaryRecoveryRoute = "/colecao";
 
         expect(primaryRecoveryRoute).toBe("/");
-        expect(secondaryRecoveryRoute).toBe("/collection");
+        expect(secondaryRecoveryRoute).toBe("/colecao");
     });
 
     it("should define thematic 404 card attributes", () => {

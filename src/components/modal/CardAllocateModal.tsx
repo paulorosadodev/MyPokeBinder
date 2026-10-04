@@ -68,12 +68,12 @@ export function CardAllocateModal({ isOpen, onClose }: CardAllocateModalProps) {
             }}
         >
             <div className="modal-surface flex h-dvh max-h-none w-full max-w-none flex-col overflow-y-auto rounded-none border-0 bg-[#121622] p-5 shadow-2xl sm:h-auto sm:max-h-[90dvh] sm:max-w-5xl sm:rounded-2xl sm:border sm:border-white/10">
-                <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                    <div className="flex items-center gap-2.5">
-                        <BookOpen size={18} className="text-poke-blue" />
-                        <h3 className="text-sm font-bold text-white">Alocar em um Binder</h3>
+                <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-3">
+                    <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                        <BookOpen size={18} className="shrink-0 text-poke-blue" />
+                        <h3 className="truncate text-sm font-bold text-white sm:text-base">Alocar em um Binder</h3>
                     </div>
-                    <button type="button" onClick={onClose} disabled={isNavigating} aria-label="Fechar" className="rounded-lg bg-white/5 p-1 text-slate-400 transition-colors hover:text-white disabled:cursor-wait disabled:opacity-50">
+                    <button type="button" onClick={onClose} disabled={isNavigating} aria-label="Fechar" className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-white/5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-wait disabled:opacity-50">
                         <X size={16} />
                     </button>
                 </div>

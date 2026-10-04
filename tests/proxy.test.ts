@@ -12,7 +12,7 @@ describe("Proxy Session and Route Protection", () => {
     });
 
     it("should redirect unauthenticated page requests to /login", async () => {
-        const request = new NextRequest("http://localhost:3000/dashboard");
+        const request = new NextRequest("http://localhost:3000/configuracoes");
         const response = await updateSession(request);
         expect(response.status).toBe(307);
         expect(response.headers.get("location")).toBe("http://localhost:3000/login");

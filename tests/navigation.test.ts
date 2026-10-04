@@ -8,9 +8,9 @@ describe("Navigation and BottomNav Route Logic", () => {
             isActive: currentPath === "/" || currentPath.startsWith("/binders"),
         },
         {
-            href: "/collection",
+            href: "/colecao",
             label: "Coleção",
-            isActive: currentPath.startsWith("/collection") || currentPath.startsWith("/cards"),
+            isActive: currentPath.startsWith("/colecao") || currentPath.startsWith("/cartas"),
         },
     ];
 
@@ -21,9 +21,9 @@ describe("Navigation and BottomNav Route Logic", () => {
             isActive: currentPath === "/" || currentPath.startsWith("/binders"),
         },
         {
-            href: "/collection",
+            href: "/colecao",
             label: "Coleção",
-            isActive: currentPath.startsWith("/collection") || currentPath.startsWith("/cards"),
+            isActive: currentPath.startsWith("/colecao") || currentPath.startsWith("/cartas"),
         },
     ];
 
@@ -47,29 +47,29 @@ describe("Navigation and BottomNav Route Logic", () => {
         expect(desktopItems[1].isActive).toBe(false);
     });
 
-    it("should correctly activate Coleção on /collection as second item", () => {
-        const items = getMobileNavItems("/collection");
+    it("should correctly activate Coleção on /colecao as second item", () => {
+        const items = getMobileNavItems("/colecao");
         expect(items[0].isActive).toBe(false);
         expect(items[1].isActive).toBe(true);
     });
 
-    it("should not activate any tab for legacy /dashboard", () => {
-        const items = getMobileNavItems("/dashboard");
+    it("should not activate any tab for secondary profile routes", () => {
+        const items = getMobileNavItems("/configuracoes");
         expect(items[0].isActive).toBe(false);
         expect(items[1].isActive).toBe(false);
     });
 
-    it("should correctly handle nested paths under collection", () => {
-        const items = getMobileNavItems("/collection/filter");
+    it("should correctly handle nested paths under colecao", () => {
+        const items = getMobileNavItems("/colecao/filtro");
         expect(items[1].isActive).toBe(true);
     });
 
-    it("should activate Coleção when viewing or editing a card under /cards/:id", () => {
-        const mobileItems = getMobileNavItems("/cards/card-123");
+    it("should activate Coleção when viewing or editing a card under /cartas/:id", () => {
+        const mobileItems = getMobileNavItems("/cartas/card-123");
         expect(mobileItems[0].isActive).toBe(false);
         expect(mobileItems[1].isActive).toBe(true);
 
-        const desktopItems = getDesktopNavItems("/cards/card-123");
+        const desktopItems = getDesktopNavItems("/cartas/card-123");
         expect(desktopItems[0].isActive).toBe(false);
         expect(desktopItems[1].isActive).toBe(true);
     });
@@ -77,8 +77,8 @@ describe("Navigation and BottomNav Route Logic", () => {
     it("should calculate correct slider active index for mobile nav", () => {
         expect(calculateActiveIndex(getMobileNavItems("/"))).toBe(0);
         expect(calculateActiveIndex(getMobileNavItems("/binders/123"))).toBe(0);
-        expect(calculateActiveIndex(getMobileNavItems("/collection"))).toBe(1);
-        expect(calculateActiveIndex(getMobileNavItems("/cards/swsh4-25"))).toBe(1);
+        expect(calculateActiveIndex(getMobileNavItems("/colecao"))).toBe(1);
+        expect(calculateActiveIndex(getMobileNavItems("/cartas/swsh4-25"))).toBe(1);
         expect(calculateActiveIndex(getMobileNavItems("/perfil"))).toBe(-1);
         expect(calculateActiveIndex(getMobileNavItems("/unknown"))).toBe(-1);
     });
@@ -86,8 +86,8 @@ describe("Navigation and BottomNav Route Logic", () => {
     it("should calculate correct active item index for desktop nav", () => {
         expect(calculateActiveIndex(getDesktopNavItems("/"))).toBe(0);
         expect(calculateActiveIndex(getDesktopNavItems("/binders/123"))).toBe(0);
-        expect(calculateActiveIndex(getDesktopNavItems("/collection"))).toBe(1);
-        expect(calculateActiveIndex(getDesktopNavItems("/cards/swsh4-25"))).toBe(1);
+        expect(calculateActiveIndex(getDesktopNavItems("/colecao"))).toBe(1);
+        expect(calculateActiveIndex(getDesktopNavItems("/cartas/swsh4-25"))).toBe(1);
         expect(calculateActiveIndex(getDesktopNavItems("/perfil"))).toBe(-1);
         expect(calculateActiveIndex(getDesktopNavItems("/unknown"))).toBe(-1);
     });
@@ -145,10 +145,10 @@ describe("Navigation and BottomNav Route Logic", () => {
         const rootItems = getDesktopNavItems("/");
         expect(rootItems.find((item) => item.isActive)?.label).toBe("Binders");
 
-        const collectionItems = getDesktopNavItems("/collection");
+        const collectionItems = getDesktopNavItems("/colecao");
         expect(collectionItems.find((item) => item.isActive)?.label).toBe("Coleção");
 
-        const cardItems = getDesktopNavItems("/cards/swsh4-25");
+        const cardItems = getDesktopNavItems("/cartas/swsh4-25");
         expect(cardItems.find((item) => item.isActive)?.label).toBe("Coleção");
 
         const profileItems = getDesktopNavItems("/perfil");
@@ -168,8 +168,8 @@ describe("Navigation and BottomNav Route Logic", () => {
         };
 
         expect(getHighlightedHrefs("/", null)).toEqual(["/"]);
-        expect(getHighlightedHrefs("/", "/collection")).toEqual(["/collection"]);
-        expect(getHighlightedHrefs("/collection", "/")).toEqual(["/"]);
+        expect(getHighlightedHrefs("/", "/colecao")).toEqual(["/colecao"]);
+        expect(getHighlightedHrefs("/colecao", "/")).toEqual(["/"]);
         expect(getHighlightedHrefs("/", "/perfil")).toEqual([]);
     });
 
@@ -203,6 +203,6 @@ describe("Navigation and BottomNav Route Logic", () => {
         expect(shouldShowGuestLoginButton("/perfil/ash", true)).toBe(false);
         expect(shouldShowGuestLoginButton("/colecao/ash", true)).toBe(false);
         expect(shouldShowGuestLoginButton("/login", false)).toBe(false);
-        expect(shouldShowGuestLoginButton("/collection", false)).toBe(false);
+        expect(shouldShowGuestLoginButton("/colecao", false)).toBe(false);
     });
 });

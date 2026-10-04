@@ -44,4 +44,14 @@ describe("Binder visual regressions", () => {
         expect(controls).toContain('placeholder="Buscar por nome ou pokédex..."');
         expect(controls).not.toContain("coleção ou pokédex");
     });
+
+    it("ensures binder slot names do not clip descenders", () => {
+        const css = readFileSync(join(import.meta.dir, "../src/app/globals.css"), "utf8");
+        const slotNameRule = css.match(/\.binder-slot-name\s+span\s*\{([\s\S]*?)\}/)?.[1] ?? "";
+
+        expect(slotNameRule).not.toContain("height: 11px");
+        expect(slotNameRule).not.toContain("line-height: 11px");
+        expect(slotNameRule).toContain("line-height: 1.25");
+        expect(slotNameRule).toContain("padding-bottom: 2px");
+    });
 });

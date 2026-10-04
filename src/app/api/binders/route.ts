@@ -5,6 +5,9 @@ import { parseCoverPokemonDexId } from "@/lib/binder/coverPokemon";
 import { getBinderSlotPageCount } from "@/lib/binder/pageCapacity";
 import { GridType, SlotType } from "@/types/binder";
 import { getBindersForShelf } from "@/lib/binder/shelfData";
+import { enforceRateLimit } from "@/lib/security/rateLimit";
+
+const BINDER_CREATE_RATE_LIMIT = { limit: 30, windowMs: 3_600_000 };
 
 const SLOTS_PER_GRID: Record<GridType, number> = {
     "1x1": 1,
@@ -32,6 +35,11 @@ export async function POST(request: Request) {
         return auth.response;
     }
     const { user, supabase } = auth;
+
+    const limited = enforceRateLimit(request, "binder-create", BINDER_CREATE_RATE_LIMIT, user.id);
+    if (limited) {
+        return limited;
+    }
 
     let body: any;
     try {

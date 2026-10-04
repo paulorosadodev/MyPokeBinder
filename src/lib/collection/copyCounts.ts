@@ -16,6 +16,17 @@ export function registerCopy(counts: CopyCounts, cardId: string, lang: CardLangu
     return { ...counts, [key]: (counts[key] ?? 0) + 1 };
 }
 
+export function unregisterCopy(counts: CopyCounts, cardId: string, lang: CardLanguage, variant: CardVariant, condition: CardCondition): CopyCounts {
+    const key = buildCopyGroupKey(cardId, lang, variant, condition);
+    const current = counts[key] ?? 0;
+    if (current <= 1) {
+        const next = { ...counts };
+        delete next[key];
+        return next;
+    }
+    return { ...counts, [key]: current - 1 };
+}
+
 export function mergeCopyCounts(...sources: CopyCounts[]): CopyCounts {
     const merged: CopyCounts = {};
     for (const source of sources) {

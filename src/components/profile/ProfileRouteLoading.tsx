@@ -3,8 +3,8 @@
 import { ArrowLeft } from "lucide-react";
 import { CardGridSkeleton } from "@/components/loading/CardGridSkeleton";
 
-export function ProfileRouteLoading({ message = "Carregando perfil do treinador...", type = "profile" }: { message?: string; type?: "profile" | "collection" }) {
-    const isCollection = type === "collection" || message.includes("coleção");
+export function ProfileRouteLoading({ message = "Carregando perfil do treinador...", type = "profile" }: { message?: string; type?: "profile" | "colecao" }) {
+    const isCollection = type === "colecao" || message.includes("coleção");
 
     if (isCollection) {
         return (

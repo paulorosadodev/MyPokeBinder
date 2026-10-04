@@ -29,7 +29,7 @@ export function isValidProfileParam(raw: string | null | undefined): boolean {
     return USERNAME_REGEX.test(clean);
 }
 
-export const RESERVED_USERNAMES = new Set(["api", "auth", "login", "logout", "perfil", "profile", "configuracoes", "settings", "collection", "colecao", "dashboard", "cards", "inicio", "home", "admin", "me", "termos", "terms", "privacy", "privacidade", "mypokebinder"]);
+export const RESERVED_USERNAMES = new Set(["api", "auth", "login", "logout", "perfil", "profile", "configuracoes", "settings", "collection", "colecao", "dashboard", "cards", "cartas", "inicio", "home", "admin", "me", "termos", "terms", "privacy", "privacidade", "mypokebinder"]);
 
 export function sanitizeUsernameCandidate(raw: string): string {
     let value = raw
@@ -104,6 +104,27 @@ export function validateBio(raw: string): { ok: true; bio: string | null } | { o
     }
 
     return { ok: true, bio };
+}
+
+export const AVATAR_MAX_LENGTH = 500;
+
+const ALLOWED_AVATAR_HOSTS = ["googleusercontent.com", "gravatar.com", "githubusercontent.com"];
+
+export function sanitizeAvatarUrl(raw: unknown): string | null {
+    if (typeof raw !== "string") return null;
+    const trimmed = raw.trim();
+    if (!trimmed || trimmed.length > AVATAR_MAX_LENGTH) return null;
+
+    try {
+        const url = new URL(trimmed);
+        if (url.protocol !== "https:") return null;
+        const host = url.hostname.toLowerCase();
+        const allowed = ALLOWED_AVATAR_HOSTS.some((domain) => host === domain || host.endsWith(`.${domain}`));
+        if (!allowed) return null;
+        return url.toString();
+    } catch {
+        return null;
+    }
 }
 
 export function buildThemeCssVars(themeColor: string): CSSProperties {

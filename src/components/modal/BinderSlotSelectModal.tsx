@@ -120,10 +120,10 @@ export function BinderSlotSelectModal({ isOpen, hasOpenSibling = false, skipEnte
             collection.filter((card) => {
                 if (dexId && (matchesDexIdExactly ? card.pokemon_dex_id !== dexId : !isCardMatchingPokemon(card.card_name, dexId))) return false;
                 if (targetCardId && card.tcgdex_card_id !== targetCardId) return false;
-                if (onlyUnallocatedCards && card.id !== activeCardId && card.is_in_binder) return false;
+                if (onlyUnallocatedCards && card.id !== activeCardId && card.id !== selectedCardId && card.is_in_binder) return false;
                 return true;
             }),
-        [activeCardId, collection, dexId, matchesDexIdExactly, onlyUnallocatedCards, targetCardId],
+        [activeCardId, selectedCardId, collection, dexId, matchesDexIdExactly, onlyUnallocatedCards, targetCardId],
     );
 
     useEffect(() => {
@@ -225,9 +225,11 @@ export function BinderSlotSelectModal({ isOpen, hasOpenSibling = false, skipEnte
             const assigned = await onCardSelected(card);
             if (assigned === false) return;
 
+            const previousId = selectedCardId;
             setUserDeselected(false);
             setSelectedCardId(card.id);
             setPreviewCard(card);
+            if (previousId && previousId !== card.id) updateCollectionCardBinderStatus(previousId, false);
             updateCollectionCardBinderStatus(card.id, true);
         } finally {
             setPendingActionId(null);
@@ -257,7 +259,7 @@ export function BinderSlotSelectModal({ isOpen, hasOpenSibling = false, skipEnte
         for (const [key, value] of Object.entries(editSearchParams ?? {})) {
             if (value !== undefined) params.set(key, String(value));
         }
-        return `/cards/${targetCardId}?${params.toString()}`;
+        return `/cartas/${targetCardId}?${params.toString()}`;
     };
 
     useEffect(() => {
@@ -349,16 +351,16 @@ export function BinderSlotSelectModal({ isOpen, hasOpenSibling = false, skipEnte
                             <div className="h-full w-full bg-poke-blue animate-pulse" />
                         </div>
                     )}
-                    <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-5 py-4 sm:px-6">
-                        <div>
-                            <div className="flex items-center gap-2.5">
-                                <h2 className="text-xl font-bold text-white tracking-tight">{title ?? pokemonName}</h2>
-                                {dexId ? <span className="rounded-md border border-white/10 bg-white/10 px-2 py-0.5 font-mono text-xs font-semibold text-slate-300">#{String(dexId).padStart(3, "0")}</span> : null}
+                    <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-6 sm:py-4">
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                                <h2 className="truncate text-lg font-bold text-white tracking-tight sm:text-xl">{title ?? pokemonName}</h2>
+                                {dexId ? <span className="shrink-0 rounded-md border border-white/10 bg-white/10 px-2 py-0.5 font-mono text-[11px] font-semibold text-slate-300 sm:text-xs">#{String(dexId).padStart(3, "0")}</span> : null}
                             </div>
-                            <p className="mt-0.5 text-xs text-slate-400">{description ?? "Selecione uma carta da sua coleção para exibir no binder"}</p>
+                            <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-slate-400 sm:line-clamp-1">{description ?? "Selecione uma carta da sua coleção para exibir no binder"}</p>
                         </div>
 
-                        <button type="button" onClick={onClose} disabled={Boolean(editingCardId || pendingActionId)} aria-label="Fechar" className={`flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-slate-400 transition-colors ${editingCardId || pendingActionId ? "cursor-not-allowed opacity-40" : "cursor-pointer hover:bg-white/10 hover:text-white"}`}>
+                        <button type="button" onClick={onClose} disabled={Boolean(editingCardId || pendingActionId)} aria-label="Fechar" className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/5 text-slate-400 transition-colors ${editingCardId || pendingActionId ? "cursor-not-allowed opacity-40" : "cursor-pointer hover:bg-white/10 hover:text-white"}`}>
                             <X size={18} />
                         </button>
                     </div>
@@ -408,7 +410,6 @@ export function BinderSlotSelectModal({ isOpen, hasOpenSibling = false, skipEnte
                                     disabled={Boolean(editingCardId)}
                                     onClick={() => {
                                         if (!editingCardId) {
-                                            onClose();
                                             onOpenCatalogSearch();
                                         }
                                     }}
@@ -536,19 +537,18 @@ export function BinderSlotSelectModal({ isOpen, hasOpenSibling = false, skipEnte
                     </div>
 
                     {collection.length > 0 && (
-                        <div className="flex shrink-0 items-center justify-between border-t border-white/10 bg-black/30 px-5 py-3.5 sm:px-6">
-                            <span className="text-xs text-slate-400">{collection.length === 1 ? "1 exemplar cadastrado" : `${collection.length} exemplares cadastrados`}</span>
+                        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-white/10 bg-black/30 px-4 py-3 sm:px-6 sm:py-3.5">
+                            <span className="truncate text-xs text-slate-400">{collection.length === 1 ? "1 exemplar cadastrado" : `${collection.length} exemplares cadastrados`}</span>
 
                             <button
                                 type="button"
                                 disabled={Boolean(editingCardId)}
                                 onClick={() => {
                                     if (!editingCardId) {
-                                        onClose();
                                         onOpenCatalogSearch();
                                     }
                                 }}
-                                className={`flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200 transition-colors ${editingCardId ? "cursor-not-allowed opacity-40" : "cursor-pointer hover:bg-white/10 hover:text-white"}`}
+                                className={`flex shrink-0 items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200 transition-colors ${editingCardId ? "cursor-not-allowed opacity-40" : "cursor-pointer hover:bg-white/10 hover:text-white"}`}
                             >
                                 <Plus size={14} />
                                 <span>Adicionar Carta</span>

@@ -5,6 +5,8 @@ import Image from "next/image";
 import { UserCard, BinderSlot as BinderSlotType } from "@/types/binder";
 import { getPokemonSilhouetteUrl, getPokemonGlowColors, POKEMON_MAP, markSilhouetteLoaded } from "@/lib/pokemon/constants";
 import { formatTcgdexImageUrl } from "@/lib/pokemon/tcgdex";
+import { describeAvailableCards, getSlotAvailableCount, type AvailableCounts } from "@/lib/binder/availableCounts";
+import { SlotAvailableBadge } from "@/components/binder/SlotAvailableBadge";
 import { Card3DTilt } from "@/components/ui/Card3DTilt";
 import { CardImpactBurst } from "@/components/binder/CardImpactBurst";
 import { Plus } from "lucide-react";
@@ -18,7 +20,7 @@ import { BINDER_CARD_CLIP_CLASS, BINDER_CARD_IMAGE_CLASS, FILLED_BINDER_SLOT_CEL
 export interface UniversalBinderSlotProps {
     slot: BinderSlotType;
     card?: UserCard | null;
-    availableCount?: number;
+    availableCounts?: AvailableCounts;
     isHighlighted?: boolean;
     isDropping?: boolean;
     mountImage?: boolean;
@@ -54,7 +56,7 @@ function useStopPageFlip<T extends HTMLElement>() {
     return ref;
 }
 
-export function UniversalBinderSlot({ slot, card, availableCount = 0, isHighlighted = false, isDropping = false, mountImage = true, priority = false, pauseTilt = false, onClick }: UniversalBinderSlotProps) {
+export function UniversalBinderSlot({ slot, card, availableCounts = {}, isHighlighted = false, isDropping = false, mountImage = true, priority = false, pauseTilt = false, onClick }: UniversalBinderSlotProps) {
     const settings = useContext(UserSettingsContext);
     const animationsEnabled = settings ? settings.animationsEnabled : true;
     const showDropEffects = isDropping && animationsEnabled;
@@ -74,6 +76,7 @@ export function UniversalBinderSlot({ slot, card, availableCount = 0, isHighligh
     }, [isDropping, animationsEnabled, card]);
 
     const isFilled = Boolean(card);
+    const availableCount = getSlotAvailableCount(slot, availableCounts);
     const hasAvailableCard = !isFilled && availableCount > 0;
     const showGlow = shouldShowSlotGlow(isHighlighted, pauseTilt);
     const highlightClass = getBinderSlotHighlightClass(showGlow);
@@ -221,7 +224,7 @@ export function UniversalBinderSlot({ slot, card, availableCount = 0, isHighligh
             id={`binder-slot-${slot.id}`}
             onClick={onClick}
             onKeyDown={handleKeyDown}
-            aria-label={hasAvailableCard ? `${pokemonName}, ${formattedDex}, vazio, ${availableCount} ${availableCount > 1 ? "cartas disponíveis" : "carta disponível"} na coleção` : `${pokemonName}, ${formattedDex}, vazio`}
+            aria-label={hasAvailableCard ? `${pokemonName}, ${formattedDex}, vazio, ${describeAvailableCards(availableCount)}` : `${pokemonName}, ${formattedDex}, vazio`}
             style={glowStyle}
             onMouseDownCapture={stopPageFlip}
             onPointerDownCapture={stopPageFlip}
@@ -233,8 +236,8 @@ export function UniversalBinderSlot({ slot, card, availableCount = 0, isHighligh
             </div>
 
             {hasAvailableCard && (
-                <div className="pointer-events-none absolute top-2.5 right-2.5 z-10 flex items-center justify-center">
-                    <span className="h-2 w-2 rounded-full bg-[var(--theme-primary)] opacity-85 shadow-[0_0_6px_var(--theme-primary-glow)]" />
+                <div>
+                    <SlotAvailableBadge availableCount={availableCount} />
                 </div>
             )}
 

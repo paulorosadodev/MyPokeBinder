@@ -27,7 +27,7 @@ Organizador digital de cartas físicas do **Pokémon TCG**, focado nos **151 Pok
 
 ## Visão geral
 
-MyPokeBinder trata o binder como uma **vitrine limpa**: cartas preenchidas mostram 100% da arte física, sem números, nomes ou ícones sobrepostos. Slots vazios exibem a silhueta do Pokémon. A navegação folheia páginas com física realista (PageFlip), com capa frontal, 17 páginas de catálogo, forro interno e capa traseira.
+MyPokeBinder trata o binder como uma **vitrine limpa**: cartas preenchidas mostram 100% da arte física, sem números, nomes ou ícones sobrepostos. Slots vazios exibem a silhueta do Pokémon e, quando o treinador já tem aquele Pokémon guardado na Coleção, um badge com ícone de carta no canto indica que o compartimento pode ser preenchido. A navegação folheia páginas com física realista (PageFlip), com capa frontal, 17 páginas de catálogo, forro interno e capa traseira.
 
 O fluxo principal:
 
@@ -51,7 +51,7 @@ O fluxo principal:
 - Animação de **queda da carta** ao vincular, com partículas e áudio procedural
 - Preload completo das imagens do spread inicial antes de revelar a abertura
 
-### Coleção (`/collection`)
+### Coleção (`/colecao`)
 
 - Inventário de todas as cartas físicas cadastradas
 - Filtros: status (Todas / No Binder / Guardadas), idioma, raridade, ordenação
@@ -60,18 +60,19 @@ O fluxo principal:
 - Grid responsivo (3 colunas no mobile)
 - Agrupamento de cópias idênticas (`tcgdex_card_id` + idioma + variante + estado de conservação)
 
-### Página da carta (`/cards/[id]`)
+### Página da carta (`/cartas/[id]`)
 
 - Edição do exemplar: idioma (`pt-br` / `en` / `ja`), versão física (`normal` / `holo` / `reverse`)
 - Quantidade (+/−), vínculo com o Binder e exclusão com confirmação
 - Showcase 3D com brilho foil ou prismático (Full Art)
 - Retorno inteligente: volta à Coleção com filtros, ou ao Binder reabrindo o seletor
 
-### Dashboard (`/dashboard`)
+### Estatísticas do Binder
 
 - KPIs: progresso Binder 151 e total na Coleção
 - Mini-Grid dos 151 com arte colorida (preenchido) ou silhueta (vazio)
 - Hover com glow na cor do tema do treinador
+- Acessível pelo painel retrátil "Estatísticas" em cada binder (`/binders/[id]`)
 
 ### Perfil público (`/perfil/[username]`)
 
@@ -152,14 +153,13 @@ MyPokeBinder/
 | `/`                              | Binder (autenticado) ou landing (visitante) |
 | `/inicio`                        | Landing pública                             |
 | `/login`                         | Login com Google                            |
-| `/collection`                    | Coleção do usuário                          |
-| `/cards/[id]`                    | Detalhe / edição do exemplar                |
-| `/dashboard`                     | Progresso e Mini-Grid                       |
+| `/colecao`                       | Coleção do usuário                          |
+| `/cartas/[id]`                   | Detalhe / edição do exemplar                |
 | `/perfil` → `/perfil/[username]` | Perfil do treinador                         |
 | `/colecao/[username]`            | Coleção pública                             |
 | `/configuracoes`                 | Conta, tema, som e animações                |
-| `/termos`, `/terms`              | Termos de Serviço                           |
-| `/privacidade`, `/privacy`       | Política de Privacidade                     |
+| `/termos`                        | Termos de Serviço                           |
+| `/privacidade`                   | Política de Privacidade                     |
 
 ---
 
@@ -170,6 +170,7 @@ Route Handlers principais:
 | Endpoint                                 | Uso                                      |
 | ---------------------------------------- | ---------------------------------------- |
 | `GET/PATCH /api/binder`                  | Estado dos 151 slots / vínculo de carta  |
+| `GET /api/binder/available`              | Cartas guardadas por Pokémon             |
 | `GET/POST /api/cards`                    | Listar / adicionar cartas à coleção      |
 | `GET/PATCH/DELETE /api/cards/[id]`       | Detalhe, edição e exclusão               |
 | `GET /api/search`                        | Busca no catálogo TCGdex (EN)            |

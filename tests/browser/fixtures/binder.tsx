@@ -21,7 +21,7 @@ const settings: UserSettingsContextType | null = new URLSearchParams(location.se
 
 const params = new URLSearchParams(location.search);
 const universalModule = params.has("universal") || params.has("shelf") || params.has("shelfLifecycle") ? await import("./universal-binder") : null;
-const UniversalFixture = params.has("shelfLifecycle") ? universalModule?.BinderShelfLifecycleFixture : params.has("shelf") ? universalModule?.BinderShelfBookFixture : params.has("universalViewer") ? universalModule?.UniversalBinderViewerFixture : universalModule?.UniversalBinderFixture;
+const UniversalFixture = params.has("shelfLifecycle") ? universalModule?.BinderShelfLifecycleFixture : params.has("shelf") ? universalModule?.BinderShelfBookFixture : params.has("universalMotion") ? universalModule?.UniversalBinderMotionFixture : params.has("universalViewer") ? universalModule?.UniversalBinderViewerFixture : universalModule?.UniversalBinderFixture;
 
 function CardSearchFixture() {
     const [isOpen, setIsOpen] = useState(false);

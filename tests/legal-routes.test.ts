@@ -24,13 +24,6 @@ describe("Public Routes and Google Cloud Consent Pages", () => {
         expect(response.headers.get("location")).toBeNull();
     });
 
-    it("should allow /privacy alias route without redirecting to login", async () => {
-        const request = new NextRequest("http://localhost:3000/privacy");
-        const response = await updateSession(request);
-        expect(response.status).toBe(200);
-        expect(response.headers.get("location")).toBeNull();
-    });
-
     it("should allow /termos route without redirecting to login", async () => {
         const request = new NextRequest("http://localhost:3000/termos");
         const response = await updateSession(request);
@@ -38,15 +31,8 @@ describe("Public Routes and Google Cloud Consent Pages", () => {
         expect(response.headers.get("location")).toBeNull();
     });
 
-    it("should allow /terms alias route without redirecting to login", async () => {
-        const request = new NextRequest("http://localhost:3000/terms");
-        const response = await updateSession(request);
-        expect(response.status).toBe(200);
-        expect(response.headers.get("location")).toBeNull();
-    });
-
-    it("should still protect private routes like /collection and redirect to /login", async () => {
-        const request = new NextRequest("http://localhost:3000/collection");
+    it("should still protect private routes like /colecao and redirect to /login", async () => {
+        const request = new NextRequest("http://localhost:3000/colecao");
         const response = await updateSession(request);
         expect(response.status).toBe(307);
         expect(response.headers.get("location")).toBe("http://localhost:3000/login");

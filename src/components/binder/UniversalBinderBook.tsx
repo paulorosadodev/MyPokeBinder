@@ -10,6 +10,7 @@ import type { Binder, BinderSlot } from "@/types/binder";
 import { getCoverTheme } from "@/lib/binder/themes";
 import { getBinderSlotPageCount, getBinderTrailingSlotPage } from "@/lib/binder/pageCapacity";
 import { getUniversalPageForPhysical, getUniversalPhysicalForPage, isUniversalAlreadyOnTarget, planUniversalPageNavigation } from "@/lib/binder/universalBookNavigation";
+import type { AvailableCounts } from "@/lib/binder/availableCounts";
 import { UniversalBinderSlot } from "./UniversalBinderSlot";
 
 export interface UniversalBinderNavigationHandle {
@@ -22,6 +23,7 @@ export interface UniversalBinderNavigationHandle {
 interface UniversalBinderBookProps {
     binder: Binder;
     slots: BinderSlot[];
+    availableCounts?: AvailableCounts;
     currentPage: number;
     entryTargetPage: number;
     isMobile: boolean;
@@ -92,6 +94,7 @@ interface CatalogPageProps {
 
 interface UniversalBinderPagesContextValue {
     slotsMap: Map<string, BinderSlot>;
+    availableCounts: AvailableCounts;
     highlightedSlotId?: string | null;
     droppingSlotId?: string | null;
     pauseTilt: boolean;
@@ -100,6 +103,7 @@ interface UniversalBinderPagesContextValue {
 
 const UniversalBinderPagesContext = createContext<UniversalBinderPagesContextValue>({
     slotsMap: new Map(),
+    availableCounts: {},
     highlightedSlotId: null,
     droppingSlotId: null,
     pauseTilt: false,
@@ -108,13 +112,13 @@ const UniversalBinderPagesContext = createContext<UniversalBinderPagesContextVal
 
 const CatalogPage = memo(
     forwardRef<HTMLDivElement, CatalogPageProps>(function CatalogPage({ binder, pageNumber }, ref) {
-        const { slotsMap, highlightedSlotId, droppingSlotId, pauseTilt, onSlotClick } = useContext(UniversalBinderPagesContext);
+        const { slotsMap, availableCounts, highlightedSlotId, droppingSlotId, pauseTilt, onSlotClick } = useContext(UniversalBinderPagesContext);
         const slots = getPageSlots(binder, slotsMap, pageNumber);
         const filledCount = slots.filter((slot) => slot.card).length;
 
         return (
             <div ref={ref} data-density="soft" className="binder-book-page relative h-full w-full rounded-xl bg-[#0d111a]">
-                <div className="flex h-full min-h-0 w-full flex-col rounded-xl border border-white/5 bg-gradient-to-br from-[#141824] via-[#10131d] to-[#0a0d14] px-3 pt-3 pb-2 text-white sm:px-3.5 sm:pt-3.5">
+                <div className="binder-page-stable-content flex h-full min-h-0 w-full flex-col rounded-xl border border-white/5 bg-gradient-to-br from-[#141824] via-[#10131d] to-[#0a0d14] px-3 pt-3 pb-2 text-white sm:px-3.5 sm:pt-3.5">
                     <div className="mb-1.5 flex shrink-0 items-center justify-between border-b border-white/5 pb-1.5 text-xs font-semibold text-slate-400">
                         <span className="font-medium text-slate-300">
                             Página {pageNumber} de {getBinderSlotPageCount(binder.total_pages)}
@@ -125,7 +129,7 @@ const CatalogPage = memo(
                     </div>
                     <div className={`grid min-h-0 flex-1 rounded-xl border border-[#161b26] bg-[#0b0e15] shadow-inner ${GRID_CLASSES[binder.grid_type]}`}>
                         {slots.map((slot) => (
-                            <UniversalBinderSlot key={slot.id} slot={slot} card={slot.card} isHighlighted={highlightedSlotId === slot.id} isDropping={droppingSlotId === slot.id} pauseTilt={pauseTilt} onClick={() => onSlotClick(slot)} />
+                            <UniversalBinderSlot key={slot.id} slot={slot} card={slot.card} availableCounts={availableCounts} isHighlighted={highlightedSlotId === slot.id} isDropping={droppingSlotId === slot.id} pauseTilt={pauseTilt} onClick={() => onSlotClick(slot)} />
                         ))}
                     </div>
                 </div>
@@ -134,7 +138,7 @@ const CatalogPage = memo(
     }),
 );
 
-function GenericMobileBook({ binder, slotsMap, currentPage, highlightedSlotId, droppingSlotId, onPageChange, onSlotClick }: Omit<UniversalBinderBookProps, "slots" | "isMobile" | "entryTargetPage"> & { slotsMap: Map<string, BinderSlot> }) {
+function GenericMobileBook({ binder, slotsMap, availableCounts, currentPage, highlightedSlotId, droppingSlotId, onPageChange, onSlotClick }: Omit<UniversalBinderBookProps, "slots" | "isMobile" | "entryTargetPage"> & { slotsMap: Map<string, BinderSlot> }) {
     const settings = useContext(UserSettingsContext);
     const animationsEnabled = settings?.animationsEnabled ?? true;
     const [phase, setPhase] = useState<"idle" | "exit" | "enter">("idle");
@@ -206,7 +210,7 @@ function GenericMobileBook({ binder, slotsMap, currentPage, highlightedSlotId, d
             <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-[#161b26] bg-[#0b0e15] p-1.5 shadow-inner">
                 <div className={`binder-mobile-grid grid h-full min-h-0 ${GRID_CLASSES[binder.grid_type]}`} data-phase={phase} style={{ "--binder-slide-x": `${directionRef.current * -18}px` } as CSSProperties}>
                     {pageSlots.map((slot) => (
-                        <UniversalBinderSlot key={slot.id} slot={slot} card={slot.card} isHighlighted={highlightedSlotId === slot.id} isDropping={droppingSlotId === slot.id} pauseTilt={busy} onClick={() => onSlotClick(slot)} />
+                        <UniversalBinderSlot key={slot.id} slot={slot} card={slot.card} availableCounts={availableCounts} isHighlighted={highlightedSlotId === slot.id} isDropping={droppingSlotId === slot.id} pauseTilt={busy} onClick={() => onSlotClick(slot)} />
                     ))}
                 </div>
             </div>
@@ -214,7 +218,7 @@ function GenericMobileBook({ binder, slotsMap, currentPage, highlightedSlotId, d
     );
 }
 
-export const UniversalBinderBook = forwardRef<UniversalBinderNavigationHandle, UniversalBinderBookProps>(function UniversalBinderBook({ binder, slots, currentPage, entryTargetPage, isMobile, highlightedSlotId, droppingSlotId, initiallyOpened = false, onPageChange, onSlotClick }, ref) {
+export const UniversalBinderBook = forwardRef<UniversalBinderNavigationHandle, UniversalBinderBookProps>(function UniversalBinderBook({ binder, slots, availableCounts = {}, currentPage, entryTargetPage, isMobile, highlightedSlotId, droppingSlotId, initiallyOpened = false, onPageChange, onSlotClick }, ref) {
     const settings = useContext(UserSettingsContext);
     const animationsEnabled = settings?.animationsEnabled ?? true;
     const [engineMounted, setEngineMounted] = useState(false);
@@ -238,7 +242,7 @@ export const UniversalBinderBook = forwardRef<UniversalBinderNavigationHandle, U
     const slotsMap = useMemo(() => new Map(slots.map((slot) => [`${slot.page_number}-${slot.slot_index}`, slot])), [slots]);
     const coverTheme = useMemo(() => getCoverTheme(binder.cover_theme), [binder.cover_theme]);
 
-    const pagesContextValue = useMemo(() => ({ slotsMap, highlightedSlotId, droppingSlotId, pauseTilt: isBusy, onSlotClick }), [droppingSlotId, highlightedSlotId, isBusy, onSlotClick, slotsMap]);
+    const pagesContextValue = useMemo(() => ({ slotsMap, availableCounts, highlightedSlotId, droppingSlotId, pauseTilt: isBusy, onSlotClick }), [availableCounts, droppingSlotId, highlightedSlotId, isBusy, onSlotClick, slotsMap]);
 
     useLayoutEffect(() => {
         if (isMobile) return undefined;
@@ -256,6 +260,49 @@ export const UniversalBinderBook = forwardRef<UniversalBinderNavigationHandle, U
         observer.observe(stage);
         return () => observer.disconnect();
     }, [isMobile]);
+
+    useLayoutEffect(() => {
+        if (isMobile || !isBusy) return undefined;
+        const stage = stageRef.current;
+        if (!stage) return undefined;
+
+        const adjustedContents = new Set<HTMLElement>();
+        let frame = 0;
+
+        const stabilizePageContents = () => {
+            const turningPages = stage.querySelectorAll<HTMLElement>(".stf__item:not(.--simple)");
+            for (const page of turningPages) {
+                const content = page.querySelector<HTMLElement>(":scope > .binder-page-stable-content");
+                if (!content) continue;
+
+                const pageStyle = getComputedStyle(page);
+                const pageTransform = pageStyle.transform;
+                if (pageTransform === "none") continue;
+
+                const pageMatrix = new DOMMatrixReadOnly(pageTransform);
+                const [originX = 0, originY = 0] = pageStyle.transformOrigin.split(" ").map(Number.parseFloat);
+                const effectivePageMatrix = new DOMMatrix().translate(originX, originY).multiply(pageMatrix).translate(-originX, -originY);
+                const stableMatrix = new DOMMatrix([1, 0, 0, 1, effectivePageMatrix.e, 0]);
+                const correction = effectivePageMatrix.inverse().multiply(stableMatrix);
+                content.style.transformOrigin = "0 0";
+                content.style.transform = correction.toString();
+                content.style.willChange = "transform";
+                adjustedContents.add(content);
+            }
+            frame = window.requestAnimationFrame(stabilizePageContents);
+        };
+
+        stabilizePageContents();
+
+        return () => {
+            window.cancelAnimationFrame(frame);
+            for (const content of adjustedContents) {
+                content.style.removeProperty("transform-origin");
+                content.style.removeProperty("transform");
+                content.style.removeProperty("will-change");
+            }
+        };
+    }, [isBusy, isMobile]);
 
     const multiFlipStateRef = useRef<{
         remainingPhysicalTargets: number[];
@@ -392,7 +439,7 @@ export const UniversalBinderBook = forwardRef<UniversalBinderNavigationHandle, U
     if (isMobile) {
         return (
             <div className="w-full" style={{ "--theme-primary": coverTheme.primaryColor, "--theme-primary-glow": coverTheme.glowColor } as CSSProperties}>
-                <GenericMobileBook binder={binder} slotsMap={slotsMap} currentPage={currentPage} highlightedSlotId={highlightedSlotId} droppingSlotId={droppingSlotId} onPageChange={onPageChange} onSlotClick={onSlotClick} />
+                <GenericMobileBook binder={binder} slotsMap={slotsMap} availableCounts={availableCounts} currentPage={currentPage} highlightedSlotId={highlightedSlotId} droppingSlotId={droppingSlotId} onPageChange={onPageChange} onSlotClick={onSlotClick} />
             </div>
         );
     }

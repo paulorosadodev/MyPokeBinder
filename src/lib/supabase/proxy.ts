@@ -3,8 +3,9 @@ import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
     const requestHeaders = new Headers(request.headers);
-    requestHeaders.delete("x-user-id");
-    requestHeaders.delete("x-user-email");
+    for (const spoofable of ["x-user-id", "x-user-email", "x-test-user-id"]) {
+        requestHeaders.delete(spoofable);
+    }
 
     let supabaseResponse = NextResponse.next({
         request: {
@@ -39,19 +40,12 @@ export async function updateSession(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser();
 
-    if (user) {
-        requestHeaders.set("x-user-id", user.id);
-        if (user.email) {
-            requestHeaders.set("x-user-email", user.email);
-        }
-    }
-
     const pathname = request.nextUrl.pathname;
     const isSharedProfilePage = /^\/perfil\/[^/]+\/?$/.test(pathname);
     const isSharedProfileApi = /^\/api\/profile\/[^/]+\/?$/.test(pathname);
     const isSharedCollectionPage = /^\/colecao\/[^/]+\/?$/.test(pathname);
     const isSharedCollectionApi = /^\/api\/profile\/[^/]+\/collection\/?$/.test(pathname);
-    const isPublicRoute = pathname.startsWith("/login") || pathname.startsWith("/auth") || pathname === "/" || pathname.startsWith("/inicio") || pathname.startsWith("/privacidade") || pathname.startsWith("/privacy") || pathname.startsWith("/termos") || pathname.startsWith("/terms") || pathname.startsWith("/_next") || pathname === "/favicon.ico" || isSharedProfilePage || isSharedProfileApi || isSharedCollectionPage || isSharedCollectionApi;
+    const isPublicRoute = pathname.startsWith("/login") || pathname.startsWith("/auth") || pathname === "/" || pathname.startsWith("/inicio") || pathname.startsWith("/privacidade") || pathname.startsWith("/termos") || pathname.startsWith("/_next") || pathname === "/favicon.ico" || isSharedProfilePage || isSharedProfileApi || isSharedCollectionPage || isSharedCollectionApi;
 
     if (!user && !isPublicRoute) {
         if (pathname.startsWith("/api")) {

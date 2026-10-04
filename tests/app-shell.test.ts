@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { isSharedProfileOrCollectionRoute, shouldShowAppHeader, shouldShowNavPages } from "../src/lib/layout/appShell";
 
 const appDir = join(import.meta.dir, "../src/app");
-const stackedRouteLoaders = ["dashboard/loading.tsx", "perfil/loading.tsx", "perfil/[username]/loading.tsx", "colecao/[username]/loading.tsx"];
+const stackedRouteLoaders = ["perfil/loading.tsx", "perfil/[username]/loading.tsx", "colecao/[username]/loading.tsx"];
 
 describe("AppShell header visibility", () => {
     it("hides the app Header on landing, login, legal, and auth routes", () => {
@@ -13,16 +13,13 @@ describe("AppShell header visibility", () => {
         expect(shouldShowAppHeader("/inicio", true)).toBe(false);
         expect(shouldShowAppHeader("/termos", true)).toBe(false);
         expect(shouldShowAppHeader("/privacidade", false)).toBe(false);
-        expect(shouldShowAppHeader("/privacy", false)).toBe(false);
-        expect(shouldShowAppHeader("/terms", false)).toBe(false);
         expect(shouldShowAppHeader("/auth/callback", true)).toBe(false);
     });
 
     it("keeps the Header mounted on binder, profile, and other app routes", () => {
         expect(shouldShowAppHeader("/", true)).toBe(true);
-        expect(shouldShowAppHeader("/dashboard", true)).toBe(true);
-        expect(shouldShowAppHeader("/collection", true)).toBe(true);
-        expect(shouldShowAppHeader("/cards/abc", true)).toBe(true);
+        expect(shouldShowAppHeader("/colecao", true)).toBe(true);
+        expect(shouldShowAppHeader("/cartas/abc", true)).toBe(true);
         expect(shouldShowAppHeader("/configuracoes", true)).toBe(true);
         expect(shouldShowAppHeader("/perfil/ash", false)).toBe(true);
         expect(shouldShowAppHeader("/colecao/ash", false)).toBe(true);
@@ -33,7 +30,6 @@ describe("AppShell header visibility", () => {
         expect(isSharedProfileOrCollectionRoute("/colecao/ash")).toBe(true);
         expect(isSharedProfileOrCollectionRoute("/perfil")).toBe(false);
         expect(isSharedProfileOrCollectionRoute("/colecao")).toBe(false);
-        expect(isSharedProfileOrCollectionRoute("/collection")).toBe(false);
         expect(isSharedProfileOrCollectionRoute("/")).toBe(false);
     });
 
@@ -44,7 +40,7 @@ describe("AppShell header visibility", () => {
         expect(shouldShowNavPages("/perfil/ash", true)).toBe(true);
         expect(shouldShowNavPages("/colecao/ash", true)).toBe(true);
         expect(shouldShowNavPages("/", true)).toBe(true);
-        expect(shouldShowNavPages("/collection", true)).toBe(true);
+        expect(shouldShowNavPages("/colecao", true)).toBe(true);
     });
 });
 

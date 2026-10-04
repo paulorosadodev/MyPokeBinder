@@ -191,7 +191,7 @@ export function PublicCollectionView({ username, fallbackData, publicGuestTheme 
 
     if (isError) {
         if (isError.message?.includes("Perfil não encontrado") || isError.message === "not_found") {
-            return <TrainerNotFound username={username} type="collection" />;
+            return <TrainerNotFound username={username} type="colecao" />;
         }
         return (
             <div className="flex min-h-screen flex-col bg-[#0a0c10]">
@@ -209,11 +209,11 @@ export function PublicCollectionView({ username, fallbackData, publicGuestTheme 
     }
 
     if (isLoading && !owner) {
-        return <ProfileRouteLoading message="Carregando coleção..." type="collection" />;
+        return <ProfileRouteLoading message="Carregando coleção..." type="colecao" />;
     }
 
     if (!owner) {
-        return <TrainerNotFound username={username} type="collection" />;
+        return <TrainerNotFound username={username} type="colecao" />;
     }
 
     const themeStyle = buildThemeCssVars(owner.themeColor || "#ef4444");
@@ -224,33 +224,33 @@ export function PublicCollectionView({ username, fallbackData, publicGuestTheme 
         <div className="flex min-h-screen flex-col bg-[#0a0c10]">
             <div style={themeStyle}>
                 <main key={username} className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8 pb-28 md:pb-16">
-                    <header className="profile-enter flex items-center justify-between gap-2.5 sm:gap-4">
-                        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                    <header className="profile-enter flex items-start justify-between gap-3 sm:items-center sm:gap-4">
+                        <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
                             {owner.avatarUrl && !avatarError ? (
-                                <Image src={owner.avatarUrl} alt={owner.username} width={48} height={48} className="h-10 w-10 sm:h-12 sm:w-12 shrink-0 rounded-full border border-white/20 object-cover" referrerPolicy="no-referrer" onError={() => setAvatarError(true)} unoptimized />
+                                <Image src={owner.avatarUrl} alt={owner.username} width={48} height={48} className="h-10 w-10 shrink-0 rounded-full border border-white/20 object-cover sm:h-12 sm:w-12" referrerPolicy="no-referrer" onError={() => setAvatarError(true)} unoptimized />
                             ) : (
-                                <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 text-sm sm:text-base font-bold text-white">{(owner.username[0] || "T").toUpperCase()}</div>
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 text-sm font-bold text-white sm:h-12 sm:w-12 sm:text-base">{(owner.username[0] || "T").toUpperCase()}</div>
                             )}
                             <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2 sm:gap-2.5">
-                                    <h1 className="truncate text-base font-extrabold tracking-tight text-white sm:text-2xl leading-none">{displayName}</h1>
+                                <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2.5">
+                                    <h1 className="truncate text-base font-extrabold tracking-tight text-white sm:text-2xl leading-tight sm:leading-none">{displayName}</h1>
                                     {!isLoading ? (
-                                        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 sm:px-3.5 sm:py-1.5 text-xs font-semibold text-slate-300 leading-none translate-y-[1px] sm:translate-y-[2px]">
-                                            <Layers size={13} className="text-[var(--theme-primary)] shrink-0" />
+                                        <span className="inline-flex shrink-0 self-start items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs font-semibold text-slate-300 leading-none sm:px-3.5 sm:py-1.5 sm:translate-y-[2px]">
+                                            <Layers size={13} className="shrink-0 text-[var(--theme-primary)]" />
                                             <span>
                                                 {total} <span className="hidden sm:inline">{hasActiveFilters ? (total === 1 ? "carta encontrada" : "cartas encontradas") : total === 1 ? "carta na coleção" : "cartas na coleção"}</span>
                                                 <span className="sm:hidden">{total === 1 ? "carta" : "cartas"}</span>
                                             </span>
                                         </span>
                                     ) : (
-                                        <div className="h-6 w-20 sm:h-7 sm:w-28 shrink-0 animate-pulse rounded-full bg-white/10 translate-y-[1px] sm:translate-y-[2px]" aria-label="Carregando total de cartas" />
+                                        <div className="h-5 w-20 shrink-0 self-start animate-pulse rounded-full bg-white/10 sm:h-7 sm:w-28 sm:translate-y-[2px]" aria-label="Carregando total de cartas" />
                                     )}
                                 </div>
                                 <p className="mt-1 font-mono text-xs font-semibold text-poke-blue">@{owner.username}</p>
                             </div>
                         </div>
 
-                        <NextLink href={`/perfil/${owner.username}`} prefetch={true} className="inline-flex shrink-0 items-center gap-1.5 sm:gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 sm:px-4 sm:py-2 text-xs font-semibold text-slate-300 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white">
+                        <NextLink href={`/perfil/${owner.username}`} prefetch={true} className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white sm:gap-2 sm:px-4 sm:py-2">
                             <ArrowLeft size={14} />
                             <span>Perfil</span>
                         </NextLink>

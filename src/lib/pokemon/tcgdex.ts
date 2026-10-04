@@ -14,6 +14,11 @@ export function formatTcgdexImageUrl(baseUrl?: string | null, quality: "high" | 
         return trimmed;
     }
 
+    const normalized = trimmed.replace(/\/(high|low)\.webp$/i, "");
+    if (normalized !== trimmed) {
+        return `${normalized}/${quality}.webp`;
+    }
+
     if (trimmed.endsWith(".webp") || trimmed.endsWith(".png") || trimmed.endsWith(".jpg") || trimmed.endsWith(".jpeg")) {
         return trimmed;
     }

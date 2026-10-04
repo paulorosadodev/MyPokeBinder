@@ -132,7 +132,7 @@ async function loadPublicTrainerData(username: string): Promise<CachedPublicTrai
         return null;
     }
 
-    const { data: bindersData } = await supabase.from("binders").select("*").eq("user_id", profileRow.id).order("created_at", { ascending: true });
+    const { data: bindersData } = await supabase.from("binders").select("*").eq("user_id", profileRow.id).eq("is_public", true).order("created_at", { ascending: true });
 
     let allSlots: any[] = [];
     const binderIds = (bindersData ?? []).map((b) => b.id);

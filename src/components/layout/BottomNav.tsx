@@ -20,10 +20,10 @@ export function BottomNav() {
             isActive: pathname === "/" || pathname.startsWith("/binders"),
         },
         {
-            href: "/collection",
+            href: "/colecao",
             label: "Coleção",
             icon: Layers,
-            isActive: pathname.startsWith("/collection") || pathname.startsWith("/cards"),
+            isActive: pathname.startsWith("/colecao") || pathname.startsWith("/cartas"),
         },
     ];
 

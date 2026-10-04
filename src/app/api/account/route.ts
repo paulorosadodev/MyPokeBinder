@@ -2,8 +2,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePublicProfileForUserId } from "@/lib/profile/publicCache";
+import { enforceRateLimit } from "@/lib/security/rateLimit";
 
 const CONFIRMATION_PHRASE = "EXCLUIR";
+
+const DELETE_RATE_LIMIT = { limit: 5, windowMs: 3_600_000 };
 
 export async function DELETE(request: NextRequest) {
     const auth = await getAuthenticatedUser(request);
@@ -12,6 +15,11 @@ export async function DELETE(request: NextRequest) {
     }
 
     const { user, supabase } = auth;
+
+    const limited = enforceRateLimit(request, "account-delete", DELETE_RATE_LIMIT, user.id);
+    if (limited) {
+        return limited;
+    }
 
     let body: { confirm?: unknown } = {};
     try {

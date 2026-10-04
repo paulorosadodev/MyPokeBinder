@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { usernameFromEmail } from "@/lib/profile/username";
+import { usernameFromEmail, sanitizeAvatarUrl } from "@/lib/profile/username";
 
 export interface UserProfile {
     id: string;
@@ -58,7 +58,7 @@ async function buildUserProfile(authUser: { id: string; email?: string | null; u
         email: authUser.email || undefined,
         username: profile?.username || fallbackUsername,
         name: profile?.display_name || profile?.username || fallbackUsername,
-        avatarUrl: profile?.avatar_url || (authUser.user_metadata?.avatar_url as string | undefined) || (authUser.user_metadata?.picture as string | undefined) || null,
+        avatarUrl: profile?.avatar_url || sanitizeAvatarUrl(authUser.user_metadata?.avatar_url) || sanitizeAvatarUrl(authUser.user_metadata?.picture) || null,
         bio: profile?.bio || "",
     };
 }

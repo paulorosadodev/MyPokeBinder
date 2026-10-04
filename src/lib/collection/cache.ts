@@ -2,12 +2,19 @@ import { filterAndSortCollectionGroups, groupCollectionCards, type CollectionLis
 import { cardCopyGroupKey } from "@/lib/pokemon/variant";
 import type { CollectionCardGroup, UserCard } from "@/types/binder";
 
+const SWR_INFINITE_PREFIX = "$inf$";
+
 export interface CollectionCachedPage {
     groups: CollectionCardGroup[];
     total: number;
     page: number;
     pageSize: number;
     hasMore: boolean;
+}
+
+export interface CollectionCachePatch {
+    key: string;
+    data: unknown;
 }
 
 export interface CollectionCardMutation {
@@ -36,6 +43,26 @@ export function isGroupedCollectionListRequestKey(key: unknown): key is string {
     } catch {
         return false;
     }
+}
+
+export function isGroupedCollectionInfiniteKey(key: unknown): key is string {
+    if (typeof key !== "string" || !key.startsWith(SWR_INFINITE_PREFIX)) return false;
+
+    return isGroupedCollectionListRequestKey(key.slice(SWR_INFINITE_PREFIX.length));
+}
+
+export function collectionInfiniteFirstPageKey(key: string): string {
+    return key.startsWith(SWR_INFINITE_PREFIX) ? key.slice(SWR_INFINITE_PREFIX.length) : key;
+}
+
+export function collectionPageKey(firstPageKey: string, pageIndex: number): string {
+    const queryStart = firstPageKey.indexOf("?");
+    if (queryStart === -1) return firstPageKey;
+
+    const params = new URLSearchParams(firstPageKey.slice(queryStart + 1));
+    params.set("page", String(pageIndex + 1));
+
+    return `${firstPageKey.slice(0, queryStart)}?${params.toString()}`;
 }
 
 /**
@@ -105,4 +132,53 @@ export function applyCollectionCardMutation(key: string, page: CollectionCachedP
         groups,
         total: Math.max(0, page.total + groups.length - page.groups.length),
     };
+}
+
+export function planCollectionCachePatches(keys: Iterable<string>, readEntry: (key: string) => { data?: unknown } | undefined, mutation: CollectionCardMutation): CollectionCachePatch[] {
+    const pageEntries = new Map<string, CollectionCachedPage>();
+    const infiniteEntries: Array<{ key: string; pages: CollectionCachedPage[] }> = [];
+
+    for (const key of keys) {
+        const data = readEntry(key)?.data;
+
+        if (isGroupedCollectionListRequestKey(key)) {
+            if (data) pageEntries.set(key, data as CollectionCachedPage);
+            continue;
+        }
+
+        if (!isGroupedCollectionInfiniteKey(key)) continue;
+        if (!Array.isArray(data) || data.length === 0) continue;
+
+        infiniteEntries.push({ key, pages: data as CollectionCachedPage[] });
+    }
+
+    const patches = new Map<string, unknown>();
+
+    for (const [key, page] of pageEntries) {
+        const next = applyCollectionCardMutation(key, page, mutation);
+        if (next !== page) patches.set(key, next);
+    }
+
+    for (const { key, pages } of infiniteEntries) {
+        const firstPageKey = collectionInfiniteFirstPageKey(key);
+        let changed = false;
+        const next = pages.map((page, index) => {
+            const pageKey = collectionPageKey(firstPageKey, index);
+            const patchedPage = patches.get(pageKey);
+            if (patchedPage !== undefined) {
+                changed = true;
+                return patchedPage as CollectionCachedPage;
+            }
+
+            const source = pageEntries.get(pageKey) ?? page;
+            if (source === page) return page;
+
+            changed = true;
+            return applyCollectionCardMutation(pageKey, source, mutation);
+        });
+
+        if (changed) patches.set(key, next);
+    }
+
+    return [...patches].map(([key, data]) => ({ key, data }));
 }

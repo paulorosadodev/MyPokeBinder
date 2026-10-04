@@ -75,7 +75,7 @@ export function CardLightbox({ src, alt = "Carta", shineMode = "none", elementTy
                 if (e.target === e.currentTarget) onClose();
             }}
         >
-            <button type="button" onClick={onClose} aria-label="Fechar" className="absolute right-4 top-4 z-20 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition-colors hover:bg-white/20 sm:right-6 sm:top-6">
+            <button type="button" onClick={onClose} aria-label="Fechar" className="absolute right-4 top-4 z-20 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition-colors hover:bg-white/20 sm:right-6 sm:top-6">
                 <X size={20} strokeWidth={2.5} />
             </button>
 

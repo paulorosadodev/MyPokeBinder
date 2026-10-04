@@ -38,13 +38,14 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "Identificador de carta inválido" }, { status: 400 });
     }
 
-    const { data, error } = await supabase.from("user_cards").select("tcgdex_card_id, card_language, card_variant, card_condition").eq("user_id", user.id).in("tcgdex_card_id", ids);
+    const { data, error } = await supabase.from("user_cards").select("id, tcgdex_card_id, card_language, card_variant, card_condition, is_in_binder").eq("user_id", user.id).in("tcgdex_card_id", ids);
 
     if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     const counts: Record<string, number> = {};
+    const copyIds: Record<string, string[]> = {};
     for (const row of data ?? []) {
         const key = cardCopyGroupKey({
             tcgdex_card_id: row.tcgdex_card_id,
@@ -53,7 +54,15 @@ export async function GET(request: NextRequest) {
             card_condition: row.card_condition,
         });
         counts[key] = (counts[key] ?? 0) + 1;
+        if (!copyIds[key]) {
+            copyIds[key] = [];
+        }
+        if (row.is_in_binder) {
+            copyIds[key].push(row.id);
+        } else {
+            copyIds[key].unshift(row.id);
+        }
     }
 
-    return NextResponse.json({ counts });
+    return NextResponse.json({ counts, copyIds });
 }

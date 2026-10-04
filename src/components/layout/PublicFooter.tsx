@@ -28,7 +28,7 @@ export function PublicFooter() {
                                 </NextLink>
                             </li>
                             <li>
-                                <NextLink href="/collection" className="transition-colors hover:text-white">
+                                <NextLink href="/colecao" className="transition-colors hover:text-white">
                                     Coleção
                                 </NextLink>
                             </li>

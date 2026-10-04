@@ -83,14 +83,14 @@ describe("Binder Slot Selection and Removal Logic", () => {
     });
 
     it("não exibe a navegação redundante na página de edição", () => {
-        const cardPageSource = readFileSync(join(import.meta.dir, "../src/app/cards/[id]/CardDetailClient.tsx"), "utf8");
+        const cardPageSource = readFileSync(join(import.meta.dir, "../src/app/cartas/[id]/CardDetailClient.tsx"), "utf8");
 
         expect(cardPageSource).not.toContain("Navegação do Binder");
         expect(cardPageSource).toContain("returnToBinderModal");
     });
 
     it("redireciona o botão de alocar no binder diretamente para a página de Meus Binders (/)", () => {
-        const cardPageSource = readFileSync(join(import.meta.dir, "../src/app/cards/[id]/CardDetailClient.tsx"), "utf8");
+        const cardPageSource = readFileSync(join(import.meta.dir, "../src/app/cartas/[id]/CardDetailClient.tsx"), "utf8");
 
         expect(cardPageSource).toContain('onClick={() => router.push("/")}');
         expect(cardPageSource).not.toContain("CardAllocateModal");
@@ -134,7 +134,7 @@ describe("Binder Slot Selection and Removal Logic", () => {
 
     it("revalida as listas da Coleção no binder ao adicionar carta pelo catálogo", () => {
         const viewerSource = readFileSync(join(import.meta.dir, "../src/components/binder/UniversalBinderViewer.tsx"), "utf8");
-        const collectionPageSource = readFileSync(join(import.meta.dir, "../src/app/collection/page.tsx"), "utf8");
+        const collectionPageSource = readFileSync(join(import.meta.dir, "../src/app/colecao/page.tsx"), "utf8");
 
         expect(viewerSource).toContain("onCardAdded={handleCatalogCardAdded}");
         expect(viewerSource).not.toContain("onCardAdded={() => undefined}");
@@ -199,14 +199,14 @@ describe("Binder Slot Selection and Removal Logic", () => {
         const handleEditCard = (card: UserCard, dexId: number) => {
             if (editingCardId) return;
             editingCardId = card.id;
-            navigatedUrl = `/cards/${card.id}?from=binder&dexId=${dexId}`;
+            navigatedUrl = `/cartas/${card.id}?from=binder&dexId=${dexId}`;
         };
 
         handleEditCard(mockCard1, 1);
 
         expect(isModalOpen).toBe(true);
         expect<string | null>(editingCardId).toEqual(mockCard1.id);
-        expect<string | null>(navigatedUrl).toEqual(`/cards/${mockCard1.id}?from=binder&dexId=1`);
+        expect<string | null>(navigatedUrl).toEqual(`/cartas/${mockCard1.id}?from=binder&dexId=1`);
 
         handleEditCard(mockCard2, 1);
         expect<string | null>(editingCardId).toEqual(mockCard1.id);
@@ -364,5 +364,29 @@ describe("Binder Slot Selection and Removal Logic", () => {
 
         const displayedAfterModalClose = getDisplayCardsMap(updatedCardsMap);
         expect(displayedAfterModalClose.get(1)?.id).toBe(mockCard2.id);
+    });
+
+    it("gerencia controles de quantidade, modal de confirmação de exclusão e efeito sonoro de queda no catálogo", () => {
+        const searchModalSource = readFileSync(join(import.meta.dir, "../src/components/modal/CardSearchModal.tsx"), "utf8");
+
+        expect(searchModalSource).toContain("playCardDropSound(getRarityImpactTier(card.rarity, card.name))");
+        expect(searchModalSource).toContain("comboCount === 1");
+        expect(searchModalSource).toContain("setDeleteModalTarget(card)");
+        expect(searchModalSource).toContain("handleRemoveCopy(card)");
+        expect(searchModalSource).toContain("Excluir carta da coleção?");
+        expect(searchModalSource).toContain("Esta ação não poderá ser desfeita.");
+        expect(searchModalSource).toContain("Sim, excluir");
+        expect(searchModalSource).toContain("unregisterCopy(");
+        expect(searchModalSource).toContain("onCardRemoved?.(copyId)");
+    });
+
+    it("oculta menu de quantidade durante animação de adição e aguarda posse antes de revelar o catálogo", () => {
+        const searchModalSource = readFileSync(join(import.meta.dir, "../src/components/modal/CardSearchModal.tsx"), "utf8");
+
+        expect(searchModalSource).toContain("const isAddingConfirmed = Boolean(confirmTokens[card.id]);");
+        expect(searchModalSource).toContain("!isSubmittingThis && !isAddingConfirmed && comboCount === 0");
+        expect(searchModalSource).toContain("!isSubmittingThis && !isAddingConfirmed && comboCount > 0");
+        expect(searchModalSource).toContain("isInitialOwnershipLoading");
+        expect(searchModalSource).toContain("fetchedOwnershipIdsRef.current.delete(id)");
     });
 });

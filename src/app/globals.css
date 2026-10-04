@@ -644,11 +644,11 @@ body {
 
 .binder-slot-name span {
     display: block;
-    height: 11px;
-    line-height: 11px;
+    line-height: 1.25;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    padding-bottom: 2px;
 }
 
 .binder-book-stage--busy,
@@ -859,6 +859,75 @@ body {
 .card-list-appear {
     animation: card-list-appear 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
     will-change: transform, opacity;
+}
+
+@keyframes card-add-confirm-overlay {
+    0% {
+        opacity: 0;
+    }
+    18% {
+        opacity: 1;
+    }
+    70% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes card-add-confirm-check {
+    0% {
+        opacity: 0;
+        transform: scale(0.4);
+    }
+    35% {
+        opacity: 1;
+        transform: scale(1.18);
+    }
+    55% {
+        transform: scale(0.96);
+    }
+    75% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1);
+    }
+}
+
+@keyframes card-add-confirm-ring {
+    0% {
+        opacity: 0.9;
+        transform: scale(0.6);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1.7);
+    }
+}
+
+.card-add-confirm-overlay {
+    animation: card-add-confirm-overlay 0.95s ease-out both;
+}
+
+.card-add-confirm-check {
+    animation: card-add-confirm-check 0.95s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.card-add-confirm-ring {
+    animation: card-add-confirm-ring 0.7s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .card-add-confirm-ring {
+        display: none;
+    }
+    .card-add-confirm-check {
+        animation-name: card-add-confirm-overlay;
+    }
 }
 
 @keyframes card-impact-shockwave {
@@ -1163,12 +1232,27 @@ body {
     color: #f59e0b !important;
 }
 
+[data-sonner-toast] [data-close-button] {
+    background: #1a1e2b !important;
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+    color: #94a3b8 !important;
+    opacity: 0.9 !important;
+    transition: all 0.15s ease !important;
+}
+
+[data-sonner-toast] [data-close-button]:hover {
+    background: #252b3d !important;
+    color: #ffffff !important;
+    opacity: 1 !important;
+}
+
 @media (max-width: 640px) {
     [data-sonner-toaster] {
-        left: 12px !important;
-        right: 12px !important;
-        width: calc(100vw - 24px) !important;
-        top: 12px !important;
+        left: 16px !important;
+        right: 16px !important;
+        width: calc(100vw - 32px) !important;
+        top: auto !important;
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 76px) !important;
     }
 
     [data-sonner-toast] {

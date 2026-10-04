@@ -5,6 +5,8 @@ import Image from "next/image";
 import { UserCard } from "@/types/binder";
 import { getPokemonSilhouetteUrl, getPokemonGlowColors, getPokemonByDexId, markSilhouetteLoaded } from "@/lib/pokemon/constants";
 import { formatTcgdexImageUrl } from "@/lib/pokemon/tcgdex";
+import { describeAvailableCards } from "@/lib/binder/availableCounts";
+import { SlotAvailableBadge } from "@/components/binder/SlotAvailableBadge";
 import { Card3DTilt } from "@/components/ui/Card3DTilt";
 import { CardImpactBurst } from "@/components/binder/CardImpactBurst";
 import { Plus } from "lucide-react";
@@ -141,7 +143,7 @@ export function BinderSlot({ dexId, pokemonName, card, availableCount = 0, isTra
             id={`binder-slot-${dexId}`}
             onClick={onClick}
             onKeyDown={handleKeyDown}
-            aria-label={hasAvailableCard ? `${pokemonName}, ${formattedDex}, vazio, ${availableCount} ${availableCount > 1 ? "cartas disponíveis" : "carta disponível"} na coleção` : `${pokemonName}, ${formattedDex}, vazio`}
+            aria-label={hasAvailableCard ? `${pokemonName}, ${formattedDex}, vazio, ${describeAvailableCards(availableCount)}` : `${pokemonName}, ${formattedDex}, vazio`}
             style={glowStyle}
             onMouseDownCapture={stopPageFlip}
             onPointerDownCapture={stopPageFlip}
@@ -152,11 +154,7 @@ export function BinderSlot({ dexId, pokemonName, card, availableCount = 0, isTra
                 <span className={`rounded px-1.5 py-0.5 text-[11px] font-bold leading-none ${hasAvailableCard ? "bg-black/50 text-slate-300" : "bg-black/40 text-slate-500"}`}>{formattedDex}</span>
             </div>
 
-            {hasAvailableCard && (
-                <div className="pointer-events-none absolute top-2.5 right-2.5 z-10 flex items-center justify-center">
-                    <span className="h-2 w-2 rounded-full bg-[var(--theme-primary)] opacity-85 shadow-[0_0_6px_var(--theme-primary-glow)]" />
-                </div>
-            )}
+            {hasAvailableCard && <SlotAvailableBadge availableCount={availableCount} />}
 
             <div className="pointer-events-none absolute inset-2 bottom-7">
                 {mountImage ? <Image src={getPokemonSilhouetteUrl(dexId)} alt={pokemonName} fill sizes="(max-width: 768px) 30vw, 15vw" className={`silhouette-img object-contain ${hasAvailableCard ? "opacity-30" : "opacity-25"} ${pauseTilt ? "" : hasAvailableCard ? "transition-opacity duration-200 group-hover:opacity-50" : "transition-opacity duration-200 group-hover:opacity-45"}`} unoptimized priority={priority} onLoad={() => markSilhouetteLoaded(dexId)} /> : null}

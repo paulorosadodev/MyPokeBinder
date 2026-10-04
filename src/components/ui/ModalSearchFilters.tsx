@@ -13,18 +13,23 @@ interface ModalSearchFiltersProps {
     onToggleFilters: () => void;
     activeFilterCount?: number;
     filterButtonAriaLabel?: string;
+    isLoading?: boolean;
     children?: React.ReactNode;
     className?: string;
 }
 
-export function ModalSearchFilters({ searchTerm, onSearchChange, placeholder = "Buscar por pokémon, número, coleção ou pokédex...", placeholderClassName = "left-8.5 right-8 text-xs sm:left-10 sm:right-9 sm:text-sm", showFilters, onToggleFilters, activeFilterCount = 0, filterButtonAriaLabel = "Alternar filtros", children, className = "" }: ModalSearchFiltersProps) {
+export function ModalSearchFilters({ searchTerm, onSearchChange, placeholder = "Buscar por pokémon, número, coleção ou pokédex...", placeholderClassName = "left-8.5 right-8 text-xs sm:left-10 sm:right-9 sm:text-sm", showFilters, onToggleFilters, activeFilterCount = 0, filterButtonAriaLabel = "Alternar filtros", isLoading = false, children, className = "" }: ModalSearchFiltersProps) {
     return (
         <div className={`flex shrink-0 flex-col ${showFilters ? "gap-2.5 sm:gap-3" : "gap-0"} ${className}`}>
             <div className="flex items-center gap-2">
                 <div className="relative min-w-0 flex-1">
                     <Search size={15} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-slate-500 z-20 sm:left-3.5 sm:h-4 sm:w-4" />
                     <SearchInput type="text" value={searchTerm} onChange={(e) => onSearchChange(e.target.value)} placeholder={placeholder} placeholderClassName={placeholderClassName} className="w-full h-9 sm:h-10 rounded-xl border border-white/10 bg-white/5 py-2 sm:py-2.5 pr-8 sm:pr-9 pl-8.5 sm:pl-10 text-xs sm:text-sm text-white transition-colors focus:border-poke-blue/60 focus:bg-white/[0.08] focus:outline-none" />
-                    {searchTerm ? (
+                    {isLoading ? (
+                        <span aria-hidden="true" className="absolute top-1/2 right-2.5 -translate-y-1/2 text-poke-blue z-20 sm:right-3 pointer-events-none">
+                            <span className="block h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin rounded-full border-2 border-poke-blue border-t-transparent" />
+                        </span>
+                    ) : searchTerm ? (
                         <button type="button" onClick={() => onSearchChange("")} aria-label="Limpar busca" className="absolute top-1/2 right-2.5 -translate-y-1/2 text-slate-500 hover:text-white z-20 sm:right-3">
                             <X size={14} className="sm:h-[15px] sm:w-[15px]" />
                         </button>

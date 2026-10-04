@@ -7,6 +7,9 @@ import { isCardVariant } from "@/lib/pokemon/variant";
 import { isCardMatchingPokemon } from "@/lib/pokemon/match";
 import { isValidCardElementTypes, resolveCardElementTypes } from "@/lib/pokemon/cardTypes";
 import { isCardCondition, type CardCondition } from "@/lib/pokemon/condition";
+import { enforceRateLimit } from "@/lib/security/rateLimit";
+
+const CARD_CREATE_RATE_LIMIT = { limit: 120, windowMs: 60_000 };
 
 export async function GET(request: NextRequest) {
     const auth = await getAuthenticatedUser(request);
@@ -189,6 +192,11 @@ export async function POST(request: NextRequest) {
         return auth.response;
     }
     const { user, supabase } = auth;
+
+    const limited = enforceRateLimit(request, "card-create", CARD_CREATE_RATE_LIMIT, user.id);
+    if (limited) {
+        return limited;
+    }
 
     try {
         const body = await request.json();

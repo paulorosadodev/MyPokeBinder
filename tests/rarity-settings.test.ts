@@ -20,6 +20,9 @@ describe("Rarity Tiers and Badge Style Logic", () => {
         expect(getRarityImpactTier("Rara V")).toBe(2);
         expect(getRarityImpactTier("V")).toBe(2);
         expect(getRarityImpactTier("Rare", "Pikachu V")).toBe(2);
+        expect(getRarityImpactTier("Promo", "Venusaur EX")).toBe(2);
+        expect(getRarityImpactTier("Promo", "Charizard ex")).toBe(2);
+        expect(getRarityImpactTier("Promo", "Mewtwo GX")).toBe(2);
     });
 
     it("should correctly classify Tier 1 enhanced rarities", () => {

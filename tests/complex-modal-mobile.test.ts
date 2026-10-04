@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const fullscreenModalFiles = ["../src/components/modal/CardSearchModal.tsx", "../src/components/modal/BinderSlotSelectModal.tsx", "../src/components/modal/CardAllocateModal.tsx", "../src/components/profile/TrainerProfileView.tsx", "../src/app/cards/[id]/CardDetailClient.tsx", "../src/app/configuracoes/SettingsClient.tsx", "../src/app/binders/[id]/edit/BinderEditClient.tsx"];
+const fullscreenModalFiles = ["../src/components/modal/CardSearchModal.tsx", "../src/components/modal/BinderSlotSelectModal.tsx", "../src/components/modal/CardAllocateModal.tsx", "../src/components/profile/TrainerProfileView.tsx", "../src/app/cartas/[id]/CardDetailClient.tsx", "../src/app/configuracoes/SettingsClient.tsx", "../src/app/binders/[id]/edit/BinderEditClient.tsx"];
 
 const dismissibleOverlayFiles = [
     "../src/components/modal/CardSearchModal.tsx",
@@ -11,7 +11,7 @@ const dismissibleOverlayFiles = [
     "../src/components/binder/BinderStatisticsDrawer.tsx",
     "../src/components/binder/CoverPokemonSelector.tsx",
     "../src/components/profile/TrainerProfileView.tsx",
-    "../src/app/cards/[id]/CardDetailClient.tsx",
+    "../src/app/cartas/[id]/CardDetailClient.tsx",
     "../src/app/configuracoes/SettingsClient.tsx",
     "../src/app/binders/[id]/edit/BinderEditClient.tsx",
     "../src/components/ui/CardLightbox.tsx",
@@ -24,7 +24,7 @@ const animatedOverlayFiles = [
     "../src/components/binder/BinderStatisticsDrawer.tsx",
     "../src/components/binder/CoverPokemonSelector.tsx",
     "../src/components/profile/TrainerProfileView.tsx",
-    "../src/app/cards/[id]/CardDetailClient.tsx",
+    "../src/app/cartas/[id]/CardDetailClient.tsx",
     "../src/app/configuracoes/SettingsClient.tsx",
     "../src/app/binders/[id]/edit/BinderEditClient.tsx",
     "../src/components/ui/CardLightbox.tsx",

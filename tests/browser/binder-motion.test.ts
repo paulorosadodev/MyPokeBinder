@@ -65,6 +65,7 @@ beforeAll(async () => {
             if (pathname === "/api/binders") {
                 return Response.json({ binders: [{ id: "teste", user_id: "teste", name: "Kanto 151 Original", description: "", grid_type: "3x3", total_pages: 1, cover_theme: "red", cover_pokemon_dex_id: 94, is_public: false, is_featured: false, total_cards: 89, total_slots: 160, created_at: "", updated_at: "" }] });
             }
+            if (pathname === "/api/binder/available") return Response.json({ availableCounts: { 3: 2 } });
             if (pathname.startsWith("/api/")) return Response.json({ cards, availableCounts: {} });
             return new Response('<html><head><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/app.css"></head><body><div id="root"></div><script>window.process={env:{}}</script><script type="module" src="/app.js"></script></body></html>', { headers: { "Content-Type": "text/html" } });
         },
@@ -340,9 +341,17 @@ describe("Animação real do binder no navegador", () => {
                 .first()
                 .click();
             await modal.getByText("2 adicionadas").waitFor({ state: "visible" });
+            await modal
+                .getByRole("button", { name: /Adicionar mais 1 cópia de Bulbasaur/ })
+                .first()
+                .waitFor({ state: "visible" });
             expect(await modal.getByRole("button", { name: /Adicionar mais 1 cópia de Bulbasaur/ }).count()).toBe(1);
             await modal.getByRole("button", { name: /^Adicionar Bulbasaur Holo \(PT-BR · Normal · NM\) à Coleção$/ }).click();
             await modal.getByText("3 adicionadas").waitFor({ state: "visible" });
+            await modal
+                .getByRole("button", { name: /Adicionar mais 1 cópia de Bulbasaur Holo/ })
+                .first()
+                .waitFor({ state: "visible" });
             expect(await modal.getByRole("button", { name: /Adicionar mais 1 cópia de Bulbasaur/ }).count()).toBe(2);
             expect(await modal.getAttribute("data-overlay-state")).toBe("open");
 
@@ -569,6 +578,109 @@ describe("Animação real do binder no navegador", () => {
             await page.close();
         }
     }, 20000);
+
+    it("sinaliza com o ícone de carta guardada o slot de Pokémon que pode ser preenchido", async () => {
+        const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+        try {
+            await page.goto(new URL("?universal&universalViewer&opened=1", server.url).toString());
+            const availableSlot = page.locator("#binder-slot-slot-3");
+            await availableSlot.waitFor({ state: "visible" });
+
+            const badge = availableSlot.locator("span[title$='para preencher este compartimento']");
+            await badge.waitFor({ state: "visible" });
+            expect(await availableSlot.getAttribute("aria-label")).toBe("Venusaur, #003, vazio, 2 cartas disponíveis na coleção");
+            expect(await badge.locator("svg").count()).toBe(1);
+            expect(await badge.getAttribute("title")).toBe("2 cartas disponíveis para preencher este compartimento");
+
+            const untouchedSlot = page.locator("#binder-slot-slot-4");
+            expect(await untouchedSlot.locator("span[title$='para preencher este compartimento']").count()).toBe(0);
+            expect(await untouchedSlot.getAttribute("aria-label")).toBe("Charmander, #004, vazio");
+        } finally {
+            await page.close();
+        }
+    }, 20000);
+
+    it("folheia páginas internas sem comprimir cartas nem deslocar ações verticalmente", async () => {
+        const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+        try {
+            await page.goto(new URL("?universal&universalMotion", server.url).toString());
+            await waitForPage(page, 1);
+            await page.getByRole("button", { name: "Avançar teste" }).click();
+            await waitForPage(page, 2);
+            await page.getByRole("button", { name: "Avançar teste" }).click();
+            await waitForPage(page, 4);
+
+            const card = page.locator("#binder-slot-motion-4-1").locator("xpath=ancestor::*[contains(@class, 'card-3d-tilt')]");
+            const action = page.locator("#binder-slot-motion-4-2").getByText("Inserir Carta", { exact: true });
+            await card.evaluate((element: HTMLElement) => {
+                element.style.background = "#00ff00";
+                element.querySelector("img")!.style.visibility = "hidden";
+            });
+            const settledCard = await card.boundingBox();
+            const settledAction = await action.boundingBox();
+            await page.screenshot({ path: "/tmp/binder-settled.png" });
+            expect(settledCard).not.toBeNull();
+            expect(settledAction).not.toBeNull();
+
+            await page.getByRole("button", { name: "Voltar teste" }).click();
+            await waitForPage(page, 2);
+            await page.getByRole("button", { name: "Avançar teste" }).click();
+            await page.waitForFunction(() => document.querySelector(".binder-book-stage--busy"));
+            await page.waitForTimeout(180);
+            expect(await page.locator(".stf__item.--soft:not(.--simple):has(#binder-slot-motion-4-1)").count()).toBeGreaterThan(0);
+
+            await page.evaluate(() => {
+                window.requestAnimationFrame = () => 0;
+            });
+            await page.waitForTimeout(50);
+            await page.screenshot({ path: "/tmp/binder-turning.png" });
+            const turningCard = await card.boundingBox();
+            const turningAction = await action.boundingBox();
+            expect(turningCard).not.toBeNull();
+            expect(turningAction).not.toBeNull();
+            expect(Math.abs(turningCard!.width - settledCard!.width)).toBeLessThan(1);
+            expect(Math.abs(turningCard!.height - settledCard!.height)).toBeLessThan(1);
+            expect(Math.abs(turningAction!.y - settledAction!.y)).toBeLessThan(1);
+            expect(await action.evaluate((element) => getComputedStyle(element).visibility)).toBe("visible");
+        } finally {
+            await page.close();
+        }
+    }, 15000);
+
+    it("abre a capa sem comprimir a primeira página nem deslocar suas ações", async () => {
+        const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+        try {
+            await page.goto(new URL("?universal&universalMotion", server.url).toString());
+            await waitForPage(page, 1);
+            await page.waitForTimeout(800);
+
+            const card = page.locator("#binder-slot-motion-1-1").locator("xpath=ancestor::*[contains(@class, 'card-3d-tilt')]");
+            const action = page.locator("#binder-slot-motion-1-2").getByText("Inserir Carta", { exact: true });
+            const settledCard = await card.boundingBox();
+            const settledAction = await action.boundingBox();
+            expect(settledCard).not.toBeNull();
+            expect(settledAction).not.toBeNull();
+
+            await page.getByRole("button", { name: "Voltar teste" }).click();
+            await page.waitForFunction(() => !document.querySelector(".binder-book-stage--busy") && document.querySelector(".binder-cover-front.--simple"));
+            await page.getByRole("button", { name: "Avançar teste" }).click();
+            await page.waitForFunction(() => document.querySelector(".binder-book-stage--busy"));
+            await page.waitForTimeout(180);
+            expect(await page.locator(".stf__item:not(.--simple):has(#binder-slot-motion-1-1)").count()).toBeGreaterThan(0);
+
+            const openingCard = await card.boundingBox();
+            const openingAction = await action.boundingBox();
+            expect(openingCard).not.toBeNull();
+            expect(openingAction).not.toBeNull();
+            expect(Math.abs(openingCard!.width - settledCard!.width)).toBeLessThan(2);
+            expect(Math.abs(openingCard!.height - settledCard!.height)).toBeLessThan(2);
+            expect(Math.abs(openingAction!.y - settledAction!.y)).toBeLessThan(2);
+            expect(await action.evaluate((element) => getComputedStyle(element).visibility)).toBe("visible");
+            await page.waitForFunction(() => !document.querySelector(".binder-book-stage--busy"));
+        } finally {
+            await page.close();
+        }
+    }, 15000);
 
     it("mantém um overlay presente ao alternar entre seletor de slot e catálogo", async () => {
         const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });

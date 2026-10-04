@@ -32,35 +32,35 @@ export function BinderShelf({ initialBinders = [] }: BinderShelfProps) {
     return (
         <div className="flex min-h-screen flex-col">
             <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-6 px-4 py-6 pb-28 sm:px-6 sm:py-8 md:pb-16">
-                <div className="flex items-center justify-between gap-2.5 sm:gap-4">
-                    <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
-                        <h1 className="truncate text-xl font-extrabold tracking-tight text-white sm:text-3xl leading-none">Meus Binders</h1>
+                <div className="flex items-start justify-between gap-3 sm:items-center sm:gap-4">
+                    <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                        <h1 className="text-xl font-extrabold tracking-tight text-white sm:text-3xl leading-tight sm:leading-none">Meus Binders</h1>
                         {!isLoading ? (
-                            <>
-                                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 sm:px-3.5 sm:py-1.5 text-xs font-semibold text-slate-300 leading-none translate-y-[1px] sm:translate-y-[4px]">
-                                    <BookOpen size={13} className="text-[var(--theme-primary)] shrink-0" />
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 sm:translate-y-[2px]">
+                                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs font-semibold text-slate-300 leading-none sm:px-3.5 sm:py-1.5">
+                                    <BookOpen size={13} className="shrink-0 text-[var(--theme-primary)]" />
                                     <span>
                                         {binders.length} <span className="hidden sm:inline">{binders.length === 1 ? "binder cadastrado" : "binders cadastrados"}</span>
                                         <span className="sm:hidden">{binders.length === 1 ? "binder" : "binders"}</span>
                                     </span>
                                 </span>
-                                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 sm:px-3.5 sm:py-1.5 text-xs font-semibold text-slate-300 leading-none translate-y-[1px] sm:translate-y-[4px]">
-                                    <Layers size={13} className="text-[var(--theme-primary)] shrink-0" />
+                                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs font-semibold text-slate-300 leading-none sm:px-3.5 sm:py-1.5">
+                                    <Layers size={13} className="shrink-0 text-[var(--theme-primary)]" />
                                     <span>
                                         {totalCollectionCardsInBinders} <span className="hidden sm:inline">{totalCollectionCardsInBinders === 1 ? "carta alocada" : "cartas alocadas"}</span>
                                         <span className="sm:hidden">{totalCollectionCardsInBinders === 1 ? "alocada" : "alocadas"}</span>
                                     </span>
                                 </span>
-                            </>
+                            </div>
                         ) : (
-                            <>
-                                <div className="h-6 w-16 sm:h-7 sm:w-28 shrink-0 animate-pulse rounded-full bg-white/10 translate-y-[1px] sm:translate-y-[4px]" />
-                                <div className="h-6 w-16 sm:h-7 sm:w-28 shrink-0 animate-pulse rounded-full bg-white/10 translate-y-[1px] sm:translate-y-[4px]" />
-                            </>
+                            <div className="flex items-center gap-1.5 sm:gap-2 sm:translate-y-[2px]">
+                                <div className="h-5 w-16 shrink-0 animate-pulse rounded-full bg-white/10 sm:h-7 sm:w-28" />
+                                <div className="h-5 w-16 shrink-0 animate-pulse rounded-full bg-white/10 sm:h-7 sm:w-28" />
+                            </div>
                         )}
                     </div>
 
-                    <NextLink href="/binders/new" prefetch={true} onMouseEnter={() => router.prefetch("/binders/new")} onTouchStart={() => router.prefetch("/binders/new")} aria-label="Criar Binder" className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 sm:gap-2 rounded-xl bg-poke-blue px-3 py-2 sm:px-5 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-md shadow-poke-blue/20 transition-all hover:brightness-110 active:scale-[0.98]">
+                    <NextLink href="/binders/new" prefetch={true} onMouseEnter={() => router.prefetch("/binders/new")} onTouchStart={() => router.prefetch("/binders/new")} aria-label="Criar Binder" className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-poke-blue px-3 py-2 text-xs font-semibold text-white shadow-md shadow-poke-blue/20 transition-all hover:brightness-110 active:scale-[0.98] sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm">
                         <Plus size={16} className="sm:h-[18px] sm:w-[18px]" />
                         <span className="hidden min-[380px]:inline">Criar Binder</span>
                         <span className="min-[380px]:hidden">Criar</span>

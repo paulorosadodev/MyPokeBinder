@@ -28,8 +28,8 @@ describe("Trainer Not Found Component Logic", () => {
 
     it("should validate recovery links available on trainer not found page", () => {
         const homeRoute = "/";
-        const collectionRoute = "/collection";
+        const collectionRoute = "/colecao";
         expect(homeRoute).toBe("/");
-        expect(collectionRoute).toBe("/collection");
+        expect(collectionRoute).toBe("/colecao");
     });
 });

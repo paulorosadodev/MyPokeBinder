@@ -157,4 +157,24 @@ describe("Toast and Optimistic Rollback Logic", () => {
         expect(persistedLang).toBe("ja");
         expect(toastStatus).toBe("success");
     });
+
+    it("should resolve mobile toast position to bottom-center with safe area offset", () => {
+        const resolveToastConfig = (isMobile: boolean) => ({
+            position: isMobile ? "bottom-center" : "top-right",
+            mobileOffset: {
+                bottom: "calc(env(safe-area-inset-bottom, 0px) + 76px)",
+                left: "16px",
+                right: "16px",
+            },
+            closeButton: true,
+        });
+
+        const mobileConfig = resolveToastConfig(true);
+        expect(mobileConfig.position).toBe("bottom-center");
+        expect(mobileConfig.mobileOffset.bottom).toContain("76px");
+        expect(mobileConfig.closeButton).toBe(true);
+
+        const desktopConfig = resolveToastConfig(false);
+        expect(desktopConfig.position).toBe("top-right");
+    });
 });

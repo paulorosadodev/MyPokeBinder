@@ -22,9 +22,10 @@ describe("formatTcgdexImageUrl", () => {
 
     it("should allow low quality option", () => {
         expect(formatTcgdexImageUrl("https://assets.tcgdex.net/pt-br/tcgp/A1/002", "low")).toBe("https://assets.tcgdex.net/pt-br/tcgp/A1/002/low.webp");
+        expect(formatTcgdexImageUrl("https://assets.tcgdex.net/pt-br/tcgp/A1/002/high.webp", "low")).toBe("https://assets.tcgdex.net/pt-br/tcgp/A1/002/low.webp");
     });
 
-    it("should not alter URLs that already have image extensions", () => {
+    it("should not alter URLs that already have non-webp image extensions", () => {
         expect(formatTcgdexImageUrl("https://assets.tcgdex.net/pt-br/tcgp/A1/002/high.webp")).toBe("https://assets.tcgdex.net/pt-br/tcgp/A1/002/high.webp");
         expect(formatTcgdexImageUrl("https://assets.tcgdex.net/pt-br/tcgp/A1/002/high.png")).toBe("https://assets.tcgdex.net/pt-br/tcgp/A1/002/high.png");
     });

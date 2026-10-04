@@ -11,6 +11,8 @@ import { PokemonBallSvg } from "@/components/theme/PokemonBallSvg";
 import { getBinderSlotPageCount } from "@/lib/binder/pageCapacity";
 import { getCoverTheme } from "@/lib/binder/themes";
 import { canRevealUniversalSlotHighlight } from "@/lib/binder/universalHighlight";
+import { shiftAvailableCount, type AvailableCounts } from "@/lib/binder/availableCounts";
+import { useBinderAvailableCounts } from "@/lib/swr";
 import { isBinderSlotPainted } from "@/lib/pokemon/binderHighlight";
 import { getPokemonThemeSelectorSpriteUrl } from "@/lib/pokemon/constants";
 import { isCollectionCardsCacheKey } from "@/lib/collection/cache";
@@ -25,6 +27,7 @@ const BinderStatisticsDrawer = dynamic(() => import("./BinderStatisticsDrawer").
 export interface UniversalBinderViewerProps {
     binder: Binder;
     initialSlots: BinderSlot[];
+    initialAvailableCounts?: AvailableCounts;
     otherBinders?: BinderSwitcherItem[];
     isOwner?: boolean;
 }
@@ -53,10 +56,11 @@ function clampPage(page: number, totalPages: number) {
     return Math.min(totalPages, Math.max(1, Math.trunc(page) || 1));
 }
 
-export function UniversalBinderViewer({ binder, initialSlots, otherBinders = [], isOwner = true }: UniversalBinderViewerProps) {
+export function UniversalBinderViewer({ binder, initialSlots, initialAvailableCounts, otherBinders = [], isOwner = true }: UniversalBinderViewerProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { mutate: globalMutate, cache } = useSWRConfig();
+    const { availableCounts, mutateAvailableCounts } = useBinderAvailableCounts(initialAvailableCounts);
     const slotPageCount = getBinderSlotPageCount(binder.total_pages);
     const initialTargetPage = clampPage(Number(searchParams.get("page")), slotPageCount);
     const bookRef = useRef<UniversalBinderNavigationHandle>(null);
@@ -209,6 +213,7 @@ export function UniversalBinderViewer({ binder, initialSlots, otherBinders = [],
 
     useEffect(() => {
         if (isSlotModalOpen || !pendingDropSlotId) return;
+        if (isCatalogModalOpen) return;
 
         const timer = window.setTimeout(() => {
             setDroppingSlotId(pendingDropSlotId);
@@ -218,7 +223,7 @@ export function UniversalBinderViewer({ binder, initialSlots, otherBinders = [],
         }, 320);
 
         return () => window.clearTimeout(timer);
-    }, [isSlotModalOpen, pendingDropSlotId]);
+    }, [isSlotModalOpen, isCatalogModalOpen, pendingDropSlotId]);
 
     const handleSlotClick = useCallback(
         (slot: BinderSlot) => {
@@ -236,16 +241,22 @@ export function UniversalBinderViewer({ binder, initialSlots, otherBinders = [],
             setSlots((previous) => previous.map((slot) => (slot.id === slotId ? { ...slot, user_card_id: assignedCard.id, card: assignedCard } : slot)));
             setSelectedSlot((previous) => (previous?.id === slotId ? { ...previous, user_card_id: assignedCard.id, card: assignedCard } : previous));
             setPendingDropSlotId(slotId);
+            void mutateAvailableCounts((current) => ({ availableCounts: shiftAvailableCount(current?.availableCounts ?? {}, assignedCard.pokemon_dex_id, -1) }), false);
         },
-        [selectedSlot],
+        [mutateAvailableCounts, selectedSlot],
     );
 
-    const handleUnassignSuccess = useCallback((slotId: string) => {
-        setSlots((previous) => previous.map((slot) => (slot.id === slotId ? { ...slot, user_card_id: null, card: null } : slot)));
-        setSelectedSlot((previous) => (previous?.id === slotId ? { ...previous, user_card_id: null, card: null } : previous));
-        setPendingDropSlotId((previous) => (previous === slotId ? null : previous));
-        setPendingDropOriginalCard(null);
-    }, []);
+    const handleUnassignSuccess = useCallback(
+        (slotId: string) => {
+            const releasedCard = slots.find((slot) => slot.id === slotId)?.card ?? null;
+            setSlots((previous) => previous.map((slot) => (slot.id === slotId ? { ...slot, user_card_id: null, card: null } : slot)));
+            setSelectedSlot((previous) => (previous?.id === slotId ? { ...previous, user_card_id: null, card: null } : previous));
+            setPendingDropSlotId((previous) => (previous === slotId ? null : previous));
+            setPendingDropOriginalCard(null);
+            void mutateAvailableCounts((current) => ({ availableCounts: shiftAvailableCount(current?.availableCounts ?? {}, releasedCard?.pokemon_dex_id ?? null, 1) }), false);
+        },
+        [mutateAvailableCounts, slots],
+    );
 
     const displaySlots = useMemo(() => {
         if (!pendingDropSlotId) return slots;
@@ -268,10 +279,26 @@ export function UniversalBinderViewer({ binder, initialSlots, otherBinders = [],
                 if (!isCollectionCardsCacheKey(key)) continue;
                 const previous = cache.get(key)?.data as { cards: UserCard[] } | undefined;
                 if (!previous?.cards) continue;
-                void globalMutate(key, { cards: [...previous.cards, newCard] }, false);
+                void globalMutate(key, { cards: [newCard, ...previous.cards] }, false);
+            }
+            if (!newCard.is_in_binder) {
+                void mutateAvailableCounts((current) => ({ availableCounts: shiftAvailableCount(current?.availableCounts ?? {}, newCard.pokemon_dex_id, 1) }), false);
             }
         },
-        [cache, globalMutate],
+        [cache, globalMutate, mutateAvailableCounts],
+    );
+
+    const handleCatalogCardRemoved = useCallback(
+        (removedCardId: string) => {
+            for (const key of cache.keys()) {
+                if (!isCollectionCardsCacheKey(key)) continue;
+                const previous = cache.get(key)?.data as { cards: UserCard[] } | undefined;
+                if (!previous?.cards) continue;
+                void globalMutate(key, { cards: previous.cards.filter((card) => card.id !== removedCardId) }, false);
+            }
+            void mutateAvailableCounts();
+        },
+        [cache, globalMutate, mutateAvailableCounts],
     );
 
     const handleReturnToSlotModal = useCallback(() => {
@@ -435,7 +462,7 @@ export function UniversalBinderViewer({ binder, initialSlots, otherBinders = [],
                             </button>
                         </div>
                         <div className="relative flex h-full min-h-0 w-full max-w-6xl flex-1 items-center justify-center max-md:h-auto max-md:flex-none">
-                            <UniversalBinderBook ref={bookRef} binder={binder} slots={displaySlots} currentPage={currentPage} entryTargetPage={initialTargetPage} initiallyOpened={initiallyOpened} isMobile={isMobile} highlightedSlotId={highlightedSlotId} droppingSlotId={droppingSlotId} onPageChange={updatePage} onSlotClick={handleSlotClick} />
+                            <UniversalBinderBook ref={bookRef} binder={binder} slots={displaySlots} availableCounts={availableCounts} currentPage={currentPage} entryTargetPage={initialTargetPage} initiallyOpened={initiallyOpened} isMobile={isMobile} highlightedSlotId={highlightedSlotId} droppingSlotId={droppingSlotId} onPageChange={updatePage} onSlotClick={handleSlotClick} />
                         </div>
                         <div className="hidden shrink-0 flex-col items-center gap-2 md:flex">
                             <button
@@ -496,6 +523,7 @@ export function UniversalBinderViewer({ binder, initialSlots, otherBinders = [],
                 pokemonName={catalogSearchName}
                 dexId={catalogDexId}
                 onCardAdded={handleCatalogCardAdded}
+                onCardRemoved={handleCatalogCardRemoved}
             />
         </div>
     );

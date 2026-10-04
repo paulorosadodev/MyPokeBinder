@@ -48,6 +48,11 @@ describe("Card variant helpers", () => {
         expect(resolveCardShine("normal", "Rare Holo", undefined, "Rayquaza VMAX")).toBe("prismatic");
         expect(resolveCardShine("normal", "Rare", undefined, "Arceus VSTAR")).toBe("prismatic");
         expect(resolveCardShine("normal", "Rare", undefined, "Mewtwo V-UNION")).toBe("prismatic");
+        expect(resolveCardShine("normal", "Promo", undefined, "Venusaur EX")).toBe("prismatic");
+        expect(resolveCardShine("normal", "Promo", undefined, "Charizard ex")).toBe("prismatic");
+        expect(resolveCardShine("normal", "Promo", undefined, "Mewtwo-EX")).toBe("prismatic");
+        expect(resolveCardShine("normal", "Promo", undefined, "Mewtwo GX")).toBe("prismatic");
+        expect(resolveCardShine("normal", "Promo", undefined, "Bulbasaur")).toBe("none");
         expect(resolveCardShine("normal", "Radiant Rare")).toBe("prismatic");
 
         for (const rarity of ["Illustration rare", "Special illustration rare", "Ultra Rare", "Hyper rare", "Secret Rare", "Rare V", "Rara V", "V"]) {

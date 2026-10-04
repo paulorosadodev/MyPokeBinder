@@ -6,6 +6,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { UserSettingsProvider } from "@/lib/context/UserSettingsContext";
 import { AuthProvider } from "@/lib/context/AuthContext";
 import { createClient } from "@/lib/supabase/server";
+import { sanitizeAvatarUrl } from "@/lib/profile/username";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -49,7 +50,7 @@ export default async function RootLayout({
               email: user.email,
               username: undefined as string | undefined,
               name: undefined as string | undefined,
-              avatarUrl: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+              avatarUrl: sanitizeAvatarUrl(user.user_metadata?.avatar_url) ?? sanitizeAvatarUrl(user.user_metadata?.picture),
               bio: undefined as string | undefined,
           }
         : null;

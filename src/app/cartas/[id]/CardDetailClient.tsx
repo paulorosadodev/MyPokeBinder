@@ -15,7 +15,7 @@ import { getRarityBadgeStyle } from "@/lib/pokemon/rarity";
 import { VARIANT_SLIDER_OPTIONS, formatVariantLabel, isCardVariant, resolveCardShine } from "@/lib/pokemon/variant";
 import { CONDITION_SLIDER_OPTIONS, formatConditionLabel, getConditionBadgeStyle, isCardCondition } from "@/lib/pokemon/condition";
 import { ConditionBadge } from "@/components/ui/ConditionBadge";
-import { applyCollectionCardMutation, isGroupedCollectionListRequestKey, type CollectionCachedPage, type CollectionCardMutation } from "@/lib/collection/cache";
+import { planCollectionCachePatches, type CollectionCardMutation } from "@/lib/collection/cache";
 import { resolveCardElementTypes } from "@/lib/pokemon/cardTypes";
 import { toast } from "sonner";
 import { ArrowLeft, Sparkles, BookOpen, Trash2, Plus, Minus, AlertCircle, Calendar, Layers, Loader2, Search, RefreshCw, Circle, Palette } from "lucide-react";
@@ -45,13 +45,12 @@ export function CardDetailClient({ cardId, initialData }: CardDetailClientProps)
     const { mutate: globalMutate, cache } = useSWRConfig();
 
     const syncCachedCollection = (mutation: CollectionCardMutation) => {
-        const snapshots = new Map<string, CollectionCachedPage>();
-        for (const key of cache.keys()) {
-            if (!isGroupedCollectionListRequestKey(key)) continue;
-            const previous = cache.get(key)?.data as CollectionCachedPage | undefined;
-            if (!previous) continue;
-            snapshots.set(key, previous);
-            void globalMutate(key, applyCollectionCardMutation(key, previous, mutation), false);
+        const snapshots = new Map<string, unknown>();
+        const patches = planCollectionCachePatches(cache.keys(), (key) => cache.get(key), mutation);
+
+        for (const patch of patches) {
+            snapshots.set(patch.key, cache.get(patch.key)?.data);
+            void globalMutate(patch.key, patch.data, false);
         }
 
         return () => {
@@ -126,11 +125,11 @@ export function CardDetailClient({ cardId, initialData }: CardDetailClientProps)
             return;
         }
 
-        if (fromParam === "collection") {
+        if (fromParam === "colecao") {
             if (window.history.length > 1) {
                 router.back();
             } else {
-                router.push("/collection");
+                router.push("/colecao");
             }
             return;
         }
@@ -138,7 +137,7 @@ export function CardDetailClient({ cardId, initialData }: CardDetailClientProps)
         if (window.history.length > 1) {
             router.back();
         } else {
-            router.push("/collection");
+            router.push("/colecao");
         }
     };
 
@@ -520,7 +519,7 @@ export function CardDetailClient({ cardId, initialData }: CardDetailClientProps)
             if (copyToDelete.id === card.id) {
                 const remaining = copies.filter((c) => c.id !== card.id);
                 if (remaining.length > 0) {
-                    router.replace(`/cards/${remaining[0].id}?from=${fromParam || "collection"}${dexIdParam ? `&dexId=${dexIdParam}` : ""}`);
+                    router.replace(`/cartas/${remaining[0].id}?from=${fromParam || "colecao"}${dexIdParam ? `&dexId=${dexIdParam}` : ""}`);
                     return;
                 }
             }
@@ -619,7 +618,7 @@ export function CardDetailClient({ cardId, initialData }: CardDetailClientProps)
                     router.push(`/?spread=${spreadParam || "1"}`);
                 }
             } else {
-                router.push("/collection");
+                router.push("/colecao");
             }
         } catch (err: unknown) {
             void mutate();
@@ -666,7 +665,7 @@ export function CardDetailClient({ cardId, initialData }: CardDetailClientProps)
                             <h2 className="text-lg font-bold text-white">Carta não encontrada</h2>
                             <p className="mt-1 text-xs text-slate-400">Este exemplar pode ter sido removido ou o link é inválido.</p>
                         </div>
-                        <button type="button" onClick={() => router.push("/collection")} className="rounded-xl bg-white/10 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/20">
+                        <button type="button" onClick={() => router.push("/colecao")} className="rounded-xl bg-white/10 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/20">
                             Ir para a Coleção
                         </button>
                     </div>
@@ -696,9 +695,9 @@ export function CardDetailClient({ cardId, initialData }: CardDetailClientProps)
                             </button>
 
                             <div className="card-list-appear flex flex-col items-center gap-2.5 text-center">
-                                <div className="flex items-center gap-2.5">
+                                <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-2.5">
                                     <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl">{card.card_name}</h1>
-                                    {card.pokemon_dex_id != null ? <span className="rounded-lg border border-white/10 bg-white/10 px-2.5 py-0.5 font-mono text-xs font-bold text-slate-300">#{String(card.pokemon_dex_id).padStart(3, "0")}</span> : <span className="rounded-lg border border-white/10 bg-white/10 px-2.5 py-0.5 font-mono text-xs font-bold text-slate-300">TCG</span>}
+                                    {card.pokemon_dex_id != null ? <span className="shrink-0 rounded-lg border border-white/10 bg-white/10 px-2.5 py-0.5 font-mono text-xs font-bold text-slate-300">#{String(card.pokemon_dex_id).padStart(3, "0")}</span> : <span className="shrink-0 rounded-lg border border-white/10 bg-white/10 px-2.5 py-0.5 font-mono text-xs font-bold text-slate-300">TCG</span>}
                                 </div>
 
                                 <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs text-slate-400">

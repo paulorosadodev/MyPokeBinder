@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
+import { buildAvailableCounts } from "@/lib/binder/availableCounts";
 
 export async function GET(request: Request) {
     const auth = await getAuthenticatedUser(request);
@@ -17,10 +18,7 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: storedRes.error.message }, { status: 500 });
     }
 
-    const availableCounts: Record<number, number> = {};
-    for (const item of storedRes.data ?? []) {
-        availableCounts[item.pokemon_dex_id] = (availableCounts[item.pokemon_dex_id] || 0) + 1;
-    }
+    const availableCounts = buildAvailableCounts(storedRes.data ?? []);
 
     return NextResponse.json({
         cards: binderRes.data ?? [],

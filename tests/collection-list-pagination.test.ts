@@ -374,7 +374,7 @@ describe("slicePagedWindow + reset key", () => {
     });
 
     it("binds filterResetKey to grid and card keys in collection views to re-trigger appear animation", () => {
-        const collectionPage = readFileSync(join(import.meta.dir, "../src/app/collection/page.tsx"), "utf8");
+        const collectionPage = readFileSync(join(import.meta.dir, "../src/app/colecao/page.tsx"), "utf8");
         const publicCollectionView = readFileSync(join(import.meta.dir, "../src/components/profile/PublicCollectionView.tsx"), "utf8");
 
         expect(collectionPage).toContain('<div key={filterResetKey} className="relative z-0 isolate grid');
@@ -385,7 +385,7 @@ describe("slicePagedWindow + reset key", () => {
     });
 
     it("initializes collection filters with SSR-safe defaults to prevent hydration mismatch", () => {
-        const collectionPage = readFileSync(join(import.meta.dir, "../src/app/collection/page.tsx"), "utf8");
+        const collectionPage = readFileSync(join(import.meta.dir, "../src/app/colecao/page.tsx"), "utf8");
 
         expect(collectionPage).toContain('const [sortField, setSortField] = useState<SortField>("recent");');
         expect(collectionPage).toContain('const [sortDirection, setSortDirection] = useState<SortDirection>("desc");');
@@ -393,7 +393,7 @@ describe("slicePagedWindow + reset key", () => {
     });
 
     it("defines clean and consistent labels for collection sort options", () => {
-        const collectionPage = readFileSync(join(import.meta.dir, "../src/app/collection/page.tsx"), "utf8");
+        const collectionPage = readFileSync(join(import.meta.dir, "../src/app/colecao/page.tsx"), "utf8");
         const publicCollectionView = readFileSync(join(import.meta.dir, "../src/components/profile/PublicCollectionView.tsx"), "utf8");
 
         const expectedSortOptions = `const SORT_FIELD_OPTIONS: SelectOption<SortField>[] = [
@@ -407,7 +407,7 @@ describe("slicePagedWindow + reset key", () => {
     });
 
     it("configures responsive mobile search placeholder and expandable filters toggle", () => {
-        const collectionPage = readFileSync(join(import.meta.dir, "../src/app/collection/page.tsx"), "utf8");
+        const collectionPage = readFileSync(join(import.meta.dir, "../src/app/colecao/page.tsx"), "utf8");
         const publicCollectionView = readFileSync(join(import.meta.dir, "../src/components/profile/PublicCollectionView.tsx"), "utf8");
 
         expect(collectionPage).toContain('placeholder={isMobile ? "Buscar cartas..." : "Buscar por pokémon, número, coleção ou pokédex..."}');
@@ -600,7 +600,7 @@ describe("Card condition domain logic", () => {
 
     it("configures ConditionBadge with letters by default and both icon + letters in edit page", () => {
         const badgeFile = readFileSync(join(import.meta.dir, "../src/components/ui/ConditionBadge.tsx"), "utf8");
-        const cardDetailPage = readFileSync(join(import.meta.dir, "../src/app/cards/[id]/CardDetailClient.tsx"), "utf8");
+        const cardDetailPage = readFileSync(join(import.meta.dir, "../src/app/cartas/[id]/CardDetailClient.tsx"), "utf8");
         const trainerProfileView = readFileSync(join(import.meta.dir, "../src/components/profile/TrainerProfileView.tsx"), "utf8");
 
         expect(badgeFile).toContain("title={badge.fullLabel}");
@@ -615,7 +615,7 @@ describe("Card condition domain logic", () => {
 
 describe("Sort direction button icons and filter counter exclusion", () => {
     it("uses directional ArrowUp and ArrowDown icons in sort toggle buttons", () => {
-        const collectionPage = readFileSync(join(import.meta.dir, "../src/app/collection/page.tsx"), "utf8");
+        const collectionPage = readFileSync(join(import.meta.dir, "../src/app/colecao/page.tsx"), "utf8");
         const publicCollectionView = readFileSync(join(import.meta.dir, "../src/components/profile/PublicCollectionView.tsx"), "utf8");
         const binderModal = readFileSync(join(import.meta.dir, "../src/components/modal/BinderSlotSelectModal.tsx"), "utf8");
 
@@ -625,7 +625,7 @@ describe("Sort direction button icons and filter counter exclusion", () => {
     });
 
     it("does not count sorting changes in activeFilterCount across views", () => {
-        const collectionPage = readFileSync(join(import.meta.dir, "../src/app/collection/page.tsx"), "utf8");
+        const collectionPage = readFileSync(join(import.meta.dir, "../src/app/colecao/page.tsx"), "utf8");
         const publicCollectionView = readFileSync(join(import.meta.dir, "../src/components/profile/PublicCollectionView.tsx"), "utf8");
         const binderModal = readFileSync(join(import.meta.dir, "../src/components/modal/BinderSlotSelectModal.tsx"), "utf8");
 
@@ -644,7 +644,7 @@ describe("Sort direction button icons and filter counter exclusion", () => {
 
     it("uses compact 2-column mobile and fixed two-row desktop layout for filters in CardSearchModal and collection views", () => {
         const cardSearchModal = readFileSync(join(import.meta.dir, "../src/components/modal/CardSearchModal.tsx"), "utf8");
-        const collectionPage = readFileSync(join(import.meta.dir, "../src/app/collection/page.tsx"), "utf8");
+        const collectionPage = readFileSync(join(import.meta.dir, "../src/app/colecao/page.tsx"), "utf8");
         const publicCollectionView = readFileSync(join(import.meta.dir, "../src/components/profile/PublicCollectionView.tsx"), "utf8");
 
         expect(cardSearchModal).toContain('className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 sm:gap-2.5 pt-0.5 w-full"');
@@ -660,7 +660,7 @@ describe("Sort direction button icons and filter counter exclusion", () => {
     });
 
     it("uses distinct icons for rarity and variant filters to avoid icon repetition", () => {
-        const collectionPage = readFileSync(join(import.meta.dir, "../src/app/collection/page.tsx"), "utf8");
+        const collectionPage = readFileSync(join(import.meta.dir, "../src/app/colecao/page.tsx"), "utf8");
         const publicCollectionView = readFileSync(join(import.meta.dir, "../src/components/profile/PublicCollectionView.tsx"), "utf8");
         const binderModal = readFileSync(join(import.meta.dir, "../src/components/modal/BinderSlotSelectModal.tsx"), "utf8");
         const cardSearchModal = readFileSync(join(import.meta.dir, "../src/components/modal/CardSearchModal.tsx"), "utf8");

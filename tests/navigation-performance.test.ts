@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 describe("Navegação rápida entre Coleção, cartas e Binders", () => {
     it("aquece a rota e os detalhes da carta antes do clique", () => {
-        const source = readFileSync(join(import.meta.dir, "../src/app/collection/page.tsx"), "utf8");
+        const source = readFileSync(join(import.meta.dir, "../src/app/colecao/page.tsx"), "utf8");
 
         expect(source).toContain("<NextLink");
         expect(source).toContain("prefetchCardDetails");

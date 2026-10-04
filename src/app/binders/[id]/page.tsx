@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getServerUser } from "@/lib/supabase/serverUser";
 import { safeDecodeParam, UUID_REGEX } from "@/lib/profile/username";
 import { UniversalBinderViewer } from "@/components/binder/UniversalBinderViewer";
+import { buildAvailableCounts } from "@/lib/binder/availableCounts";
 import type { Binder, BinderSlot } from "@/types/binder";
 
 const getCachedBinder = cache(async (binderId: string) => {
@@ -57,7 +58,11 @@ export default async function BinderViewerPage({ params }: { params: Promise<{ i
     const rawSlots = slotsResult.data ?? [];
     const cardIds = rawSlots.map((s) => s.user_card_id).filter((cid): cid is string => typeof cid === "string" && Boolean(cid));
 
-    const [cardsResult, othersResult] = await Promise.all([cardIds.length > 0 ? supabase.from("user_cards").select("*").in("id", cardIds) : Promise.resolve({ data: [] }), user && isOwner ? supabase.from("binders").select("id, name, description, grid_type, cover_theme, cover_pokemon_dex_id").eq("user_id", user.id).order("created_at", { ascending: true }) : Promise.resolve({ data: [] })]);
+    const [cardsResult, othersResult, storedResult] = await Promise.all([
+        cardIds.length > 0 ? supabase.from("user_cards").select("*").in("id", cardIds) : Promise.resolve({ data: [] }),
+        user && isOwner ? supabase.from("binders").select("id, name, description, grid_type, cover_theme, cover_pokemon_dex_id").eq("user_id", user.id).order("created_at", { ascending: true }) : Promise.resolve({ data: [] }),
+        user ? supabase.from("user_cards").select("pokemon_dex_id").eq("user_id", user.id).eq("is_in_binder", false) : Promise.resolve({ data: [] }),
+    ]);
 
     const cardsMap = new Map<string, any>();
     for (const card of cardsResult.data ?? []) {
@@ -69,7 +74,9 @@ export default async function BinderViewerPage({ params }: { params: Promise<{ i
         card: s.user_card_id ? cardsMap.get(s.user_card_id) || null : null,
     }));
 
+    const availableCounts = isOwner ? buildAvailableCounts(storedResult.data ?? []) : {};
+
     const otherBinders = (othersResult.data ?? []) as Array<Pick<Binder, "id" | "name" | "description" | "grid_type" | "cover_theme" | "cover_pokemon_dex_id">>;
 
-    return <UniversalBinderViewer binder={binder as Binder} initialSlots={slots} otherBinders={otherBinders} isOwner={isOwner} />;
+    return <UniversalBinderViewer binder={binder as Binder} initialSlots={slots} initialAvailableCounts={availableCounts} otherBinders={otherBinders} isOwner={isOwner} />;
 }

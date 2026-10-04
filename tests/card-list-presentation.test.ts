@@ -6,7 +6,7 @@ const readSource = (path: string) => readFileSync(join(import.meta.dir, path), "
 
 describe("Apresentação editorial das listagens de cartas", () => {
     it("compartilha arte e pilha de indicadores nas listagens que as exibem", () => {
-        const sources = [readSource("../src/app/collection/page.tsx"), readSource("../src/components/profile/PublicCollectionView.tsx"), readSource("../src/components/modal/CardSearchModal.tsx")];
+        const sources = [readSource("../src/app/colecao/page.tsx"), readSource("../src/components/profile/PublicCollectionView.tsx"), readSource("../src/components/modal/CardSearchModal.tsx")];
 
         for (const source of sources) {
             expect(source).toContain("CardArtwork");
@@ -30,7 +30,7 @@ describe("Apresentação editorial das listagens de cartas", () => {
     });
 
     it("permite ocultar os indicadores somente nas grades das coleções", () => {
-        const privateCollection = readSource("../src/app/collection/page.tsx");
+        const privateCollection = readSource("../src/app/colecao/page.tsx");
         const publicCollection = readSource("../src/components/profile/PublicCollectionView.tsx");
         const toggle = readSource("../src/components/ui/CardBadgeVisibilityToggle.tsx");
         const visibilityHook = readSource("../src/lib/hooks/useCardBadgeVisibility.ts");

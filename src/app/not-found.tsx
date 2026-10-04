@@ -65,7 +65,7 @@ export default function NotFound() {
                                 <span>Voltar ao Meu Binder</span>
                             </Link>
 
-                            <Link href="/collection" className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-200 font-semibold text-sm transition-all active:scale-[0.98]">
+                            <Link href="/colecao" className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-200 font-semibold text-sm transition-all active:scale-[0.98]">
                                 <Layers size={16} />
                                 <span>Explorar Coleção</span>
                             </Link>

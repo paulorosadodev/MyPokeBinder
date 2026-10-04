@@ -3,6 +3,7 @@ import useSWRInfinite from "swr/infinite";
 import { useMemo, useCallback } from "react";
 import type { CardVariant, UserCard, DashboardData, CollectionCardGroup, BinderStatusFilter, Binder, BinderDetailResponse, CardDetailsResponse } from "@/types/binder";
 import { ALL_ARTISTS_FILTER, ALL_EXPANSIONS_FILTER, COLLECTION_PAGE_SIZE, type CollectionSortDirection, type CollectionSortField } from "@/lib/collection/listCards";
+import type { AvailableCounts } from "@/lib/binder/availableCounts";
 
 export const defaultSWRConfig: SWRConfiguration = {
     dedupingInterval: 2000,
@@ -248,6 +249,18 @@ export function useBinderCards(fallbackData?: { cards: UserCard[]; availableCoun
         isLoading: isLoading && !data,
         isError: error,
         mutate,
+    };
+}
+
+export function useBinderAvailableCounts(fallbackData?: AvailableCounts) {
+    const { data, mutate } = useSWR<{ availableCounts: AvailableCounts }>("/api/binder/available", fetcher, {
+        ...defaultSWRConfig,
+        fallbackData: fallbackData ? { availableCounts: fallbackData } : undefined,
+    });
+
+    return {
+        availableCounts: data?.availableCounts ?? {},
+        mutateAvailableCounts: mutate,
     };
 }
 

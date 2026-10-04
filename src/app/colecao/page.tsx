@@ -282,7 +282,7 @@ export default function CollectionPage() {
     };
 
     const prefetchCardDetails = (card: UserCard, copies: UserCard[]) => {
-        const route = `/cards/${card.id}?from=collection`;
+        const route = `/cartas/${card.id}?from=colecao`;
         const cacheKey = `/api/cards/${card.id}`;
         const cached = cache.get(cacheKey)?.data as CardDetailsResponse | undefined;
 
@@ -312,23 +312,23 @@ export default function CollectionPage() {
     return (
         <div className="flex min-h-screen flex-col">
             <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 pb-28 md:pb-16">
-                <div className="flex items-center justify-between gap-2.5 sm:gap-4">
-                    <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-                        <h1 className="truncate text-xl font-extrabold tracking-tight text-white sm:text-3xl leading-none">Minha Coleção</h1>
+                <div className="flex items-start justify-between gap-3 sm:items-center sm:gap-4">
+                    <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                        <h1 className="text-xl font-extrabold tracking-tight text-white sm:text-3xl leading-tight sm:leading-none">Minha Coleção</h1>
                         {!isLoading ? (
-                            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 sm:px-3.5 sm:py-1.5 text-xs font-semibold text-slate-300 leading-none translate-y-[1px] sm:translate-y-[4px]">
-                                <Layers size={13} className="text-[var(--theme-primary)] shrink-0" />
+                            <span className="inline-flex shrink-0 self-start items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs font-semibold text-slate-300 leading-none sm:px-3.5 sm:py-1.5 sm:translate-y-[2px]">
+                                <Layers size={13} className="shrink-0 text-[var(--theme-primary)]" />
                                 <span>
                                     {total} <span className="hidden sm:inline">{total === 1 ? "carta cadastrada" : "cartas cadastradas"}</span>
                                     <span className="sm:hidden">{total === 1 ? "carta" : "cartas"}</span>
                                 </span>
                             </span>
                         ) : (
-                            <div className="h-6 w-20 sm:h-7 sm:w-32 shrink-0 animate-pulse rounded-full bg-white/10 translate-y-[1px] sm:translate-y-[4px]" />
+                            <div className="h-5 w-20 shrink-0 self-start animate-pulse rounded-full bg-white/10 sm:h-7 sm:w-32 sm:translate-y-[2px]" />
                         )}
                     </div>
 
-                    <button type="button" onClick={() => setIsSearchModalOpen(true)} aria-label="Adicionar Carta" className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 sm:gap-2 rounded-xl bg-poke-blue px-3 py-2 sm:px-5 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-md shadow-poke-blue/20 transition-all hover:brightness-110 active:scale-[0.98]">
+                    <button type="button" onClick={() => setIsSearchModalOpen(true)} aria-label="Adicionar Carta" className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-poke-blue px-3 py-2 text-xs font-semibold text-white shadow-md shadow-poke-blue/20 transition-all hover:brightness-110 active:scale-[0.98] sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm">
                         <Plus size={16} className="sm:h-[18px] sm:w-[18px]" />
                         <span className="hidden min-[380px]:inline">Adicionar Carta</span>
                         <span className="min-[380px]:hidden">Adicionar</span>
@@ -470,7 +470,7 @@ export default function CollectionPage() {
                                 return (
                                     <NextLink
                                         key={`${filterResetKey}-${group.key}`}
-                                        href={`/cards/${card.id}?from=collection`}
+                                        href={`/cartas/${card.id}?from=colecao`}
                                         prefetch={true}
                                         onPointerEnter={() => prefetchCardDetails(card, group.copies)}
                                         onPointerDown={() => prefetchCardDetails(card, group.copies)}
@@ -498,7 +498,7 @@ export default function CollectionPage() {
                 )}
             </main>
 
-            <CardSearchModal isOpen={isSearchModalOpen} onClose={() => setIsSearchModalOpen(false)} onCardAdded={handleCardAdded} />
+            <CardSearchModal isOpen={isSearchModalOpen} onClose={() => setIsSearchModalOpen(false)} onCardAdded={handleCardAdded} onCardRemoved={handleCardAdded} />
         </div>
     );
 }

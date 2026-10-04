@@ -3,11 +3,14 @@
 import { useState, useEffect, useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import { SearchCardItem, CardLanguage, CardVariant, CardCondition, UserCard, SearchResponse } from "@/types/binder";
 import { formatTcgdexImageUrl } from "@/lib/pokemon/tcgdex";
-import { RARITY_FILTER_OPTIONS } from "@/lib/pokemon/rarity";
+import { useSWRConfig } from "swr";
+import { planCollectionCachePatches } from "@/lib/collection/cache";
+import { playCardDropSound } from "@/lib/audio/cardSounds";
+import { getRarityImpactTier, RARITY_FILTER_OPTIONS } from "@/lib/pokemon/rarity";
 import { formatVariantLabel, resolveCardShine, VARIANT_SLIDER_OPTIONS, VARIANT_SELECT_OPTIONS } from "@/lib/pokemon/variant";
 import { CONDITION_SLIDER_OPTIONS, CONDITION_SELECT_OPTIONS } from "@/lib/pokemon/condition";
 import { ALL_EXPANSIONS_FILTER, ALL_ARTISTS_FILTER, COLLECTION_PAGE_SIZE, buildExpansionFilterOptions, buildArtistFilterOptions, filterCatalogCards } from "@/lib/collection/listCards";
-import { countCopiesForCombo, mergeCopyCounts, registerCopy, totalCopies, type CopyCounts } from "@/lib/collection/copyCounts";
+import { countCopiesForCombo, mergeCopyCounts, registerCopy, unregisterCopy, buildCopyGroupKey, totalCopies, type CopyCounts } from "@/lib/collection/copyCounts";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { PokeballLoader } from "@/components/loading/PokeballLoader";
 import { CardGridSkeleton } from "@/components/loading/CardGridSkeleton";
@@ -22,7 +25,7 @@ import { getCardAppearProps } from "@/lib/ui/cardAppear";
 import { useDismissibleOverlay } from "@/lib/hooks/useDismissibleOverlay";
 import { useOverlayPresence } from "@/lib/hooks/useOverlayPresence";
 import { toast } from "sonner";
-import { ArrowLeft, X, Search, Check, Sparkles, Gem, Layers, Palette } from "lucide-react";
+import { ArrowLeft, X, Search, Check, Sparkles, Gem, Layers, Palette, Plus, Minus, Trash2, Loader2 } from "lucide-react";
 
 interface CardSearchModalProps {
     isOpen: boolean;
@@ -33,6 +36,7 @@ interface CardSearchModalProps {
     onClose: () => void;
     onBack?: () => void;
     onCardAdded: (newCard: UserCard) => void;
+    onCardRemoved?: (cardId: string) => void;
 }
 
 const clientSearchCache = new Map<string, SearchResponse>();
@@ -58,7 +62,8 @@ const LANGUAGE_SELECT_OPTIONS: SelectOption<CardLanguage>[] = [
     { value: "ja", label: "JA", icon: <FlagIcon country="ja" /> },
 ];
 
-export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnimation = false, dexId, pokemonName, onClose, onBack, onCardAdded }: CardSearchModalProps) {
+export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnimation = false, dexId, pokemonName, onClose, onBack, onCardAdded, onCardRemoved }: CardSearchModalProps) {
+    const { mutate: globalMutate, cache } = useSWRConfig();
     const [lang, setLang] = useState<CardLanguage>("pt-br");
     const [variant, setVariant] = useState<CardVariant>("normal");
     const [condition, setCondition] = useState<CardCondition>("NM");
@@ -72,8 +77,13 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
     const [sessionCounts, setSessionCounts] = useState<CopyCounts>({});
     const [ownedCounts, setOwnedCounts] = useState<CopyCounts>({});
     const [ownedCardIds, setOwnedCardIds] = useState<Set<string>>(() => new Set());
+    const [copyIdsMap, setCopyIdsMap] = useState<Record<string, string[]>>({});
+    const copyIdsMapRef = useRef<Record<string, string[]>>({});
+    const [deleteModalTarget, setDeleteModalTarget] = useState<SearchCardItem | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [isInitialOwnershipLoading, setIsInitialOwnershipLoading] = useState(false);
     const [pendingArtworkIds, setPendingArtworkIds] = useState<Set<string>>(() => new Set());
+    const searchAbortRef = useRef<AbortController | null>(null);
     const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [rarityFilter, setRarityFilter] = useState("all");
@@ -82,11 +92,35 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
     const [showFilters, setShowFilters] = useState(false);
     const submittingIdsRef = useRef<Set<string>>(new Set());
     const sessionCountsRef = useRef<CopyCounts>({});
+    const [confirmTokens, setConfirmTokens] = useState<Record<string, number>>({});
+    const confirmTimersRef = useRef<Map<string, number>>(new Map());
+    const triggerAddConfirmation = useCallback((cardId: string) => {
+        const existingTimer = confirmTimersRef.current.get(cardId);
+        if (existingTimer !== undefined) window.clearTimeout(existingTimer);
+        setConfirmTokens((previous) => ({ ...previous, [cardId]: (previous[cardId] ?? 0) + 1 }));
+        const timer = window.setTimeout(() => {
+            confirmTimersRef.current.delete(cardId);
+            setConfirmTokens((previous) => {
+                const next = { ...previous };
+                delete next[cardId];
+                return next;
+            });
+        }, 1000);
+        confirmTimersRef.current.set(cardId, timer);
+    }, []);
+    useEffect(() => {
+        const timers = confirmTimersRef.current;
+        return () => {
+            for (const timer of timers.values()) window.clearTimeout(timer);
+            timers.clear();
+        };
+    }, []);
     const fetchedOwnershipIdsRef = useRef<Set<string>>(new Set());
     const isAnySubmitting = submittingIds.length > 0;
     const setInitialCards = useCallback((nextCards: SearchCardItem[]) => {
         setCards(nextCards);
-        setPendingArtworkIds(new Set(nextCards.map((card) => card.id)));
+        const visibleSlice = nextCards.slice(0, Math.min(nextCards.length, 6));
+        setPendingArtworkIds(new Set(visibleSlice.map((card) => card.id)));
     }, []);
     const handleInitialArtworkLoaded = useCallback((cardId: string) => {
         setPendingArtworkIds((previous) => {
@@ -96,6 +130,22 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
             return next;
         });
     }, []);
+
+    useEffect(() => {
+        if (pendingArtworkIds.size === 0) return;
+        const timer = setTimeout(() => {
+            setPendingArtworkIds(new Set());
+        }, 1000);
+        return () => clearTimeout(timer);
+    }, [pendingArtworkIds]);
+
+    useEffect(() => {
+        if (!isInitialOwnershipLoading) return;
+        const timer = setTimeout(() => {
+            setIsInitialOwnershipLoading(false);
+        }, 2500);
+        return () => clearTimeout(timer);
+    }, [isInitialOwnershipLoading]);
 
     useDismissibleOverlay(isOpen, onClose, isAnySubmitting);
     const { isPresent, state } = useOverlayPresence(isOpen, { hasOpenSibling, skipEnterAnimation });
@@ -109,112 +159,64 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
     }, [isOpen, pokemonName]);
 
     useEffect(() => {
-        if (isOpen) {
-            setLang("pt-br");
-            setVariant("normal");
-            setCondition("NM");
-            setSearchTerm("");
-            setRarityFilter("all");
-            setExpansionFilter(ALL_EXPANSIONS_FILTER);
-            setArtistFilter(ALL_ARTISTS_FILTER);
-            setShowFilters(false);
-            sessionCountsRef.current = {};
-            setSessionCounts({});
-            setOwnedCounts({});
-            setOwnedCardIds(new Set());
-            fetchedOwnershipIdsRef.current = new Set();
-            setPendingArtworkIds(new Set());
-            if (!pokemonName) {
-                setCards([]);
-                setHasMore(false);
-                setInitialLoading(false);
-            }
-        }
-    }, [isOpen, pokemonName]);
-
-    useEffect(() => {
-        if (!isOpen || !pokemonName) return;
-
-        let isMounted = true;
-        async function loadFirstPage() {
-            try {
-                const queryName = pokemonName!.replace(/[♀♂]/g, "").trim();
-                const cacheKey = `${dexId ?? 0}_${queryName}_page_1`;
-                const cached = clientSearchCache.get(cacheKey);
-
-                if (cached) {
-                    const cachedCards = cached.cards ?? [];
-                    setInitialCards(cachedCards);
-                    setHasMore(cached.hasMore ?? false);
-                    setPage(1);
-                    setError(null);
-                    setInitialLoading(false);
-                    if (cachedCards.length === 0) setIsInitialOwnershipLoading(false);
-                    return;
-                }
-
-                setInitialLoading(true);
-                setError(null);
-                setPage(1);
-
-                const dexParam = dexId ? `&dexId=${dexId}` : "";
-                const res = await fetch(`/api/search?name=${encodeURIComponent(queryName)}${dexParam}&page=1&pageSize=${COLLECTION_PAGE_SIZE}`);
-                const data: SearchResponse = await res.json();
-
-                if (!res.ok) {
-                    const errorMsg = (data as unknown as { error?: string }).error || "Erro ao buscar cartas";
-                    throw new Error(errorMsg);
-                }
-
-                clientSearchCache.set(cacheKey, data);
-
-                if (isMounted) {
-                    const nextCards = data.cards ?? [];
-                    setInitialCards(nextCards);
-                    setHasMore(data.hasMore ?? false);
-                    if (nextCards.length === 0) setIsInitialOwnershipLoading(false);
-                }
-            } catch (err: unknown) {
-                if (isMounted) {
-                    const msg = err instanceof Error ? err.message : "Falha na busca";
-                    setError(msg);
-                    setCards([]);
-                    setHasMore(false);
-                    setIsInitialOwnershipLoading(false);
-                    setPendingArtworkIds(new Set());
-                }
-            } finally {
-                if (isMounted) {
-                    setInitialLoading(false);
-                }
-            }
-        }
-
-        loadFirstPage();
-        return () => {
-            isMounted = false;
-        };
-    }, [isOpen, pokemonName, dexId, setInitialCards]);
-
-    useEffect(() => {
-        if (!isOpen || pokemonName) return;
-
-        const term = searchTerm.trim();
-        if (!term) {
-            setCards([]);
-            setHasMore(false);
-            setInitialLoading(false);
+        if (!isOpen) {
             setIsInitialOwnershipLoading(false);
+            setInitialLoading(false);
             setPendingArtworkIds(new Set());
             return;
         }
 
+        setLang("pt-br");
+        setVariant("normal");
+        setCondition("NM");
+        setSearchTerm("");
+        setRarityFilter("all");
+        setExpansionFilter(ALL_EXPANSIONS_FILTER);
+        setArtistFilter(ALL_ARTISTS_FILTER);
+        setShowFilters(false);
+        sessionCountsRef.current = {};
+        setSessionCounts({});
+        setOwnedCounts({});
+        setOwnedCardIds(new Set());
+        copyIdsMapRef.current = {};
+        setCopyIdsMap({});
+        setDeleteModalTarget(null);
+        setIsDeleting(false);
+        fetchedOwnershipIdsRef.current = new Set();
+        if (!pokemonName) {
+            setCards([]);
+            setHasMore(false);
+            setInitialLoading(false);
+        }
+    }, [isOpen, pokemonName]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const effectiveTerm = searchTerm.trim();
+        const effectiveQuery = effectiveTerm || (pokemonName ? pokemonName.replace(/[♀♂]/g, "").trim() : "");
+        const effectiveDexId = effectiveTerm ? undefined : (dexId ?? undefined);
+
+        if (!effectiveQuery) {
+            searchAbortRef.current?.abort();
+            setCards([]);
+            setHasMore(false);
+            setInitialLoading(false);
+            setIsInitialOwnershipLoading(false);
+            return;
+        }
+
+        searchAbortRef.current?.abort();
+        const controller = new AbortController();
+        searchAbortRef.current = controller;
+
         let isMounted = true;
+        const isUserTyping = Boolean(searchTerm.trim());
+        const debounceDelay = isUserTyping ? 300 : 0;
+
         const timer = setTimeout(async () => {
             try {
-                setIsInitialOwnershipLoading(true);
-                setPendingArtworkIds(new Set());
-                const cacheKey = `catalog_${term}_page_1`;
+                const cacheKey = effectiveDexId ? `${effectiveDexId}_${effectiveQuery}_page_1` : `catalog_${effectiveQuery}_page_1`;
                 const cached = clientSearchCache.get(cacheKey);
 
                 if (cached) {
@@ -224,15 +226,24 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
                     setPage(1);
                     setError(null);
                     setInitialLoading(false);
-                    if (cachedCards.length === 0) setIsInitialOwnershipLoading(false);
+                    const hasPendingOwnership = cachedCards.some((c) => !fetchedOwnershipIdsRef.current.has(c.id));
+                    if (hasPendingOwnership) {
+                        setIsInitialOwnershipLoading(true);
+                    } else {
+                        setIsInitialOwnershipLoading(false);
+                    }
                     return;
                 }
 
                 setInitialLoading(true);
+                setIsInitialOwnershipLoading(true);
                 setError(null);
                 setPage(1);
 
-                const res = await fetch(`/api/search?name=${encodeURIComponent(term)}&page=1&pageSize=${COLLECTION_PAGE_SIZE}`);
+                const dexParam = effectiveDexId ? `&dexId=${effectiveDexId}` : "";
+                const res = await fetch(`/api/search?name=${encodeURIComponent(effectiveQuery)}${dexParam}&page=1&pageSize=${COLLECTION_PAGE_SIZE}`, {
+                    signal: controller.signal,
+                });
                 const data: SearchResponse = await res.json();
 
                 if (!res.ok) {
@@ -246,58 +257,91 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
                     const nextCards = data.cards ?? [];
                     setInitialCards(nextCards);
                     setHasMore(data.hasMore ?? false);
-                    if (nextCards.length === 0) setIsInitialOwnershipLoading(false);
                 }
             } catch (err: unknown) {
+                if (err instanceof DOMException && err.name === "AbortError") {
+                    return;
+                }
                 if (isMounted) {
                     const msg = err instanceof Error ? err.message : "Falha na busca";
                     setError(msg);
                     setCards([]);
                     setHasMore(false);
-                    setIsInitialOwnershipLoading(false);
-                    setPendingArtworkIds(new Set());
                 }
             } finally {
-                if (isMounted) {
+                if (isMounted && !controller.signal.aborted) {
                     setInitialLoading(false);
                 }
             }
-        }, 300);
+        }, debounceDelay);
 
         return () => {
             isMounted = false;
             clearTimeout(timer);
         };
-    }, [isOpen, pokemonName, searchTerm, setInitialCards]);
+    }, [isOpen, pokemonName, dexId, searchTerm]);
 
     useEffect(() => {
-        if (!isOpen || cards.length === 0) return;
+        if (!isOpen || cards.length === 0) {
+            setIsInitialOwnershipLoading(false);
+            return;
+        }
 
         const pendingIds = Array.from(new Set(cards.map((card) => card.id))).filter((id) => !fetchedOwnershipIdsRef.current.has(id));
-        if (pendingIds.length === 0) return;
+        if (pendingIds.length === 0) {
+            setIsInitialOwnershipLoading(false);
+            return;
+        }
         for (const id of pendingIds) fetchedOwnershipIdsRef.current.add(id);
 
         let isMounted = true;
+        let didComplete = false;
+        setIsInitialOwnershipLoading(true);
 
         const loadOwnership = async () => {
-            const collected: CopyCounts = {};
+            try {
+                const collected: CopyCounts = {};
+                const collectedIds: Record<string, string[]> = {};
 
-            for (let index = 0; index < pendingIds.length; index += OWNERSHIP_CHUNK_SIZE) {
-                const chunk = pendingIds.slice(index, index + OWNERSHIP_CHUNK_SIZE);
-                try {
-                    const res = await fetch(`/api/cards/ownership?ids=${encodeURIComponent(chunk.join(","))}`);
-                    if (!res.ok) continue;
-                    const data = (await res.json()) as { counts?: CopyCounts };
-                    Object.assign(collected, data.counts ?? {});
-                } catch {}
-            }
+                for (let index = 0; index < pendingIds.length; index += OWNERSHIP_CHUNK_SIZE) {
+                    const chunk = pendingIds.slice(index, index + OWNERSHIP_CHUNK_SIZE);
+                    try {
+                        const res = await fetch(`/api/cards/ownership?ids=${encodeURIComponent(chunk.join(","))}`);
+                        if (!res.ok) continue;
+                        const data = (await res.json()) as { counts?: CopyCounts; copyIds?: Record<string, string[]> };
+                        Object.assign(collected, data.counts ?? {});
+                        if (data.copyIds) {
+                            for (const [key, ids] of Object.entries(data.copyIds)) {
+                                collectedIds[key] = [...(collectedIds[key] ?? []), ...ids];
+                            }
+                        }
+                    } catch {}
+                }
 
-            if (!isMounted) return;
-            setOwnedCardIds((previous) => new Set([...previous, ...pendingIds]));
-            if (Object.keys(collected).length > 0) {
-                setOwnedCounts((previous) => mergeCopyCounts(previous, collected));
+                if (!isMounted) return;
+                didComplete = true;
+                setOwnedCardIds((previous) => new Set([...previous, ...pendingIds]));
+                if (Object.keys(collected).length > 0) {
+                    setOwnedCounts((previous) => mergeCopyCounts(previous, collected));
+                }
+                if (Object.keys(collectedIds).length > 0) {
+                    setCopyIdsMap((previous) => {
+                        const merged = { ...previous };
+                        for (const [key, ids] of Object.entries(collectedIds)) {
+                            merged[key] = Array.from(new Set([...(merged[key] ?? []), ...ids]));
+                        }
+                        copyIdsMapRef.current = merged;
+                        return merged;
+                    });
+                }
+            } finally {
+                if (!didComplete) {
+                    for (const id of pendingIds) fetchedOwnershipIdsRef.current.delete(id);
+                }
+                if (isMounted) {
+                    setIsInitialOwnershipLoading(false);
+                }
             }
-            setIsInitialOwnershipLoading(false);
         };
 
         void loadOwnership();
@@ -309,13 +353,15 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
     const loadNextPage = useCallback(async () => {
         if (loadingMore || initialLoading || !hasMore) return;
 
-        const effectiveQuery = pokemonName ? pokemonName.replace(/[♀♂]/g, "").trim() : searchTerm.trim();
+        const effectiveTerm = searchTerm.trim();
+        const effectiveQuery = effectiveTerm || (pokemonName ? pokemonName.replace(/[♀♂]/g, "").trim() : "");
         if (!effectiveQuery) return;
+        const effectiveDexId = effectiveTerm ? undefined : (dexId ?? undefined);
 
         try {
             setLoadingMore(true);
             const nextPage = page + 1;
-            const cacheKey = pokemonName ? `${dexId ?? 0}_${effectiveQuery}_page_${nextPage}` : `catalog_${effectiveQuery}_page_${nextPage}`;
+            const cacheKey = effectiveDexId ? `${effectiveDexId}_${effectiveQuery}_page_${nextPage}` : `catalog_${effectiveQuery}_page_${nextPage}`;
             const cached = clientSearchCache.get(cacheKey);
 
             if (cached) {
@@ -326,7 +372,7 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
                 return;
             }
 
-            const dexParam = pokemonName && dexId ? `&dexId=${dexId}` : "";
+            const dexParam = effectiveDexId ? `&dexId=${effectiveDexId}` : "";
             const res = await fetch(`/api/search?name=${encodeURIComponent(effectiveQuery)}${dexParam}&page=${nextPage}&pageSize=${COLLECTION_PAGE_SIZE}`);
             const data: SearchResponse = await res.json();
 
@@ -348,16 +394,19 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
         }
     }, [page, hasMore, loadingMore, initialLoading, pokemonName, dexId, searchTerm]);
 
+    const effectiveTerm = searchTerm.trim();
+    const activeDexId = effectiveTerm ? undefined : (dexId ?? undefined);
+
     const filteredCards = useMemo(
         () =>
             filterCatalogCards(cards, {
-                searchTerm: pokemonName ? searchTerm : "",
+                searchTerm: "",
                 rarityFilter,
                 expansionFilter,
                 artistFilter,
-                dexId: dexId ?? undefined,
+                dexId: activeDexId,
             }),
-        [cards, searchTerm, rarityFilter, expansionFilter, artistFilter, dexId, pokemonName],
+        [cards, rarityFilter, expansionFilter, artistFilter, activeDexId],
     );
     const expansionOptions = useMemo(() => buildExpansionFilterOptions(cards.map((card) => card.setName)), [cards]);
     const artistOptions = useMemo(() => buildArtistFilterOptions(cards.map((card) => card.artist)), [cards]);
@@ -385,6 +434,7 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
         const groupLang = lang;
         const groupVariant = variant;
         const groupCondition = condition;
+        const groupKey = buildCopyGroupKey(card.id, groupLang, groupVariant, groupCondition);
 
         try {
             submittingIdsRef.current.add(card.id);
@@ -421,7 +471,16 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
             fetchedOwnershipIdsRef.current.add(card.id);
             setOwnedCardIds((previous) => new Set([...previous, card.id]));
 
+            const nextCopyIds = {
+                ...copyIdsMapRef.current,
+                [groupKey]: [data.card.id, ...(copyIdsMapRef.current[groupKey] ?? [])],
+            };
+            copyIdsMapRef.current = nextCopyIds;
+            setCopyIdsMap(nextCopyIds);
+
             onCardAdded(data.card);
+            playCardDropSound(getRarityImpactTier(card.rarity, card.name));
+            triggerAddConfirmation(card.id);
 
             const sessionTotal = totalCopies(nextCounts);
             toast.success(sessionTotal === 1 ? "Carta adicionada à Coleção!" : `${sessionTotal} cartas adicionadas à Coleção!`, {
@@ -437,6 +496,93 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
         } finally {
             submittingIdsRef.current.delete(card.id);
             setSubmittingIds((previous) => previous.filter((id) => id !== card.id));
+        }
+    };
+
+    const handleRemoveCopy = async (card: SearchCardItem) => {
+        if (submittingIdsRef.current.has(card.id)) return;
+
+        const groupLang = lang;
+        const groupVariant = variant;
+        const groupCondition = condition;
+        const groupKey = buildCopyGroupKey(card.id, groupLang, groupVariant, groupCondition);
+
+        try {
+            submittingIdsRef.current.add(card.id);
+            setSubmittingIds((previous) => (previous.includes(card.id) ? previous : [...previous, card.id]));
+            setError(null);
+
+            let copyId = copyIdsMapRef.current[groupKey]?.[0];
+            if (!copyId) {
+                const targetDexId = card.dexId !== undefined ? card.dexId : dexId;
+                const fallbackUrl = targetDexId ? `/api/cards?pokemon_dex_id=${targetDexId}` : "/api/cards";
+                const fallbackRes = await fetch(fallbackUrl);
+                if (fallbackRes.ok) {
+                    const fallbackData = await fallbackRes.json();
+                    const match = (fallbackData.cards ?? []).find((c: UserCard) => c.tcgdex_card_id === card.id && c.card_language === groupLang && c.card_variant === groupVariant && c.card_condition === groupCondition);
+                    if (match) copyId = match.id;
+                }
+            }
+
+            if (!copyId) {
+                throw new Error("Cópia não encontrada para remoção");
+            }
+
+            const deleteRes = await fetch(`/api/cards/${copyId}`, { method: "DELETE" });
+            const deleteData = await deleteRes.json();
+            if (!deleteRes.ok) {
+                throw new Error(deleteData.error || "Erro ao remover carta");
+            }
+
+            const nextCopyIds = {
+                ...copyIdsMapRef.current,
+                [groupKey]: (copyIdsMapRef.current[groupKey] ?? []).filter((id) => id !== copyId),
+            };
+            copyIdsMapRef.current = nextCopyIds;
+            setCopyIdsMap(nextCopyIds);
+
+            const sessionCount = countCopiesForCombo(sessionCountsRef.current, card.id, groupLang, groupVariant, groupCondition);
+            if (sessionCount > 0) {
+                const nextSession = unregisterCopy(sessionCountsRef.current, card.id, groupLang, groupVariant, groupCondition);
+                sessionCountsRef.current = nextSession;
+                setSessionCounts(nextSession);
+            } else {
+                setOwnedCounts((previous) => unregisterCopy(previous, card.id, groupLang, groupVariant, groupCondition));
+            }
+
+            onCardRemoved?.(copyId);
+
+            for (const patch of planCollectionCachePatches(cache.keys(), (cacheKey) => cache.get(cacheKey), { deletedCardIds: [copyId] })) {
+                void globalMutate(patch.key, patch.data, false);
+            }
+
+            void globalMutate("/api/binder");
+            void globalMutate("/api/cards");
+            void globalMutate("/api/dashboard");
+
+            toast.success("Carta removida da Coleção!", {
+                description: `${card.name} (${formatVariantLabel(groupVariant)}) foi removida.`,
+            });
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : "Erro ao remover";
+            setError(msg);
+            toast.error("Erro ao remover carta", {
+                description: msg,
+            });
+        } finally {
+            submittingIdsRef.current.delete(card.id);
+            setSubmittingIds((previous) => previous.filter((id) => id !== card.id));
+        }
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!deleteModalTarget || isDeleting) return;
+        try {
+            setIsDeleting(true);
+            await handleRemoveCopy(deleteModalTarget);
+            setDeleteModalTarget(null);
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -500,7 +646,7 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
                 </div>
 
                 <div className="flex shrink-0 flex-col gap-2.5 border-b border-white/10 bg-black/20 px-3 py-2.5 sm:px-6 sm:py-3">
-                    <ModalSearchFilters searchTerm={searchTerm} onSearchChange={setSearchTerm} showFilters={showFilters} onToggleFilters={() => setShowFilters((prev) => !prev)} activeFilterCount={activeFilterCount} filterButtonAriaLabel="Alternar filtros de raridade, expansão e ilustrador">
+                    <ModalSearchFilters searchTerm={searchTerm} onSearchChange={setSearchTerm} showFilters={showFilters} onToggleFilters={() => setShowFilters((prev) => !prev)} activeFilterCount={activeFilterCount} filterButtonAriaLabel="Alternar filtros de raridade, expansão e ilustrador" isLoading={initialLoading}>
                         <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 sm:gap-2.5 pt-0.5 w-full">
                             <Select<string> value={rarityFilter} onChange={setRarityFilter} options={RARITY_FILTER_OPTIONS} icon={<Gem size={13} />} ariaLabel="Filtrar catálogo por raridade" className="w-full min-w-0" size="sm" />
                             <Select<string> value={expansionFilter} onChange={setExpansionFilter} options={expansionOptions} icon={<Layers size={13} />} ariaLabel="Filtrar catálogo por expansão" className="w-full min-w-0" size="sm" />
@@ -529,7 +675,7 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
                 {error && <div className="mx-4 sm:mx-6 mt-2.5 sm:mt-3 shrink-0 rounded-lg border border-red-500/30 bg-red-500/15 p-2.5 sm:p-3 text-xs text-red-200">{error}</div>}
 
                 <div ref={setScrollRoot} className="flex-1 overflow-y-auto p-3 sm:p-6">
-                    {cards.length === 0 && isCatalogGridLoading ? (
+                    {cards.length === 0 && initialLoading ? (
                         <CardGridSkeleton count={10} gridClassName="grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5" />
                     ) : cards.length === 0 ? (
                         !pokemonName && !searchTerm.trim() ? (
@@ -565,32 +711,88 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
                     ) : (
                         <div className="flex flex-col gap-4 sm:gap-6">
                             <div className="relative">
-                                <div className="grid grid-cols-2 gap-2.5 sm:gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                                <div className={`grid grid-cols-2 gap-2.5 sm:gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 transition-opacity duration-200 ${initialLoading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
                                     {filteredCards.map((card, index) => {
                                         const isSubmittingThis = submittingIds.includes(card.id);
                                         const comboCount = countCopiesForCombo(totalCopiesByCard, card.id, lang, variant, condition);
                                         const isOwnershipKnown = ownedCardIds.has(card.id);
                                         const isMissing = isOwnershipKnown && comboCount === 0;
+                                        const isAddingConfirmed = Boolean(confirmTokens[card.id]);
                                         const selectionLabel = `${LANGUAGE_SHORT_LABELS[lang]} · ${formatVariantLabel(variant)} · ${condition}`;
                                         const ownershipLabel = comboCount > 0 ? `você já tem ${comboCount === 1 ? "1 exemplar" : `${comboCount} exemplares`} nesta configuração` : null;
                                         const appear = getCardAppearProps(index);
                                         const shineMode = resolveCardShine(variant, card.rarity, card.image, card.name);
-                                        const imageSrc = formatTcgdexImageUrl(card.image);
+                                        const imageSrc = formatTcgdexImageUrl(card.image, "low");
 
                                         return (
-                                            <button
+                                            <div
                                                 key={card.id}
-                                                type="button"
                                                 data-missing={isMissing ? "true" : undefined}
-                                                disabled={isSubmittingThis}
-                                                onClick={() => handleAddCard(card)}
-                                                aria-label={ownershipLabel ? `Adicionar mais 1 cópia de ${card.name} (${selectionLabel}) à Coleção — ${ownershipLabel}` : `Adicionar ${card.name} (${selectionLabel}) à Coleção`}
-                                                title={ownershipLabel ? `Adicionar mais 1 cópia idêntica de ${card.name} (${selectionLabel}) à Coleção — ${ownershipLabel}` : `Adicionar ${card.name} (${selectionLabel}) à Coleção`}
-                                                className={`group relative isolate block aspect-[8/11] w-full cursor-pointer text-left transition-opacity duration-200 disabled:cursor-wait disabled:opacity-60 ${isMissing && !isSubmittingThis ? "opacity-60 saturate-50 hover:opacity-90" : ""}`}
+                                                aria-label={ownershipLabel ? `${card.name} (${selectionLabel}) — ${ownershipLabel}` : `Adicionar ${card.name} (${selectionLabel}) à Coleção`}
+                                                title={ownershipLabel ? `${card.name} (${selectionLabel}) — ${ownershipLabel}` : `Adicionar ${card.name} (${selectionLabel}) à Coleção`}
+                                                className={`group relative isolate block aspect-[8/11] w-full text-left transition-opacity duration-200 ${isSubmittingThis ? "cursor-wait opacity-60" : ""} ${isMissing && !isSubmittingThis ? "opacity-60 saturate-50 hover:opacity-90" : ""}`}
                                             >
                                                 <span className={`block h-full w-full ${appear.className}`} style={appear.style}>
-                                                    <CardArtwork src={imageSrc} alt="" sizes="(max-width: 768px) 50vw, 200px" shineMode={shineMode} elementTypes={card.types} enableTouch onImageLoaded={() => handleInitialArtworkLoaded(card.id)}>
+                                                    <CardArtwork src={imageSrc} alt="" sizes="(max-width: 768px) 50vw, 200px" priority={index < 8} shineMode={isSubmittingThis ? "none" : shineMode} elementTypes={card.types} maxTilt={0} maxMove={0} scale={1} transitionDuration={0} imageClassName="pointer-events-none object-contain" onImageLoaded={() => handleInitialArtworkLoaded(card.id)}>
                                                         {comboCount > 1 && !isSubmittingThis ? <CardBadgeStack count={comboCount} includeCondition={false} includeLanguage={false} countDataAttribute="matching" /> : null}
+                                                        {!isSubmittingThis && !isAddingConfirmed && comboCount === 0 ? (
+                                                            <button type="button" disabled={isSubmittingThis} onClick={() => handleAddCard(card)} aria-label={`Adicionar ${card.name} (${selectionLabel}) à Coleção`} className="absolute inset-0 z-30 flex cursor-pointer flex-col items-center justify-center rounded-[inherit] bg-black/60 text-white opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-visible:opacity-100 disabled:cursor-wait disabled:opacity-60">
+                                                                <span className="flex h-12 w-12 scale-90 items-center justify-center rounded-full border border-white/40 bg-poke-blue shadow-lg shadow-poke-blue/40 transition-transform duration-200 ease-out group-hover:scale-100 group-focus-visible:scale-100">
+                                                                    <Plus size={22} strokeWidth={2.5} />
+                                                                </span>
+                                                                <span className="mt-2 text-[10px] font-semibold tracking-wide">Adicionar</span>
+                                                            </button>
+                                                        ) : null}
+                                                        {!isSubmittingThis && !isAddingConfirmed && comboCount > 0 ? (
+                                                            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center rounded-[inherit] bg-black/60 p-2 text-white opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-within:opacity-100">
+                                                                <div className="flex items-center gap-1.5 rounded-full border border-white/20 bg-slate-900/90 p-1 shadow-xl">
+                                                                    {comboCount === 1 ? (
+                                                                        <button
+                                                                            type="button"
+                                                                            disabled={isSubmittingThis}
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                setDeleteModalTarget(card);
+                                                                            }}
+                                                                            aria-label={`Excluir ${card.name} (${selectionLabel}) da coleção`}
+                                                                            title={`Excluir ${card.name} (${selectionLabel}) da coleção`}
+                                                                            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-red-500/40 bg-red-500/20 text-red-400 transition-all hover:border-red-500/60 hover:bg-red-500 hover:text-white active:scale-95 disabled:cursor-wait disabled:opacity-50"
+                                                                        >
+                                                                            <Trash2 size={16} />
+                                                                        </button>
+                                                                    ) : (
+                                                                        <button
+                                                                            type="button"
+                                                                            disabled={isSubmittingThis}
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleRemoveCopy(card);
+                                                                            }}
+                                                                            aria-label={`Diminuir quantidade de ${card.name} (${selectionLabel}) na Coleção — ${ownershipLabel}`}
+                                                                            title={`Remover 1 exemplar de ${card.name} (${selectionLabel})`}
+                                                                            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/10 bg-white/10 text-white transition-all hover:bg-white/20 active:scale-95 disabled:cursor-wait disabled:opacity-50"
+                                                                        >
+                                                                            <Minus size={16} />
+                                                                        </button>
+                                                                    )}
+                                                                    <span className="min-w-[28px] text-center font-mono text-sm font-bold text-white">{comboCount}</span>
+                                                                    <button
+                                                                        type="button"
+                                                                        disabled={isSubmittingThis}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleAddCard(card);
+                                                                        }}
+                                                                        aria-label={`Adicionar mais 1 cópia de ${card.name} (${selectionLabel}) à Coleção — ${ownershipLabel}`}
+                                                                        title={`Adicionar mais 1 cópia idêntica de ${card.name} (${selectionLabel}) à Coleção`}
+                                                                        className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/30 bg-poke-blue text-white shadow-md shadow-poke-blue/30 transition-all hover:brightness-110 active:scale-95 disabled:cursor-wait disabled:opacity-50"
+                                                                    >
+                                                                        <Plus size={16} strokeWidth={2.5} />
+                                                                    </button>
+                                                                </div>
+                                                                <span className="mt-2 text-[10px] font-semibold tracking-wide text-slate-300">{comboCount === 1 ? "1 na coleção" : `${comboCount} na coleção`}</span>
+                                                            </div>
+                                                        ) : null}
                                                     </CardArtwork>
                                                     {isMissing && !isSubmittingThis ? <span className="pointer-events-none absolute inset-0 rounded-[3px] bg-black/25" aria-hidden="true" /> : null}
                                                     {isSubmittingThis ? (
@@ -598,14 +800,22 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
                                                             <Spinner size={18} className="text-white" />
                                                         </span>
                                                     ) : null}
+                                                    {confirmTokens[card.id] ? (
+                                                        <span key={confirmTokens[card.id]} className="card-add-confirm-overlay pointer-events-none absolute inset-0 z-40 flex items-center justify-center rounded-[inherit] bg-black/40" aria-hidden="true">
+                                                            <span className="card-add-confirm-ring absolute h-12 w-12 rounded-full border-2 border-poke-blue" />
+                                                            <span className="card-add-confirm-check flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-poke-blue text-white shadow-lg shadow-poke-blue/40">
+                                                                <Check size={24} strokeWidth={3} />
+                                                            </span>
+                                                        </span>
+                                                    ) : null}
                                                 </span>
-                                            </button>
+                                            </div>
                                         );
                                     })}
                                 </div>
-                                {isCatalogGridLoading ? (
+                                {isCatalogGridLoading && cards.length > 0 ? (
                                     <div className="absolute inset-0 z-30 bg-[#12151d]">
-                                        <CardGridSkeleton count={filteredCards.length} gridClassName="grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5" />
+                                        <CardGridSkeleton count={Math.min(filteredCards.length || 10, 10)} gridClassName="grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5" />
                                     </div>
                                 ) : null}
                             </div>
@@ -622,6 +832,45 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
                     )}
                 </div>
             </div>
+
+            {deleteModalTarget && (
+                <div
+                    className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Confirmar exclusão da carta"
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget && !isDeleting) setDeleteModalTarget(null);
+                    }}
+                >
+                    <div className="modal-surface flex w-full max-w-md flex-col gap-4 overflow-hidden rounded-2xl border border-red-500/30 bg-[#141722] p-6 shadow-2xl">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-500/15 text-red-400">
+                                <Trash2 size={22} />
+                            </div>
+                            <div>
+                                <h3 className="text-base font-bold text-white">Excluir carta da coleção?</h3>
+                                <p className="text-xs text-slate-400">Esta ação não poderá ser desfeita.</p>
+                            </div>
+                        </div>
+
+                        <p className="text-xs text-slate-300 leading-relaxed">
+                            Tem certeza que deseja excluir <strong>{deleteModalTarget.name}</strong> ({LANGUAGE_SHORT_LABELS[lang]} · {formatVariantLabel(variant)} · {condition}) da sua coleção?
+                        </p>
+
+                        <div className="mt-2 flex items-center justify-end gap-3">
+                            <button type="button" onClick={() => setDeleteModalTarget(null)} disabled={isDeleting} className="cursor-pointer rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-slate-300 transition-colors hover:bg-white/10 disabled:opacity-50">
+                                Cancelar
+                            </button>
+
+                            <button type="button" onClick={handleConfirmDelete} disabled={isDeleting} className="flex cursor-pointer items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-red-600/30 transition-all hover:bg-red-500 disabled:opacity-50">
+                                {isDeleting && <Loader2 size={14} className="animate-spin" />}
+                                <span>Sim, excluir</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -606,6 +606,7 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
     };
 
     const handleOpenCatalogSearchFromSelect = () => {
+        setIsRestoredSelectModal(false);
         setSearchDexId(selectDexId);
         setSearchPokemonName(selectPokemonName);
         setSearchModalOpen(true);
@@ -635,7 +636,7 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
         globalMutate(
             collectionKey,
             (current: { cards: UserCard[] } | undefined) => ({
-                cards: [...(current?.cards ?? []), newCard],
+                cards: [newCard, ...(current?.cards ?? [])],
             }),
             true,
         );
@@ -669,6 +670,20 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
 
         setSearchModalOpen(false);
         setSelectModalOpen(true);
+    };
+
+    const handleCardRemoved = (removedCardId: string) => {
+        if (searchDexId !== null && searchDexId !== undefined) {
+            const collectionKey = `/api/cards?pokemon_dex_id=${searchDexId}`;
+            globalMutate(
+                collectionKey,
+                (current: { cards: UserCard[] } | undefined) => ({
+                    cards: (current?.cards ?? []).filter((c) => c.id !== removedCardId),
+                }),
+                true,
+            );
+        }
+        globalMutate("/api/cards");
     };
 
     return (
@@ -768,7 +783,7 @@ function BinderContent({ initialCards, initialAvailableCounts }: BinderClientPag
                 )}
             </main>
 
-            <CardSearchModal isOpen={searchModalOpen} hasOpenSibling={selectModalOpen} dexId={searchDexId} pokemonName={searchPokemonName} onClose={handleReturnToSelectModal} onBack={handleReturnToSelectModal} onCardAdded={handleCardAdded} />
+            <CardSearchModal isOpen={searchModalOpen} hasOpenSibling={selectModalOpen} dexId={searchDexId} pokemonName={searchPokemonName} onClose={handleReturnToSelectModal} onBack={handleReturnToSelectModal} onCardAdded={handleCardAdded} onCardRemoved={handleCardRemoved} />
 
             <BinderSlotSelectModal key={selectDexId} isOpen={selectModalOpen} hasOpenSibling={searchModalOpen} skipEnterAnimation={isRestoredSelectModal} dexId={selectDexId} pokemonName={selectPokemonName} activeCardId={selectActiveCardId} activeCard={selectActiveCard} onClose={handleCloseSelectModal} onCardSelected={handleSelectCardFromCollection} onCardRemoved={handleRemoveCardFromCollection} onOpenCatalogSearch={handleOpenCatalogSearchFromSelect} />
         </div>
