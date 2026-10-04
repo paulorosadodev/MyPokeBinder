@@ -25,13 +25,14 @@ export function getRarityImpactTier(rarity?: string | null, cardName?: string | 
         lowerRarity.includes("vstar") ||
         lowerRarity.includes("v-union") ||
         lowerRarity.includes("vunion") ||
+        lowerRarity.includes("legend") ||
         lowerRarity.includes("rare holo v") ||
         lowerRarity.includes("rare v") ||
         lowerRarity.includes("rara v") ||
         lowerRarity.includes("rara holo v") ||
         lowerRarity.includes("holo v") ||
-        /\b(ex|gx|v|vmax|vstar|v-union|vunion)\b/i.test(lowerRarity) ||
-        (hasName && /\b(ex|gx|v|vmax|vstar|v-union|vunion)\b/i.test(lowerName))
+        /\b(ex|gx|v|vmax|vstar|v-union|vunion|legend)\b/i.test(lowerRarity) ||
+        (hasName && /\b(ex|gx|v|vmax|vstar|v-union|vunion|legend)\b/i.test(lowerName))
     ) {
         return 2;
     }
@@ -80,6 +81,8 @@ export function isFullArtRarity(rarity?: string | null, cardName?: string | null
             lowerRarity.includes("vstar") ||
             lowerRarity.includes("v-union") ||
             lowerRarity.includes("vunion") ||
+            lowerRarity.includes("legend") ||
+            lowerRarity.includes("lenda") ||
             lowerRarity.includes("holo v") ||
             lowerRarity.includes("rare holo v") ||
             lowerRarity.includes("rare v") ||
@@ -93,14 +96,14 @@ export function isFullArtRarity(rarity?: string | null, cardName?: string | null
             lowerRarity.includes("incrível") ||
             lowerRarity.includes("incrivel") ||
             lowerRarity.includes("ace spec") ||
-            /\b(ex|gx|v|vmax|vstar|v-union|vunion)\b/i.test(lowerRarity)
+            /\b(ex|gx|v|vmax|vstar|v-union|vunion|legend)\b/i.test(lowerRarity)
         ) {
             return true;
         }
     }
 
     if (hasName) {
-        if (/\b(ex|gx|v|vmax|vstar|v-union|vunion)\b/i.test(lowerName)) {
+        if (/\b(ex|gx|v|vmax|vstar|v-union|vunion|legend)\b/i.test(lowerName)) {
             return true;
         }
     }
@@ -123,6 +126,7 @@ export const RARITY_FILTER_OPTIONS: RarityFilterOption[] = [
     { value: "shiny ultra rare", label: "Rara Ultra Brilhante" },
     { value: "shiny rare", label: "Rara Brilhante" },
     { value: "double rare", label: "Rara Dupla" },
+    { value: "legend", label: "LEGEND" },
     { value: "radiant rare", label: "Rara Radiante" },
     { value: "amazing rare", label: "Rara Incrível" },
     { value: "holo rare", label: "Rara Holográfica" },
@@ -149,6 +153,7 @@ export function formatRarityLabel(rarity?: string | null): string {
     if (lower.includes("full art trainer") || lower === "treinador arte completa") return "Treinador Arte Expandida";
     if (lower.includes("ultra rare") || lower === "rara ultra") return "Rara Ultra";
     if (lower.includes("double rare") || lower === "rara dupla") return "Rara Dupla";
+    if (lower.includes("legend") || lower === "lenda") return "LEGEND";
     if (lower.includes("radiant") || lower === "rara radiante") return "Rara Radiante";
     if (lower.includes("amazing") || lower === "rara incrível" || lower === "incrível") return "Rara Incrível";
     if (lower.includes("ace spec") || lower === "rara ace spec") return "Rara ACE SPEC";
@@ -238,7 +243,7 @@ export function getRarityScore(rarity?: string | null, cardName?: string | null)
     if (lower.includes("shiny ultra rare") || lower.includes("rara ultra brilhante") || lower.includes("brilhante rara ultra") || lower.includes("shiny rare vmax")) return 75;
     if (lower.includes("secret rare") || lower.includes("rara secreta")) return 70;
     if (lower.includes("ultra rare") || lower.includes("rara ultra") || lower.includes("full art trainer")) return 65;
-    if (lower.includes("vmax") || lower.includes("vstar") || lower.includes("v-union") || lower.includes("vunion") || lower.includes("rare holo v") || lower.includes("rare v") || lower.includes("rara v") || lower.includes("rara holo v") || lower.includes("holo v") || /\b(ex|gx|v|vmax|vstar|v-union|vunion)\b/i.test(lower) || (lowerName && /\b(ex|gx|v|vmax|vstar|v-union|vunion)\b/i.test(lowerName))) return 60;
+    if (lower.includes("vmax") || lower.includes("vstar") || lower.includes("v-union") || lower.includes("vunion") || lower.includes("legend") || lower.includes("rare holo v") || lower.includes("rare v") || lower.includes("rara v") || lower.includes("rara holo v") || lower.includes("holo v") || /\b(ex|gx|v|vmax|vstar|v-union|vunion|legend)\b/i.test(lower) || (lowerName && /\b(ex|gx|v|vmax|vstar|v-union|vunion|legend)\b/i.test(lowerName))) return 60;
     if (lower.includes("radiant") || lower.includes("radiante") || lower.includes("amazing") || lower.includes("incrível") || lower.includes("incrivel")) return 50;
     if (lower.includes("double rare") || lower.includes("rara dupla")) return 40;
     if (lower.includes("holo") || lower.includes("holográfic") || lower.includes("holografic")) return 30;

@@ -451,15 +451,17 @@ export function BinderSlotSelectModal({ isOpen, hasOpenSibling = false, skipEnte
                                     const card = group.card;
                                     const isCurrent = group.hasInBinder;
                                     const isEditingThisCard = editingCardId === group.activeCard.id;
+                                    const isPendingThisCard = pendingActionId === group.activeCard.id;
                                     const isNavigating = Boolean(editingCardId);
                                     const isActionPending = Boolean(pendingActionId);
                                     const isInteractionBlocked = isNavigating || isActionPending;
+                                    const isOtherActionPending = (isActionPending && !isPendingThisCard) || (isNavigating && !isEditingThisCard);
                                     const appear = getCardAppearProps(index);
                                     const imageSrc = formatTcgdexImageUrl(card.card_image_url);
                                     const shineMode = resolveCardShine(card.card_variant, card.card_rarity, card.card_image_url, card.card_name);
 
                                     return (
-                                        <div key={group.key} className={`group relative isolate flex flex-col gap-2 ${appear.className}`} style={appear.style}>
+                                        <div key={group.key} className={`group relative isolate flex flex-col gap-2 rounded-xl transition-all duration-200 ${isPendingThisCard ? "z-10 ring-2 ring-poke-blue ring-offset-2 ring-offset-slate-900 shadow-xl shadow-poke-blue/25 scale-[1.02]" : ""} ${appear.className}`} style={appear.style}>
                                             <div
                                                 role="button"
                                                 tabIndex={isInteractionBlocked ? -1 : 0}
@@ -475,9 +477,15 @@ export function BinderSlotSelectModal({ isOpen, hasOpenSibling = false, skipEnte
                                                     void handleSelectCard(group.activeCard);
                                                 }}
                                                 aria-label={isCurrent ? `${card.card_name}, carta atualmente no Binder. Use Remover para desvincular.` : `Exibir ${card.card_name} no Binder`}
-                                                className={`relative isolate aspect-[8/11] w-full outline-none focus-visible:ring-2 focus-visible:ring-poke-blue/70 ${isInteractionBlocked ? "cursor-not-allowed opacity-80" : isCurrent ? "cursor-default" : "cursor-pointer"}`}
+                                                className={`relative isolate aspect-[8/11] w-full overflow-hidden rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-poke-blue/70 ${isPendingThisCard ? "cursor-default" : isOtherActionPending ? "cursor-not-allowed opacity-40 transition-opacity duration-200" : isCurrent ? "cursor-default" : "cursor-pointer"}`}
                                             >
                                                 <CardArtwork src={imageSrc} alt="" sizes="(max-width: 768px) 50vw, 200px" shineMode={shineMode} elementTypes={resolveCardElementTypes(card.card_types, card.pokemon_dex_id)} imageClassName="object-contain" />
+                                                {isPendingThisCard && (
+                                                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 rounded-xl bg-black/60 p-2 text-center backdrop-blur-[2px] animate-in fade-in duration-150">
+                                                        <Loader2 size={24} className="animate-spin text-poke-blue" />
+                                                        <span className="text-[11px] font-semibold text-white drop-shadow sm:text-xs">{isCurrent ? "Removendo..." : "Alocando..."}</span>
+                                                    </div>
+                                                )}
                                             </div>
 
                                             <div className="mt-1 flex items-center gap-1.5">
@@ -486,11 +494,24 @@ export function BinderSlotSelectModal({ isOpen, hasOpenSibling = false, skipEnte
                                                     disabled={isInteractionBlocked}
                                                     onClick={() => void (isCurrent ? handleRemoveCard(group.activeCard) : handleSelectCard(group.activeCard))}
                                                     className={`group/btn flex flex-1 min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 px-2 text-xs font-semibold leading-none transition-colors duration-150 ${
-                                                        isInteractionBlocked ? "cursor-not-allowed opacity-50 bg-white/5 text-slate-500 border border-white/5" : isCurrent ? "cursor-pointer border border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20" : "cursor-pointer bg-white/10 text-white hover:bg-poke-blue hover:shadow-md hover:shadow-poke-blue/20"
+                                                        isPendingThisCard
+                                                            ? isCurrent
+                                                                ? "cursor-default border border-red-500/60 bg-red-500/30 text-red-200"
+                                                                : "cursor-default bg-poke-blue text-white shadow-md shadow-poke-blue/30"
+                                                            : isOtherActionPending
+                                                              ? "cursor-not-allowed opacity-40 bg-white/5 text-slate-500 border border-white/5"
+                                                              : isCurrent
+                                                                ? "cursor-pointer border border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20"
+                                                                : "cursor-pointer bg-white/10 text-white hover:bg-poke-blue hover:shadow-md hover:shadow-poke-blue/20"
                                                     }`}
-                                                    title={isCurrent ? "Remover do Binder" : "Exibir no Binder"}
+                                                    title={isPendingThisCard ? (isCurrent ? "Removendo..." : "Alocando...") : isCurrent ? "Remover do Binder" : "Exibir no Binder"}
                                                 >
-                                                    {isCurrent ? (
+                                                    {isPendingThisCard ? (
+                                                        <>
+                                                            <Loader2 size={13} className="shrink-0 animate-spin" />
+                                                            <span className="truncate whitespace-nowrap leading-none">{isCurrent ? "Removendo..." : "Alocando..."}</span>
+                                                        </>
+                                                    ) : isCurrent ? (
                                                         <>
                                                             <X size={13} className="shrink-0" />
                                                             <span className="truncate whitespace-nowrap leading-none">Remover</span>
@@ -513,7 +534,7 @@ export function BinderSlotSelectModal({ isOpen, hasOpenSibling = false, skipEnte
                                                     onFocus={() => handlePrefetchCard(group.activeCard.id, dexId)}
                                                     onClick={() => handleEditCard(group.activeCard, dexId, group.key)}
                                                     className={`flex shrink-0 items-center justify-center gap-1 rounded-lg border px-2 py-2 text-xs font-semibold leading-none transition-colors duration-150 ${
-                                                        isEditingThisCard ? "border-poke-blue/40 bg-poke-blue/20 text-poke-blue cursor-wait" : isInteractionBlocked ? "border-white/5 bg-white/[0.02] text-slate-600 cursor-not-allowed opacity-50" : "border-white/10 bg-white/5 text-slate-300 transition-colors duration-150 hover:border-white/20 hover:bg-white/15 hover:text-white cursor-pointer"
+                                                        isEditingThisCard ? "border-poke-blue/40 bg-poke-blue/20 text-poke-blue cursor-default" : isOtherActionPending ? "border-white/5 bg-white/[0.02] text-slate-600 cursor-not-allowed opacity-40" : "border-white/10 bg-white/5 text-slate-300 transition-colors duration-150 hover:border-white/20 hover:bg-white/15 hover:text-white cursor-pointer"
                                                     }`}
                                                 >
                                                     {isEditingThisCard ? (

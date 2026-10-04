@@ -392,4 +392,10 @@ describe("Binder Slot Selection and Removal Logic", () => {
         expect(searchModalSource).toContain("isInitialOwnershipLoading");
         expect(searchModalSource).toContain("fetchedOwnershipIdsRef.current.delete(id)");
     });
+
+    it("não aplica cursor spinner (cursor-wait) durante a adição de carta à coleção", () => {
+        const searchModalSource = readFileSync(join(import.meta.dir, "../src/components/modal/CardSearchModal.tsx"), "utf8");
+
+        expect(searchModalSource).not.toContain("cursor-wait");
+    });
 });

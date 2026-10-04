@@ -41,7 +41,7 @@ interface CachedCardDetail {
     image?: string;
 }
 
-const LOCAL_ID_PATTERN = /^[A-Za-z]{0,4}\d+[A-Za-z]?$/;
+const LOCAL_ID_PATTERN = /^[A-Za-z]{0,4}-?\d+[A-Za-z]?$/;
 
 function parseQueryParts(raw: string): { nameQuery: string | null; localIdHint: string | null } {
     const parenMatch = raw.match(/\(([^)]+)\)/);
@@ -53,23 +53,42 @@ function parseQueryParts(raw: string): { nameQuery: string | null; localIdHint: 
         }
     }
     if (raw.includes("/")) {
-        const parts = raw
-            .split("/")
-            .map((p) => p.trim())
-            .filter(Boolean);
-        if (parts.length >= 2) {
-            if (LOCAL_ID_PATTERN.test(parts[0])) {
-                return { localIdHint: parts[0], nameQuery: parts.slice(1).join(" ") || null };
+        const slashIdx = raw.indexOf("/");
+        const left = raw.slice(0, slashIdx).trim();
+        const right = raw.slice(slashIdx + 1).trim();
+        if (left) {
+            const leftParts = left.split(/\s+/);
+            const lastPart = leftParts[leftParts.length - 1];
+            if (LOCAL_ID_PATTERN.test(lastPart)) {
+                return {
+                    nameQuery: leftParts.slice(0, -1).join(" ") || null,
+                    localIdHint: lastPart.replace(/-/g, ""),
+                };
             }
-            const last = parts[parts.length - 1];
-            if (LOCAL_ID_PATTERN.test(last)) {
-                return { localIdHint: last, nameQuery: parts.slice(0, -1).join(" ") || null };
+        }
+        if (right) {
+            const rightParts = right.split(/\s+/);
+            if (rightParts.length >= 2 && LOCAL_ID_PATTERN.test(left)) {
+                return {
+                    nameQuery: rightParts.slice(1).join(" "),
+                    localIdHint: left.replace(/-/g, ""),
+                };
             }
         }
         return { nameQuery: raw, localIdHint: null };
     }
     if (raw.includes(" ")) {
         const parts = raw.split(/\s+/);
+        if (parts.length >= 3) {
+            const last = parts[parts.length - 1];
+            const secondLast = parts[parts.length - 2];
+            if (/^[A-Za-z]{1,4}$/.test(secondLast) && /^\d+[A-Za-z]?$/.test(last)) {
+                return {
+                    nameQuery: parts.slice(0, -2).join(" "),
+                    localIdHint: `${secondLast}${last}`,
+                };
+            }
+        }
         const last = parts[parts.length - 1];
         const first = parts[0];
         if (LOCAL_ID_PATTERN.test(last)) {
@@ -84,6 +103,47 @@ function parseQueryParts(raw: string): { nameQuery: string | null; localIdHint: 
         return { nameQuery: null, localIdHint: raw };
     }
     return { nameQuery: raw, localIdHint: null };
+}
+
+function matchesCardLocalId(card: { id: string; localId?: string }, localIdHint: string): boolean {
+    const hint = localIdHint.trim().toLowerCase();
+    if (!hint) return true;
+
+    const rawLocal = card.localId || (card.id.includes("-") ? card.id.slice(card.id.lastIndexOf("-") + 1) : card.id);
+    const cardLocal = rawLocal.trim().toLowerCase();
+    const cardId = card.id.trim().toLowerCase();
+
+    if (cardLocal === hint || cardId.endsWith(`-${hint}`)) {
+        return true;
+    }
+
+    const unhyphenatedHint = hint.replace(/-/g, "");
+    const unhyphenatedCardLocal = cardLocal.replace(/-/g, "");
+    if (unhyphenatedCardLocal === unhyphenatedHint || cardId.endsWith(`-${unhyphenatedHint}`)) {
+        return true;
+    }
+
+    const isNumericHint = /^\d+$/.test(hint);
+    if (isNumericHint) {
+        const unpaddedHint = hint.replace(/^0+/, "") || "0";
+        const unpaddedCardLocal = cardLocal.replace(/^0+/, "") || "0";
+        if (unpaddedCardLocal === unpaddedHint || cardId.endsWith(`-${unpaddedHint}`)) {
+            return true;
+        }
+    }
+
+    const normCardLocal = cardLocal.replace(/([a-z]+)0+(\d+)/, "$1$2");
+    const normHint = hint.replace(/([a-z]+)0+(\d+)/, "$1$2");
+    if (normCardLocal && normCardLocal === normHint) {
+        return true;
+    }
+
+    const unpaddedId = cardId.replace(/(-[a-z]+)0+(\d+)$/, "$1$2");
+    if (unpaddedId.endsWith(`-${normHint}`)) {
+        return true;
+    }
+
+    return false;
 }
 
 export async function GET(request: NextRequest) {
@@ -118,7 +178,14 @@ export async function GET(request: NextRequest) {
         }
     } else if (nameQuery) {
         const cleanName = nameQuery.replace(/[♀♂]/g, "").trim().toLowerCase();
-        const matched = POKEMON_1025.find((p) => p.name.toLowerCase().replace(/[♀♂]/g, "").trim() === cleanName);
+        const basePokemonName = cleanName
+            .replace(/^(alolan|galarian|hisuian|paldean)\s+/, "")
+            .replace(/\s+de\s+(alola|galar|hisui|paldea)$/, "")
+            .trim();
+        const matched = POKEMON_1025.find((p) => {
+            const base = p.name.toLowerCase().replace(/[♀♂]/g, "").trim();
+            return base === cleanName || base === basePokemonName;
+        });
         if (matched) {
             targetDexId = matched.dexId;
         }
@@ -130,7 +197,7 @@ export async function GET(request: NextRequest) {
     const pageSize = !isNaN(parsedPageSize) && parsedPageSize > 0 && parsedPageSize <= 100 ? parsedPageSize : 36;
 
     try {
-        const searchCacheKey = targetDexId ? `search_dex_${targetDexId}` : localIdHint ? `search_lid_${localIdHint}${nameQuery ? `_n_${encodeURIComponent(nameQuery)}` : ""}` : `search_${encodeURIComponent(nameQuery ?? trimmedName)}`;
+        const searchCacheKey = targetDexId ? `search_dex_${targetDexId}` : localIdHint ? `search_lid_${localIdHint.toLowerCase()}${nameQuery ? `_n_${encodeURIComponent(nameQuery.toLowerCase())}` : ""}` : `search_${encodeURIComponent((nameQuery ?? trimmedName).toLowerCase())}`;
 
         const data = await coalesceRequest<unknown>(searchCacheKey, async () => {
             const fetchCards = async (url: string): Promise<TcgDexCardSummary[]> => {
@@ -145,23 +212,70 @@ export async function GET(request: NextRequest) {
                 return Array.isArray(json) ? (json as TcgDexCardSummary[]) : [];
             };
 
+            const queryCardsByName = async (query: string): Promise<TcgDexCardSummary[]> => {
+                const queries = [query];
+                const parts = query.trim().split(/\s+/);
+                if (parts.length === 2) {
+                    queries.push(`${parts[1]} ${parts[0]}`);
+                }
+                const fetchList: Promise<TcgDexCardSummary[]>[] = [];
+                for (const q of queries) {
+                    const enc = encodeURIComponent(q);
+                    fetchList.push(fetchCards(`https://api.tcgdex.net/v2/en/cards?name=${enc}`));
+                    fetchList.push(fetchCards(`https://api.tcgdex.net/v2/pt/cards?name=${enc}`));
+                }
+                const results = await Promise.all(fetchList);
+                return results.flat();
+            };
+
             if (targetDexId) {
                 const dexPokemon = getPokemonByDexId(targetDexId);
-                const queryName = dexPokemon ? encodeURIComponent(dexPokemon.name) : encodeURIComponent(nameQuery ?? trimmedName);
-                const [nameCards, dexCards] = await Promise.all([fetchCards(`https://api.tcgdex.net/v2/en/cards?name=${queryName}`), fetchCards(`https://api.tcgdex.net/v2/en/cards?dexId=eq:${targetDexId}`)]);
+                const queryName = dexPokemon ? dexPokemon.name : (nameQuery ?? trimmedName);
+                const [nameCards, dexCards] = await Promise.all([queryCardsByName(queryName), fetchCards(`https://api.tcgdex.net/v2/en/cards?dexId=eq:${targetDexId}`)]);
                 return [...nameCards, ...dexCards];
             }
 
             if (localIdHint && nameQuery) {
-                const [localCards, nameCards] = await Promise.all([fetchCards(`https://api.tcgdex.net/v2/en/cards?localId=${encodeURIComponent(localIdHint)}`), fetchCards(`https://api.tcgdex.net/v2/en/cards?name=${encodeURIComponent(nameQuery)}`)]);
-                return [...localCards, ...nameCards];
+                const nameCards = await queryCardsByName(nameQuery);
+                const matchingNameCards = nameCards.filter((c) => matchesCardLocalId(c, localIdHint));
+                if (matchingNameCards.length > 0) {
+                    return matchingNameCards;
+                }
+                const fetchPromises = [fetchCards(`https://api.tcgdex.net/v2/en/cards?localId=${encodeURIComponent(localIdHint)}`)];
+                if (/^[a-zA-Z]{1,4}\d$/i.test(localIdHint)) {
+                    const padded = localIdHint.replace(/(\d)$/, "0$1");
+                    fetchPromises.push(fetchCards(`https://api.tcgdex.net/v2/en/cards?localId=${encodeURIComponent(padded)}`));
+                }
+                const localCards = (await Promise.all(fetchPromises)).flat();
+                const nameTokens = nameQuery
+                    .toLowerCase()
+                    .split(/\s+/)
+                    .filter((t) => t.length > 0);
+                const matchingLocal = localCards.filter((c) => {
+                    const cName = c.name.toLowerCase();
+                    return nameTokens.every((t) => cName.includes(t));
+                });
+                if (matchingLocal.length > 0) {
+                    return matchingLocal;
+                }
+                const partialLocal = localCards.filter((c) => {
+                    const cName = c.name.toLowerCase();
+                    return nameTokens.some((t) => cName.includes(t));
+                });
+                return partialLocal.length > 0 ? partialLocal : [...nameCards, ...localCards];
             }
 
             if (localIdHint) {
-                return await fetchCards(`https://api.tcgdex.net/v2/en/cards?localId=${encodeURIComponent(localIdHint)}`);
+                const fetchPromises = [fetchCards(`https://api.tcgdex.net/v2/en/cards?localId=${encodeURIComponent(localIdHint)}`)];
+                if (/^[a-zA-Z]{1,4}\d$/i.test(localIdHint)) {
+                    const padded = localIdHint.replace(/(\d)$/, "0$1");
+                    fetchPromises.push(fetchCards(`https://api.tcgdex.net/v2/en/cards?localId=${encodeURIComponent(padded)}`));
+                }
+                const results = await Promise.all(fetchPromises);
+                return results.flat();
             }
 
-            return await fetchCards(`https://api.tcgdex.net/v2/en/cards?name=${encodeURIComponent(nameQuery ?? trimmedName)}`);
+            return await queryCardsByName(nameQuery ?? trimmedName);
         });
 
         if (!Array.isArray(data)) {
@@ -187,13 +301,8 @@ export async function GET(request: NextRequest) {
                 continue;
             }
 
-            if (localIdHint) {
-                const isNumericId = /^\d+$/.test(localIdHint);
-                const unpadded = isNumericId ? localIdHint.replace(/^0+/, "") || "0" : localIdHint;
-                const matchesLocal = card.localId === localIdHint || card.localId === unpadded || card.id.endsWith(`-${localIdHint}`) || (isNumericId && card.id.endsWith(`-${unpadded}`));
-                if (!matchesLocal) {
-                    continue;
-                }
+            if (localIdHint && !matchesCardLocalId(card, localIdHint)) {
+                continue;
             }
 
             seenIds.add(card.id);

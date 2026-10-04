@@ -132,7 +132,7 @@ export function matchesCardNumber(rawLocalId: string | undefined | null, term: s
     const parenMatch = cleanTerm.match(/\(([^)]+)\)/);
     if (parenMatch) {
         const inside = parenMatch[1].trim();
-        if (/^[a-z]{0,4}\d+[a-z]?$/.test(inside)) {
+        if (/^[a-z]{0,4}-?\d+[a-z]?$/.test(inside)) {
             targetPart = inside;
         } else {
             return false;
@@ -142,8 +142,8 @@ export function matchesCardNumber(rawLocalId: string | undefined | null, term: s
         const left = cleanTerm.slice(0, slashIdx).trim();
         const right = cleanTerm.slice(slashIdx + 1).trim();
         if (!left || !right) return false;
-        const leftIsLocalId = /^[a-z]{0,4}\d+[a-z]?$/.test(left);
-        const rightIsLocalId = /^[a-z]{0,4}\d+[a-z]?$/.test(right);
+        const leftIsLocalId = /^[a-z]{0,4}-?\d+[a-z]?$/.test(left);
+        const rightIsLocalId = /^[a-z]{0,4}-?\d+[a-z]?$/.test(right);
         if (leftIsLocalId && rightIsLocalId) {
             targetPart = left;
         } else if (!leftIsLocalId && rightIsLocalId) {
@@ -156,6 +156,10 @@ export function matchesCardNumber(rawLocalId: string | undefined | null, term: s
     if (!targetPart) return false;
 
     if (localId === targetPart) return true;
+
+    const unhyphenatedLocal = localId.replace(/-/g, "");
+    const unhyphenatedTarget = targetPart.replace(/-/g, "");
+    if (unhyphenatedLocal === unhyphenatedTarget) return true;
 
     const parsedLocal = parseInt(localId, 10);
     const parsedTarget = parseInt(targetPart, 10);
@@ -184,7 +188,34 @@ export function matchesCardSearch(card: { card_name: string; card_set_name?: str
     const cardLocalId = extractCardLocalId(card);
     const matchesCardNum = matchesCardNumber(cardLocalId, term);
 
-    return matchesName || matchesSet || matchesArtist || matchesDex || matchesCardNum;
+    if (matchesName || matchesSet || matchesArtist || matchesDex || matchesCardNum) {
+        return true;
+    }
+
+    if (term.includes(" ")) {
+        const parts = term.split(/\s+/);
+        const cardNameLower = card.card_name.toLowerCase();
+        if (parts.length >= 2) {
+            const last = parts[parts.length - 1];
+            const namePrefix = parts.slice(0, -1).join(" ");
+            const nameTokens = namePrefix.split(/\s+/).filter((t) => t.length > 0);
+            const allTokensMatch = nameTokens.every((token) => cardNameLower.includes(token));
+            if ((cardNameLower.includes(namePrefix) || allTokensMatch) && matchesCardNumber(cardLocalId, last)) {
+                return true;
+            }
+        }
+        if (parts.length >= 3) {
+            const lastTwo = `${parts[parts.length - 2]}${parts[parts.length - 1]}`;
+            const namePrefix = parts.slice(0, -2).join(" ");
+            const nameTokens = namePrefix.split(/\s+/).filter((t) => t.length > 0);
+            const allTokensMatch = nameTokens.every((token) => cardNameLower.includes(token));
+            if ((cardNameLower.includes(namePrefix) || allTokensMatch) && matchesCardNumber(cardLocalId, lastTwo)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 export function filterCatalogCards(cards: SearchCardItem[], filters: CatalogListFilters): SearchCardItem[] {
@@ -208,7 +239,26 @@ export function filterCatalogCards(cards: SearchCardItem[], filters: CatalogList
             const cardLocalId = card.localId || extractCardLocalId({ id: card.id });
             const matchesLocal = matchesCardNumber(cardLocalId, term);
 
-            if (!matchesName && !matchesSet && !matchesArtist && !matchesDex && !matchesLocal) return false;
+            let matchesCompound = false;
+            if (term.includes(" ")) {
+                const parts = term.split(/\s+/);
+                if (parts.length >= 2) {
+                    const last = parts[parts.length - 1];
+                    const namePrefix = parts.slice(0, -1).join(" ");
+                    if (card.name.toLowerCase().includes(namePrefix) && matchesCardNumber(cardLocalId, last)) {
+                        matchesCompound = true;
+                    }
+                }
+                if (parts.length >= 3) {
+                    const lastTwo = `${parts[parts.length - 2]}${parts[parts.length - 1]}`;
+                    const namePrefix = parts.slice(0, -2).join(" ");
+                    if (card.name.toLowerCase().includes(namePrefix) && matchesCardNumber(cardLocalId, lastTwo)) {
+                        matchesCompound = true;
+                    }
+                }
+            }
+
+            if (!matchesName && !matchesSet && !matchesArtist && !matchesDex && !matchesLocal && !matchesCompound) return false;
         }
 
         if (expansionFilter !== ALL_EXPANSIONS_FILTER && (card.setName || "") !== expansionFilter) return false;

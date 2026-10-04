@@ -16,6 +16,8 @@ import { useBinderAvailableCounts } from "@/lib/swr";
 import { isBinderSlotPainted } from "@/lib/pokemon/binderHighlight";
 import { getPokemonThemeSelectorSpriteUrl } from "@/lib/pokemon/constants";
 import { isCollectionCardsCacheKey } from "@/lib/collection/cache";
+import { preloadImages } from "@/lib/hooks/useImagePreloader";
+import { formatTcgdexImageUrl } from "@/lib/pokemon/tcgdex";
 import type { Binder, BinderSlot, UserCard } from "@/types/binder";
 import { BinderControls } from "./BinderControls";
 import { UniversalBinderBook, type UniversalBinderNavigationHandle } from "./UniversalBinderBook";
@@ -112,6 +114,12 @@ export function UniversalBinderViewer({ binder, initialSlots, initialAvailableCo
         setSelectedSlot(slot);
         setIsSlotModalOpen(true);
     }, [isOwner, searchParams, slots]);
+
+    useEffect(() => {
+        const initialSlotsWithCards = slots.filter((slot) => slot.page_number === initialTargetPage && slot.card?.card_image_url);
+        const initialUrls = initialSlotsWithCards.map((slot) => formatTcgdexImageUrl(slot.card!.card_image_url));
+        if (initialUrls.length > 0) preloadImages(initialUrls);
+    }, [initialTargetPage, slots]);
 
     useEffect(() => {
         if (!isSwitcherOpen) return;

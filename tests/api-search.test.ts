@@ -164,4 +164,61 @@ describe("GET /api/search", () => {
         const uniqueCardIds = new Set(cardIds);
         expect(cardIds.length).toBe(uniqueCardIds.size);
     }, 15000);
+
+    it("should find promo cards with case-insensitive and unpadded localId like chespin xy01 and xy1", async () => {
+        const reqLower = new NextRequest("http://localhost:3000/api/search?name=chespin%20xy01&page=1&pageSize=36", {
+            headers: { "x-test-user-id": "test-user-id" },
+        });
+        const resLower = await GET(reqLower);
+        expect(resLower.status).toBe(200);
+        const jsonLower = await resLower.json();
+        expect(Array.isArray(jsonLower.cards)).toBe(true);
+        expect(jsonLower.cards.length).toBeGreaterThan(0);
+        const promoCard = jsonLower.cards.find((c: { id: string }) => c.id === "xyp-XY01");
+        expect(promoCard).toBeDefined();
+
+        const reqUnpadded = new NextRequest("http://localhost:3000/api/search?name=chespin%20xy1&page=1&pageSize=36", {
+            headers: { "x-test-user-id": "test-user-id" },
+        });
+        const resUnpadded = await GET(reqUnpadded);
+        expect(resUnpadded.status).toBe(200);
+        const jsonUnpadded = await resUnpadded.json();
+        expect(Array.isArray(jsonUnpadded.cards)).toBe(true);
+        expect(jsonUnpadded.cards.length).toBeGreaterThan(0);
+        const promoUnpadded = jsonUnpadded.cards.find((c: { id: string }) => c.id === "xyp-XY01");
+        expect(promoUnpadded).toBeDefined();
+
+        const reqSpaced = new NextRequest("http://localhost:3000/api/search?name=chespin%20xy%2001&page=1&pageSize=36", {
+            headers: { "x-test-user-id": "test-user-id" },
+        });
+        const resSpaced = await GET(reqSpaced);
+        expect(resSpaced.status).toBe(200);
+        const jsonSpaced = await resSpaced.json();
+        expect(Array.isArray(jsonSpaced.cards)).toBe(true);
+        expect(jsonSpaced.cards.length).toBeGreaterThan(0);
+        const promoSpaced = jsonSpaced.cards.find((c: { id: string }) => c.id === "xyp-XY01");
+        expect(promoSpaced).toBeDefined();
+    }, 15000);
+
+    it("should find Unown 072/128 from 30th celebration and Booster G 92/101", async () => {
+        const reqUnown = new NextRequest("http://localhost:3000/api/search?name=Unown%20072/128&page=1&pageSize=36", {
+            headers: { "x-test-user-id": "test-user-id" },
+        });
+        const resUnown = await GET(reqUnown);
+        expect(resUnown.status).toBe(200);
+        const jsonUnown = await resUnown.json();
+        expect(Array.isArray(jsonUnown.cards)).toBe(true);
+        const unownCard = jsonUnown.cards.find((c: { id: string }) => c.id === "30th-072");
+        expect(unownCard).toBeDefined();
+
+        const reqBooster = new NextRequest("http://localhost:3000/api/search?name=Booster%20G%2092/101&page=1&pageSize=36", {
+            headers: { "x-test-user-id": "test-user-id" },
+        });
+        const resBooster = await GET(reqBooster);
+        expect(resBooster.status).toBe(200);
+        const jsonBooster = await resBooster.json();
+        expect(Array.isArray(jsonBooster.cards)).toBe(true);
+        const boosterCard = jsonBooster.cards.find((c: { id: string }) => c.id === "bw10-92");
+        expect(boosterCard).toBeDefined();
+    }, 15000);
 });

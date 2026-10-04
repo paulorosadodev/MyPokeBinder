@@ -1,27 +1,42 @@
 "use client";
 
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, useRef, useState, useCallback, type RefCallback, type RefObject } from "react";
 
 export interface UseInfiniteScrollOptions {
     hasMore: boolean;
     isLoading?: boolean;
     onLoadMore: () => void;
     rootMargin?: string;
-    /** Scroll container; defaults to the viewport. */
     root?: Element | null;
     enabled?: boolean;
 }
 
-export function useInfiniteScroll({ hasMore, isLoading = false, onLoadMore, rootMargin = "200px", root = null, enabled = true }: UseInfiniteScrollOptions): RefObject<HTMLDivElement | null> {
+export type InfiniteScrollSentinelRef = RefCallback<HTMLDivElement> & RefObject<HTMLDivElement | null>;
+
+export function useInfiniteScroll({ hasMore, isLoading = false, onLoadMore, rootMargin = "200px", root = null, enabled = true }: UseInfiniteScrollOptions): InfiniteScrollSentinelRef {
+    const [sentinelNode, setSentinelNode] = useState<HTMLDivElement | null>(null);
     const sentinelRef = useRef<HTMLDivElement | null>(null);
     const onLoadMoreRef = useRef(onLoadMore);
     onLoadMoreRef.current = onLoadMore;
 
-    useEffect(() => {
-        if (!enabled || !hasMore || isLoading) return;
+    const callbackRef = useCallback((node: HTMLDivElement | null) => {
+        sentinelRef.current = node;
+        setSentinelNode(node);
+    }, []) as InfiniteScrollSentinelRef;
 
-        const sentinel = sentinelRef.current;
-        if (!sentinel) return;
+    Object.defineProperty(callbackRef, "current", {
+        get() {
+            return sentinelRef.current;
+        },
+        set(node: HTMLDivElement | null) {
+            sentinelRef.current = node;
+            setSentinelNode(node);
+        },
+        configurable: true,
+    });
+
+    useEffect(() => {
+        if (!enabled || !hasMore || isLoading || !sentinelNode) return;
 
         const observer = new IntersectionObserver(
             (entries) => {
@@ -32,9 +47,25 @@ export function useInfiniteScroll({ hasMore, isLoading = false, onLoadMore, root
             { root, rootMargin },
         );
 
-        observer.observe(sentinel);
+        observer.observe(sentinelNode);
         return () => observer.disconnect();
-    }, [hasMore, isLoading, root, rootMargin, enabled]);
+    }, [hasMore, isLoading, root, rootMargin, enabled, sentinelNode]);
 
-    return sentinelRef;
+    useEffect(() => {
+        if (!enabled || !hasMore || isLoading || !root) return;
+
+        const scrollContainer = root;
+        const handleScroll = () => {
+            if (!hasMore || isLoading) return;
+            const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+            if (scrollHeight - scrollTop - clientHeight <= 350) {
+                onLoadMoreRef.current();
+            }
+        };
+
+        scrollContainer.addEventListener("scroll", handleScroll, { passive: true });
+        return () => scrollContainer.removeEventListener("scroll", handleScroll);
+    }, [enabled, hasMore, isLoading, root]);
+
+    return callbackRef;
 }

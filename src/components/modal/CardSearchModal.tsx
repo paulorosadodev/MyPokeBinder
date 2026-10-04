@@ -40,6 +40,39 @@ interface CardSearchModalProps {
 }
 
 const clientSearchCache = new Map<string, SearchResponse>();
+const clientOwnershipCache = new Map<string, { counts: CopyCounts; copyIds: Record<string, string[]> }>();
+
+function cacheOwnershipData(ids: string[], counts?: CopyCounts, copyIds?: Record<string, string[]>) {
+    for (const id of ids) {
+        const prefix = `${id}_`;
+        const cardCounts: CopyCounts = {};
+        const cardCopyIds: Record<string, string[]> = {};
+        for (const [key, val] of Object.entries(counts ?? {})) {
+            if (key.startsWith(prefix)) cardCounts[key] = val;
+        }
+        for (const [key, list] of Object.entries(copyIds ?? {})) {
+            if (key.startsWith(prefix)) cardCopyIds[key] = list;
+        }
+        clientOwnershipCache.set(id, { counts: cardCounts, copyIds: cardCopyIds });
+    }
+}
+
+function getCachedOwnership(ids: string[]) {
+    const knownIds: string[] = [];
+    const counts: CopyCounts = {};
+    const copyIds: Record<string, string[]> = {};
+    for (const id of ids) {
+        const entry = clientOwnershipCache.get(id);
+        if (entry) {
+            knownIds.push(id);
+            Object.assign(counts, entry.counts);
+            for (const [key, list] of Object.entries(entry.copyIds)) {
+                copyIds[key] = [...(copyIds[key] ?? []), ...list];
+            }
+        }
+    }
+    return { knownIds, counts, copyIds };
+}
 
 const CARD_ADDED_TOAST_ID = "card-search-carta-adicionada";
 const OWNERSHIP_CHUNK_SIZE = 100;
@@ -179,6 +212,24 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
             setIsInitialOwnershipLoading(false);
             setInitialLoading(false);
             setPendingArtworkIds(new Set());
+            setCards([]);
+            setPage(1);
+            setHasMore(false);
+            setError(null);
+            setSearchTerm("");
+            setRarityFilter("all");
+            setExpansionFilter(ALL_EXPANSIONS_FILTER);
+            setArtistFilter(ALL_ARTISTS_FILTER);
+            setShowFilters(false);
+            sessionCountsRef.current = {};
+            setSessionCounts({});
+            setOwnedCounts({});
+            setOwnedCardIds(new Set());
+            copyIdsMapRef.current = {};
+            setCopyIdsMap({});
+            setDeleteModalTarget(null);
+            setIsDeleting(false);
+            fetchedOwnershipIdsRef.current = new Set();
             return;
         }
 
@@ -242,6 +293,22 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
                     setPage(1);
                     setError(null);
                     setInitialLoading(false);
+
+                    const { knownIds, counts: cachedCounts, copyIds: cachedCopyIds } = getCachedOwnership(cachedCards.map((c) => c.id));
+                    if (knownIds.length > 0) {
+                        setOwnedCardIds((prev) => new Set([...prev, ...knownIds]));
+                        setOwnedCounts((prev) => mergeCopyCounts(prev, cachedCounts));
+                        setCopyIdsMap((prev) => {
+                            const merged = { ...prev };
+                            for (const [k, ids] of Object.entries(cachedCopyIds)) {
+                                merged[k] = Array.from(new Set([...(merged[k] ?? []), ...ids]));
+                            }
+                            copyIdsMapRef.current = merged;
+                            return merged;
+                        });
+                        for (const id of knownIds) fetchedOwnershipIdsRef.current.add(id);
+                    }
+
                     const hasPendingOwnership = cachedCards.some((c) => !fetchedOwnershipIdsRef.current.has(c.id));
                     if (hasPendingOwnership) {
                         setIsInitialOwnershipLoading(true);
@@ -299,7 +366,6 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
 
     useEffect(() => {
         if (!isOpen || cards.length === 0) {
-            setIsInitialOwnershipLoading(false);
             return;
         }
 
@@ -327,6 +393,7 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
                         const res = await fetch(`/api/cards/ownership?ids=${encodeURIComponent(chunk.join(","))}`);
                         if (!res.ok) continue;
                         const data = (await res.json()) as { counts?: CopyCounts; copyIds?: Record<string, string[]> };
+                        cacheOwnershipData(chunk, data.counts, data.copyIds);
                         Object.assign(collected, data.counts ?? {});
                         if (data.copyIds) {
                             for (const [key, ids] of Object.entries(data.copyIds)) {
@@ -386,27 +453,45 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
                 const cachedCards = cached.cards ?? [];
                 const newIds = cachedCards.map((c) => c.id).filter((id) => !fetchedOwnershipIdsRef.current.has(id));
                 if (newIds.length > 0) {
-                    for (const id of newIds) fetchedOwnershipIdsRef.current.add(id);
-                    try {
-                        const ownRes = await fetch(`/api/cards/ownership?ids=${encodeURIComponent(newIds.join(","))}`);
-                        if (ownRes.ok) {
-                            const ownData = (await ownRes.json()) as { counts?: CopyCounts; copyIds?: Record<string, string[]> };
-                            if (ownData.counts) {
-                                setOwnedCounts((previous) => mergeCopyCounts(previous, ownData.counts ?? {}));
+                    const { knownIds, counts: cachedCounts, copyIds: cachedCopyIds } = getCachedOwnership(newIds);
+                    if (knownIds.length > 0) {
+                        setOwnedCounts((prev) => mergeCopyCounts(prev, cachedCounts));
+                        setCopyIdsMap((prev) => {
+                            const merged = { ...prev };
+                            for (const [k, ids] of Object.entries(cachedCopyIds)) {
+                                merged[k] = Array.from(new Set([...(merged[k] ?? []), ...ids]));
                             }
-                            if (ownData.copyIds) {
-                                setCopyIdsMap((previous) => {
-                                    const merged = { ...previous };
-                                    for (const [key, ids] of Object.entries(ownData.copyIds ?? {})) {
-                                        merged[key] = Array.from(new Set([...(merged[key] ?? []), ...ids]));
-                                    }
-                                    copyIdsMapRef.current = merged;
-                                    return merged;
-                                });
+                            copyIdsMapRef.current = merged;
+                            return merged;
+                        });
+                        setOwnedCardIds((prev) => new Set([...prev, ...knownIds]));
+                        for (const id of knownIds) fetchedOwnershipIdsRef.current.add(id);
+                    }
+                    const missingIds = newIds.filter((id) => !fetchedOwnershipIdsRef.current.has(id));
+                    if (missingIds.length > 0) {
+                        for (const id of missingIds) fetchedOwnershipIdsRef.current.add(id);
+                        try {
+                            const ownRes = await fetch(`/api/cards/ownership?ids=${encodeURIComponent(missingIds.join(","))}`);
+                            if (ownRes.ok) {
+                                const ownData = (await ownRes.json()) as { counts?: CopyCounts; copyIds?: Record<string, string[]> };
+                                cacheOwnershipData(missingIds, ownData.counts, ownData.copyIds);
+                                if (ownData.counts) {
+                                    setOwnedCounts((previous) => mergeCopyCounts(previous, ownData.counts ?? {}));
+                                }
+                                if (ownData.copyIds) {
+                                    setCopyIdsMap((previous) => {
+                                        const merged = { ...previous };
+                                        for (const [key, ids] of Object.entries(ownData.copyIds ?? {})) {
+                                            merged[key] = Array.from(new Set([...(merged[key] ?? []), ...ids]));
+                                        }
+                                        copyIdsMapRef.current = merged;
+                                        return merged;
+                                    });
+                                }
                             }
-                        }
-                    } catch {}
-                    setOwnedCardIds((previous) => new Set([...previous, ...newIds]));
+                        } catch {}
+                        setOwnedCardIds((previous) => new Set([...previous, ...missingIds]));
+                    }
                 }
                 setCards((prev) => {
                     const existingIds = new Set(prev.map((c) => c.id));
@@ -438,6 +523,7 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
                     const ownRes = await fetch(`/api/cards/ownership?ids=${encodeURIComponent(incomingIds.join(","))}`);
                     if (ownRes.ok) {
                         const ownData = (await ownRes.json()) as { counts?: CopyCounts; copyIds?: Record<string, string[]> };
+                        cacheOwnershipData(incomingIds, ownData.counts, ownData.copyIds);
                         if (ownData.counts) {
                             setOwnedCounts((previous) => mergeCopyCounts(previous, ownData.counts ?? {}));
                         }
@@ -555,6 +641,14 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
             copyIdsMapRef.current = nextCopyIds;
             setCopyIdsMap(nextCopyIds);
 
+            const existingCache = clientOwnershipCache.get(card.id) ?? { counts: {}, copyIds: {} };
+            const nextCacheCounts = registerCopy(existingCache.counts, card.id, groupLang, groupVariant, groupCondition);
+            const nextCacheCopyIds = {
+                ...existingCache.copyIds,
+                [groupKey]: [data.card.id, ...(existingCache.copyIds[groupKey] ?? [])],
+            };
+            clientOwnershipCache.set(card.id, { counts: nextCacheCounts, copyIds: nextCacheCopyIds });
+
             onCardAdded(data.card);
             playCardDropSound(getRarityImpactTier(card.rarity, card.name));
             triggerAddConfirmation(card.id);
@@ -625,6 +719,16 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
                 setSessionCounts(nextSession);
             } else {
                 setOwnedCounts((previous) => unregisterCopy(previous, card.id, groupLang, groupVariant, groupCondition));
+            }
+
+            const existingCache = clientOwnershipCache.get(card.id);
+            if (existingCache) {
+                const nextCacheCounts = unregisterCopy(existingCache.counts, card.id, groupLang, groupVariant, groupCondition);
+                const nextCacheCopyIds = {
+                    ...existingCache.copyIds,
+                    [groupKey]: (existingCache.copyIds[groupKey] ?? []).filter((id) => id !== copyId),
+                };
+                clientOwnershipCache.set(card.id, { counts: nextCacheCounts, copyIds: nextCacheCopyIds });
             }
 
             onCardRemoved?.(copyId);
@@ -807,13 +911,13 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
                                                 data-missing={isMissing ? "true" : undefined}
                                                 aria-label={ownershipLabel ? `${card.name} (${selectionLabel}) — ${ownershipLabel}` : `Adicionar ${card.name} (${selectionLabel}) à Coleção`}
                                                 title={ownershipLabel ? `${card.name} (${selectionLabel}) — ${ownershipLabel}` : `Adicionar ${card.name} (${selectionLabel}) à Coleção`}
-                                                className={`group relative isolate block aspect-[8/11] w-full text-left transition-opacity duration-200 ${isSubmittingThis ? "cursor-wait opacity-60" : ""} ${isMissing && !isSubmittingThis ? "opacity-60 saturate-50 hover:opacity-90" : ""}`}
+                                                className={`group relative isolate block aspect-[8/11] w-full text-left transition-opacity duration-200 ${isSubmittingThis ? "cursor-default opacity-60" : ""} ${isMissing && !isSubmittingThis ? "opacity-60 saturate-50 hover:opacity-90" : ""}`}
                                             >
                                                 <span className={`block h-full w-full ${appear.className}`} style={appear.style}>
                                                     <CardArtwork src={imageSrc} alt="" sizes="(max-width: 768px) 50vw, 200px" priority={index < 8} shineMode={isSubmittingThis ? "none" : shineMode} elementTypes={card.types} maxTilt={0} maxMove={0} scale={1} transitionDuration={0} imageClassName="pointer-events-none object-contain" onImageLoaded={() => handleInitialArtworkLoaded(card.id)}>
                                                         {comboCount > 1 && !isSubmittingThis ? <CardBadgeStack count={comboCount} includeCondition={false} includeLanguage={false} countDataAttribute="matching" /> : null}
                                                         {!isSubmittingThis && !isAddingConfirmed && comboCount === 0 ? (
-                                                            <button type="button" disabled={isSubmittingThis} onClick={() => handleAddCard(card)} aria-label={`Adicionar ${card.name} (${selectionLabel}) à Coleção`} className="absolute inset-0 z-30 flex cursor-pointer flex-col items-center justify-center rounded-[inherit] bg-black/60 text-white opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-visible:opacity-100 disabled:cursor-wait disabled:opacity-60">
+                                                            <button type="button" disabled={isSubmittingThis} onClick={() => handleAddCard(card)} aria-label={`Adicionar ${card.name} (${selectionLabel}) à Coleção`} className="absolute inset-0 z-30 flex cursor-pointer flex-col items-center justify-center rounded-[inherit] bg-black/60 text-white opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-visible:opacity-100 disabled:cursor-default disabled:opacity-60">
                                                                 <span className="flex h-12 w-12 scale-90 items-center justify-center rounded-full border border-white/40 bg-poke-blue shadow-lg shadow-poke-blue/40 transition-transform duration-200 ease-out group-hover:scale-100 group-focus-visible:scale-100">
                                                                     <Plus size={22} strokeWidth={2.5} />
                                                                 </span>
@@ -833,7 +937,7 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
                                                                             }}
                                                                             aria-label={`Excluir ${card.name} (${selectionLabel}) da coleção`}
                                                                             title={`Excluir ${card.name} (${selectionLabel}) da coleção`}
-                                                                            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-red-500/40 bg-red-500/20 text-red-400 transition-all hover:border-red-500/60 hover:bg-red-500 hover:text-white active:scale-95 disabled:cursor-wait disabled:opacity-50"
+                                                                            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-red-500/40 bg-red-500/20 text-red-400 transition-all hover:border-red-500/60 hover:bg-red-500 hover:text-white active:scale-95 disabled:cursor-default disabled:opacity-50"
                                                                         >
                                                                             <Trash2 size={16} />
                                                                         </button>
@@ -847,7 +951,7 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
                                                                             }}
                                                                             aria-label={`Diminuir quantidade de ${card.name} (${selectionLabel}) na Coleção — ${ownershipLabel}`}
                                                                             title={`Remover 1 exemplar de ${card.name} (${selectionLabel})`}
-                                                                            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/10 bg-white/10 text-white transition-all hover:bg-white/20 active:scale-95 disabled:cursor-wait disabled:opacity-50"
+                                                                            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/10 bg-white/10 text-white transition-all hover:bg-white/20 active:scale-95 disabled:cursor-default disabled:opacity-50"
                                                                         >
                                                                             <Minus size={16} />
                                                                         </button>
@@ -862,7 +966,7 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
                                                                         }}
                                                                         aria-label={`Adicionar mais 1 cópia de ${card.name} (${selectionLabel}) à Coleção — ${ownershipLabel}`}
                                                                         title={`Adicionar mais 1 cópia idêntica de ${card.name} (${selectionLabel}) à Coleção`}
-                                                                        className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/30 bg-poke-blue text-white shadow-md shadow-poke-blue/30 transition-all hover:brightness-110 active:scale-95 disabled:cursor-wait disabled:opacity-50"
+                                                                        className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/30 bg-poke-blue text-white shadow-md shadow-poke-blue/30 transition-all hover:brightness-110 active:scale-95 disabled:cursor-default disabled:opacity-50"
                                                                     >
                                                                         <Plus size={16} strokeWidth={2.5} />
                                                                     </button>

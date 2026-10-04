@@ -21,6 +21,22 @@ describe("Card Allocation & Hybrid Public Profile", () => {
         expect(matchesCardSearch(trainerCard, "025")).toBe(false);
     });
 
+    it("should match compound name and localId in matchesCardSearch", () => {
+        const chespinPromo = {
+            card_name: "Chespin",
+            card_set_name: "XY Black Star Promos",
+            pokemon_dex_id: 650,
+            tcgdex_card_id: "xyp-XY01",
+            card_artist: "5ban Graphics",
+        };
+
+        expect(matchesCardSearch(chespinPromo, "chespin xy01")).toBe(true);
+        expect(matchesCardSearch(chespinPromo, "chespin xy1")).toBe(true);
+        expect(matchesCardSearch(chespinPromo, "chespin xy-01")).toBe(true);
+        expect(matchesCardSearch(chespinPromo, "chespin xy 01")).toBe(true);
+        expect(matchesCardSearch(chespinPromo, "froakie xy01")).toBe(false);
+    });
+
     it("should build hybrid profile payload containing featured binder and remaining binders", () => {
         const sampleBinders: Binder[] = [
             {

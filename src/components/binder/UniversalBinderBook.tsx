@@ -11,6 +11,8 @@ import { getCoverTheme } from "@/lib/binder/themes";
 import { getBinderSlotPageCount, getBinderTrailingSlotPage } from "@/lib/binder/pageCapacity";
 import { getUniversalPageForPhysical, getUniversalPhysicalForPage, isUniversalAlreadyOnTarget, planUniversalPageNavigation } from "@/lib/binder/universalBookNavigation";
 import type { AvailableCounts } from "@/lib/binder/availableCounts";
+import { useImagePreloader, preloadImages } from "@/lib/hooks/useImagePreloader";
+import { formatTcgdexImageUrl } from "@/lib/pokemon/tcgdex";
 import { UniversalBinderSlot } from "./UniversalBinderSlot";
 
 export interface UniversalBinderNavigationHandle {
@@ -174,6 +176,16 @@ function GenericMobileBook({ binder, slotsMap, availableCounts, currentPage, hig
     useEffect(() => {
         if (currentPage !== displayPage && !busy) navigate(currentPage);
     }, [busy, currentPage, displayPage, navigate]);
+
+    useEffect(() => {
+        const currentUrls = pageSlots.map((slot) => (slot.card?.card_image_url ? formatTcgdexImageUrl(slot.card.card_image_url) : null)).filter((url): url is string => Boolean(url));
+        if (currentUrls.length > 0) preloadImages(currentUrls);
+        const prevPage = Math.max(1, displayPage - 1);
+        const nextPage = Math.min(slotPageCount, displayPage + 1);
+        const adjacentSlots = [...getPageSlots(binder, slotsMap, prevPage), ...getPageSlots(binder, slotsMap, nextPage)];
+        const adjacentUrls = adjacentSlots.map((slot) => (slot.card?.card_image_url ? formatTcgdexImageUrl(slot.card.card_image_url) : null)).filter((url): url is string => Boolean(url));
+        if (adjacentUrls.length > 0) preloadImages(adjacentUrls);
+    }, [binder, displayPage, pageSlots, slotPageCount, slotsMap]);
 
     return (
         <div
@@ -412,11 +424,34 @@ export const UniversalBinderBook = forwardRef<UniversalBinderNavigationHandle, U
         handleCoverClick();
     }, [handleCoverClick, hasOpened, isBusy, isMobile]);
 
+    const initialPageSlots = useMemo(() => {
+        const targetPage = entryTargetPage || 1;
+        return getPageSlots(binder, slotsMap, targetPage);
+    }, [binder, entryTargetPage, slotsMap]);
+
+    const initialSpreadImages = useMemo(() => {
+        return initialPageSlots.map((slot) => (slot.card?.card_image_url ? formatTcgdexImageUrl(slot.card.card_image_url) : null)).filter((url): url is string => Boolean(url));
+    }, [initialPageSlots]);
+
+    const { allLoaded: initialImagesReady } = useImagePreloader(initialSpreadImages, {
+        enabled: !hasOpened && !isMobile && engineMounted && engineReady,
+        timeoutMs: 2500,
+    });
+
     useEffect(() => {
         if (isMobile || !engineReady || !engineMounted || hasOpened) return;
-        const timer = window.setTimeout(openBinder, 820);
+        if (!initialImagesReady) return;
+        const timer = window.setTimeout(openBinder, 350);
         return () => window.clearTimeout(timer);
-    }, [engineMounted, engineReady, hasOpened, isMobile, openBinder]);
+    }, [engineMounted, engineReady, hasOpened, initialImagesReady, isMobile, openBinder]);
+
+    useEffect(() => {
+        const prevPage = Math.max(1, currentPage - 1);
+        const nextPage = Math.min(slotPageCount, currentPage + 1);
+        const adjacentSlots = [...getPageSlots(binder, slotsMap, prevPage), ...getPageSlots(binder, slotsMap, nextPage)];
+        const adjacentUrls = adjacentSlots.map((slot) => (slot.card?.card_image_url ? formatTcgdexImageUrl(slot.card.card_image_url) : null)).filter((url): url is string => Boolean(url));
+        if (adjacentUrls.length > 0) preloadImages(adjacentUrls);
+    }, [binder, currentPage, slotPageCount, slotsMap]);
 
     useEffect(() => {
         if (isMobile || !hasOpened || isBusy || hasHandledEntryTargetRef.current) return;

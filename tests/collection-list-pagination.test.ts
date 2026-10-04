@@ -191,6 +191,28 @@ describe("filterAndSortCollectionGroups", () => {
             sortDirection: "asc",
         });
         expect(exactZeroThree.map((g) => g.card.card_name)).toEqual(["Venusaur"]);
+
+        const anniversaryAndBoosterCollection: CollectionCardGroup[] = groupCollectionCards([makeCard({ id: "u1", tcgdex_card_id: "30th-072", card_name: "Unown" }), makeCard({ id: "bg1", tcgdex_card_id: "bw10-92", card_name: "G Booster" })]);
+
+        const unownSlashSearch = filterAndSortCollectionGroups(anniversaryAndBoosterCollection, {
+            searchTerm: "Unown 072/128",
+            statusFilter: "all",
+            languageFilter: "all",
+            rarityFilter: "all",
+            sortField: "dex",
+            sortDirection: "asc",
+        });
+        expect(unownSlashSearch.map((g) => g.card.card_name)).toEqual(["Unown"]);
+
+        const boosterSlashSearch = filterAndSortCollectionGroups(anniversaryAndBoosterCollection, {
+            searchTerm: "Booster G 92/101",
+            statusFilter: "all",
+            languageFilter: "all",
+            rarityFilter: "all",
+            sortField: "dex",
+            sortDirection: "asc",
+        });
+        expect(boosterSlashSearch.map((g) => g.card.card_name)).toEqual(["G Booster"]);
     });
 
     it("filters by binder status, language and rarity", () => {
@@ -484,6 +506,11 @@ describe("buildExpansionFilterOptions + filterCatalogCards", () => {
         expect(matchesCardNumber("58", "8/45")).toBe(false);
         expect(matchesCardNumber("80", "8/45")).toBe(false);
         expect(matchesCardNumber("88", "8/45")).toBe(false);
+        expect(matchesCardNumber("XY01", "xy01")).toBe(true);
+        expect(matchesCardNumber("XY01", "xy1")).toBe(true);
+        expect(matchesCardNumber("XY01", "xy-01")).toBe(true);
+        expect(matchesCardNumber("XY01", "(xy01)")).toBe(true);
+        expect(matchesCardNumber("XY01", "xy02")).toBe(false);
     });
 });
 

@@ -9,6 +9,7 @@ import { describeAvailableCards, getSlotAvailableCount, type AvailableCounts } f
 import { SlotAvailableBadge } from "@/components/binder/SlotAvailableBadge";
 import { Card3DTilt } from "@/components/ui/Card3DTilt";
 import { CardImpactBurst } from "@/components/binder/CardImpactBurst";
+import { CardImageSkeleton, isCardImageCached, markCardImageCached } from "@/components/ui/CardImage";
 import { Plus } from "lucide-react";
 import { resolveCardShine } from "@/lib/pokemon/variant";
 import { resolveCardElementTypes } from "@/lib/pokemon/cardTypes";
@@ -98,17 +99,29 @@ export function UniversalBinderSlot({ slot, card, availableCounts = {}, isHighli
         }
     };
 
-    const [imageLoaded, setImageLoaded] = useState(false);
+    const cardImageUrl = card?.card_image_url ? formatTcgdexImageUrl(card.card_image_url) : "";
+    const [imageLoaded, setImageLoaded] = useState(() => (cardImageUrl ? isCardImageCached(cardImageUrl) : false));
 
     const handleImageRef = useCallback((node: HTMLImageElement | null) => {
         if (node?.complete && node.naturalWidth > 0) {
+            if (node.currentSrc || node.src) {
+                markCardImageCached(node.currentSrc || node.src);
+            }
             setImageLoaded(true);
         }
     }, []);
 
     useEffect(() => {
-        setImageLoaded(false);
-    }, [card?.id]);
+        if (!cardImageUrl) {
+            setImageLoaded(false);
+            return;
+        }
+        if (isCardImageCached(cardImageUrl)) {
+            setImageLoaded(true);
+        } else {
+            setImageLoaded(false);
+        }
+    }, [cardImageUrl]);
 
     if (isFilled && card) {
         const pokemonInfo = targetDex ? POKEMON_MAP.get(targetDex) : null;
@@ -132,7 +145,24 @@ export function UniversalBinderSlot({ slot, card, availableCounts = {}, isHighli
                                 aria-label={`${card.card_name}${targetDex ? `, #${targetDex}` : ""}`}
                                 className={`relative flex h-full min-h-0 w-full cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-poke-blue ${BINDER_CARD_CLIP_CLASS}`}
                             >
-                                {mountImage ? <Image ref={handleImageRef} src={formatTcgdexImageUrl(card.card_image_url)} alt={card.card_name} fill sizes="(max-width: 768px) 30vw, 15vw" className={BINDER_CARD_IMAGE_CLASS} unoptimized priority={priority} onLoad={() => setImageLoaded(true)} onError={() => setImageLoaded(true)} /> : null}
+                                {!imageLoaded ? <CardImageSkeleton className="absolute inset-0 z-0 h-full w-full rounded-[inherit]" /> : null}
+                                {mountImage ? (
+                                    <Image
+                                        ref={handleImageRef}
+                                        src={cardImageUrl}
+                                        alt={card.card_name}
+                                        fill
+                                        sizes="(max-width: 768px) 30vw, 15vw"
+                                        className={`${BINDER_CARD_IMAGE_CLASS} z-10 transition-opacity duration-300 ${imageLoaded ? "opacity-100" : "opacity-0"}`}
+                                        unoptimized
+                                        priority={priority}
+                                        onLoad={() => {
+                                            markCardImageCached(cardImageUrl);
+                                            setImageLoaded(true);
+                                        }}
+                                        onError={() => setImageLoaded(true)}
+                                    />
+                                ) : null}
                             </button>
                         </Card3DTilt>
                     </div>

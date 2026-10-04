@@ -64,4 +64,50 @@ describe("Regressões do fluxo de seleção e catálogo do Binder", () => {
         expect(catalog).toContain("if (page === 1) {\n            setIsInitialOwnershipLoading(true);\n        }");
         expect(catalog).toContain("const uniqueIncoming = (data.cards ?? []).filter((c) => !existingIds.has(c.id));");
     });
+
+    it("destaca a carta selecionada e atenua as demais durante o carregamento de alocação no binder", () => {
+        const selector = readSource("../src/components/modal/BinderSlotSelectModal.tsx");
+
+        expect(selector).toContain("isPendingThisCard = pendingActionId === group.activeCard.id");
+        expect(selector).toContain("isOtherActionPending = (isActionPending && !isPendingThisCard) || (isNavigating && !isEditingThisCard)");
+        expect(selector).toContain('isPendingThisCard ? "z-10 ring-2 ring-poke-blue ring-offset-2 ring-offset-slate-900 shadow-xl shadow-poke-blue/25 scale-[1.02]"');
+        expect(selector).toContain('<Loader2 size={24} className="animate-spin text-poke-blue" />');
+        expect(selector).toContain('isPendingThisCard ? (isCurrent ? "Removendo..." : "Alocando...")');
+        expect(selector).toContain('isOtherActionPending ? "cursor-not-allowed opacity-40 transition-opacity duration-200"');
+    });
+
+    it("utiliza CardImageSkeleton e fade-in no slot do binder enquanto a imagem carrega", () => {
+        const slot = readSource("../src/components/binder/UniversalBinderSlot.tsx");
+
+        expect(slot).toContain("CardImageSkeleton");
+        expect(slot).toContain('!imageLoaded ? <CardImageSkeleton className="absolute inset-0 z-0 h-full w-full rounded-[inherit]" /> : null');
+        expect(slot).toContain('imageLoaded ? "opacity-100" : "opacity-0"');
+        expect(slot).toContain("markCardImageCached(cardImageUrl)");
+    });
+
+    it("aguarda as imagens da página inicial estarem prontas antes de abrir a capa do binder", () => {
+        const book = readSource("../src/components/binder/UniversalBinderBook.tsx");
+
+        expect(book).toContain("initialImagesReady");
+        expect(book).toContain("useImagePreloader(initialSpreadImages");
+        expect(book).toContain("if (!initialImagesReady) return;");
+    });
+
+    it("restaura a posse ao reabrir o catálogo sem exibir cartas faltantes como possuídas", () => {
+        const catalog = readSource("../src/components/modal/CardSearchModal.tsx");
+
+        expect(catalog).toContain("clientOwnershipCache");
+        expect(catalog).toContain("getCachedOwnership");
+        expect(catalog).toContain("cacheOwnershipData");
+        expect(catalog).toContain("const { knownIds, counts: cachedCounts, copyIds: cachedCopyIds } = getCachedOwnership");
+    });
+
+    it("conecta o sentinel da rolagem infinita de forma reativa e monitora a rolagem no container raiz", () => {
+        const scrollHook = readSource("../src/lib/hooks/useInfiniteScroll.ts");
+
+        expect(scrollHook).toContain("setSentinelNode");
+        expect(scrollHook).toContain("sentinelNode");
+        expect(scrollHook).toContain("handleScroll");
+        expect(scrollHook).toContain('scrollContainer.addEventListener("scroll", handleScroll');
+    });
 });

@@ -191,6 +191,7 @@ describe("Profile API and Rarity Sorting Logic", () => {
         expect(getRarityImpactTier("Hyper Rare")).toBe(3);
         expect(getRarityImpactTier("Secret Rare")).toBe(3);
         expect(getRarityImpactTier("Ultra Rare")).toBe(2);
+        expect(getRarityImpactTier("LEGEND")).toBe(2);
         expect(getRarityImpactTier("Common")).toBe(0);
         expect(getRarityImpactTier("Uncommon")).toBe(0);
         expect(getRarityImpactTier("Double Rare")).toBe(1);
