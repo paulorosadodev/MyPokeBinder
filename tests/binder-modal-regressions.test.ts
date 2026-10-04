@@ -56,4 +56,12 @@ describe("Regressões do fluxo de seleção e catálogo do Binder", () => {
         expect(catalog).toContain("onImageLoaded");
         expect(artwork).toContain("onImageLoaded?: () => void");
     });
+
+    it("não ativa o esqueleto de carregamento inicial durante a paginação de mais cartas", () => {
+        const catalog = readSource("../src/components/modal/CardSearchModal.tsx");
+
+        expect(catalog).toContain("!loadingMore && page === 1 && (initialLoading || isInitialOwnershipLoading || pendingArtworkIds.size > 0)");
+        expect(catalog).toContain("if (page === 1) {\n            setIsInitialOwnershipLoading(true);\n        }");
+        expect(catalog).toContain("const uniqueIncoming = (data.cards ?? []).filter((c) => !existingIds.has(c.id));");
+    });
 });

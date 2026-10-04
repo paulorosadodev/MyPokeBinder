@@ -139,7 +139,10 @@ describe("Binder Slot Selection and Removal Logic", () => {
         expect(viewerSource).toContain("onCardAdded={handleCatalogCardAdded}");
         expect(viewerSource).not.toContain("onCardAdded={() => undefined}");
         expect(viewerSource).toContain("isCollectionCardsCacheKey(key)");
-        expect(collectionPageSource).toContain("scheduleCollectionRevalidation");
+        expect(viewerSource).toContain("handleReturnToSlotModal()");
+        const collectionHandler = collectionPageSource.slice(collectionPageSource.indexOf("const handleCardAdded"), collectionPageSource.indexOf("const prefetchCardDetails"));
+        expect(collectionHandler).toContain("scheduleCollectionRevalidation()");
+        expect(collectionHandler).not.toContain("setIsSearchModalOpen(false)");
     });
 
     it("should correctly identify current active card in binder", () => {

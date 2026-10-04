@@ -117,11 +117,6 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
     }, []);
     const fetchedOwnershipIdsRef = useRef<Set<string>>(new Set());
     const isAnySubmitting = submittingIds.length > 0;
-    const setInitialCards = useCallback((nextCards: SearchCardItem[]) => {
-        setCards(nextCards);
-        const visibleSlice = nextCards.slice(0, Math.min(nextCards.length, 6));
-        setPendingArtworkIds(new Set(visibleSlice.map((card) => card.id)));
-    }, []);
     const handleInitialArtworkLoaded = useCallback((cardId: string) => {
         setPendingArtworkIds((previous) => {
             if (!previous.has(cardId)) return previous;
@@ -130,6 +125,27 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
             return next;
         });
     }, []);
+    const setInitialCards = useCallback(
+        (nextCards: SearchCardItem[]) => {
+            setCards(nextCards);
+            const visibleSlice = nextCards.slice(0, Math.min(nextCards.length, 6));
+            setPendingArtworkIds(new Set(visibleSlice.map((card) => card.id)));
+            if (scrollRoot) scrollRoot.scrollTop = 0;
+            if (typeof window !== "undefined") {
+                for (const card of visibleSlice) {
+                    if (!card.image) {
+                        handleInitialArtworkLoaded(card.id);
+                        continue;
+                    }
+                    const img = new window.Image();
+                    img.src = formatTcgdexImageUrl(card.image, "low");
+                    img.onload = () => handleInitialArtworkLoaded(card.id);
+                    img.onerror = () => handleInitialArtworkLoaded(card.id);
+                }
+            }
+        },
+        [scrollRoot, handleInitialArtworkLoaded],
+    );
 
     useEffect(() => {
         if (pendingArtworkIds.size === 0) return;
@@ -296,7 +312,9 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
 
         let isMounted = true;
         let didComplete = false;
-        setIsInitialOwnershipLoading(true);
+        if (page === 1) {
+            setIsInitialOwnershipLoading(true);
+        }
 
         const loadOwnership = async () => {
             try {
@@ -348,7 +366,7 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
         return () => {
             isMounted = false;
         };
-    }, [isOpen, cards]);
+    }, [isOpen, cards, page]);
 
     const loadNextPage = useCallback(async () => {
         if (loadingMore || initialLoading || !hasMore) return;
@@ -365,7 +383,36 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
             const cached = clientSearchCache.get(cacheKey);
 
             if (cached) {
-                setCards((prev) => [...prev, ...(cached.cards ?? [])]);
+                const cachedCards = cached.cards ?? [];
+                const newIds = cachedCards.map((c) => c.id).filter((id) => !fetchedOwnershipIdsRef.current.has(id));
+                if (newIds.length > 0) {
+                    for (const id of newIds) fetchedOwnershipIdsRef.current.add(id);
+                    try {
+                        const ownRes = await fetch(`/api/cards/ownership?ids=${encodeURIComponent(newIds.join(","))}`);
+                        if (ownRes.ok) {
+                            const ownData = (await ownRes.json()) as { counts?: CopyCounts; copyIds?: Record<string, string[]> };
+                            if (ownData.counts) {
+                                setOwnedCounts((previous) => mergeCopyCounts(previous, ownData.counts ?? {}));
+                            }
+                            if (ownData.copyIds) {
+                                setCopyIdsMap((previous) => {
+                                    const merged = { ...previous };
+                                    for (const [key, ids] of Object.entries(ownData.copyIds ?? {})) {
+                                        merged[key] = Array.from(new Set([...(merged[key] ?? []), ...ids]));
+                                    }
+                                    copyIdsMapRef.current = merged;
+                                    return merged;
+                                });
+                            }
+                        }
+                    } catch {}
+                    setOwnedCardIds((previous) => new Set([...previous, ...newIds]));
+                }
+                setCards((prev) => {
+                    const existingIds = new Set(prev.map((c) => c.id));
+                    const uniqueIncoming = (cached.cards ?? []).filter((c) => !existingIds.has(c.id));
+                    return [...prev, ...uniqueIncoming];
+                });
                 setPage(nextPage);
                 setHasMore(cached.hasMore ?? false);
                 setLoadingMore(false);
@@ -383,7 +430,37 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
 
             clientSearchCache.set(cacheKey, data);
 
-            setCards((prev) => [...prev, ...(data.cards ?? [])]);
+            const incomingCards = data.cards ?? [];
+            const incomingIds = incomingCards.map((c) => c.id).filter((id) => !fetchedOwnershipIdsRef.current.has(id));
+            if (incomingIds.length > 0) {
+                for (const id of incomingIds) fetchedOwnershipIdsRef.current.add(id);
+                try {
+                    const ownRes = await fetch(`/api/cards/ownership?ids=${encodeURIComponent(incomingIds.join(","))}`);
+                    if (ownRes.ok) {
+                        const ownData = (await ownRes.json()) as { counts?: CopyCounts; copyIds?: Record<string, string[]> };
+                        if (ownData.counts) {
+                            setOwnedCounts((previous) => mergeCopyCounts(previous, ownData.counts ?? {}));
+                        }
+                        if (ownData.copyIds) {
+                            setCopyIdsMap((previous) => {
+                                const merged = { ...previous };
+                                for (const [key, ids] of Object.entries(ownData.copyIds ?? {})) {
+                                    merged[key] = Array.from(new Set([...(merged[key] ?? []), ...ids]));
+                                }
+                                copyIdsMapRef.current = merged;
+                                return merged;
+                            });
+                        }
+                    }
+                } catch {}
+                setOwnedCardIds((previous) => new Set([...previous, ...incomingIds]));
+            }
+
+            setCards((prev) => {
+                const existingIds = new Set(prev.map((c) => c.id));
+                const uniqueIncoming = (data.cards ?? []).filter((c) => !existingIds.has(c.id));
+                return [...prev, ...uniqueIncoming];
+            });
             setPage(nextPage);
             setHasMore(data.hasMore ?? false);
         } catch (err: unknown) {
@@ -412,7 +489,7 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
     const artistOptions = useMemo(() => buildArtistFilterOptions(cards.map((card) => card.artist)), [cards]);
     const hasActiveCatalogFilters = Boolean(searchTerm.trim()) || rarityFilter !== "all" || expansionFilter !== ALL_EXPANSIONS_FILTER || artistFilter !== ALL_ARTISTS_FILTER;
     const totalCopiesByCard = useMemo(() => mergeCopyCounts(ownedCounts, sessionCounts), [ownedCounts, sessionCounts]);
-    const isCatalogGridLoading = initialLoading || isInitialOwnershipLoading || pendingArtworkIds.size > 0;
+    const isCatalogGridLoading = !loadingMore && page === 1 && (initialLoading || isInitialOwnershipLoading || pendingArtworkIds.size > 0);
 
     useEffect(() => {
         if (!isOpen || initialLoading || loadingMore || !hasMore || !hasActiveCatalogFilters) return;
@@ -675,7 +752,7 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
                 {error && <div className="mx-4 sm:mx-6 mt-2.5 sm:mt-3 shrink-0 rounded-lg border border-red-500/30 bg-red-500/15 p-2.5 sm:p-3 text-xs text-red-200">{error}</div>}
 
                 <div ref={setScrollRoot} className="flex-1 overflow-y-auto p-3 sm:p-6">
-                    {cards.length === 0 && initialLoading ? (
+                    {isCatalogGridLoading || (cards.length === 0 && initialLoading) ? (
                         <CardGridSkeleton count={10} gridClassName="grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5" />
                     ) : cards.length === 0 ? (
                         !pokemonName && !searchTerm.trim() ? (
@@ -813,11 +890,6 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
                                         );
                                     })}
                                 </div>
-                                {isCatalogGridLoading && cards.length > 0 ? (
-                                    <div className="absolute inset-0 z-30 bg-[#12151d]">
-                                        <CardGridSkeleton count={Math.min(filteredCards.length || 10, 10)} gridClassName="grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5" />
-                                    </div>
-                                ) : null}
                             </div>
 
                             <div ref={sentinelRef} className="flex min-h-8 items-center justify-center">

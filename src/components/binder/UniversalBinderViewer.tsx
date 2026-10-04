@@ -273,6 +273,18 @@ export function UniversalBinderViewer({ binder, initialSlots, initialAvailableCo
         }
     }, []);
 
+    const handleReturnToSlotModal = useCallback(() => {
+        const slotId = catalogSlotIdRef.current;
+        setIsCatalogModalOpen(false);
+        const slot = slots.find((item) => item.id === slotId);
+        if (!slot) {
+            setSelectedSlot(null);
+            return;
+        }
+        setSelectedSlot(slot);
+        setIsSlotModalOpen(true);
+    }, [slots]);
+
     const handleCatalogCardAdded = useCallback(
         (newCard: UserCard) => {
             for (const key of cache.keys()) {
@@ -284,8 +296,9 @@ export function UniversalBinderViewer({ binder, initialSlots, initialAvailableCo
             if (!newCard.is_in_binder) {
                 void mutateAvailableCounts((current) => ({ availableCounts: shiftAvailableCount(current?.availableCounts ?? {}, newCard.pokemon_dex_id, 1) }), false);
             }
+            handleReturnToSlotModal();
         },
-        [cache, globalMutate, mutateAvailableCounts],
+        [cache, globalMutate, handleReturnToSlotModal, mutateAvailableCounts],
     );
 
     const handleCatalogCardRemoved = useCallback(
@@ -300,18 +313,6 @@ export function UniversalBinderViewer({ binder, initialSlots, initialAvailableCo
         },
         [cache, globalMutate, mutateAvailableCounts],
     );
-
-    const handleReturnToSlotModal = useCallback(() => {
-        const slotId = catalogSlotIdRef.current;
-        setIsCatalogModalOpen(false);
-        const slot = slots.find((item) => item.id === slotId);
-        if (!slot) {
-            setSelectedSlot(null);
-            return;
-        }
-        setSelectedSlot(slot);
-        setIsSlotModalOpen(true);
-    }, [slots]);
 
     const handleSlotNavigate = useCallback(
         (pageNumber: number, slotId: string) => {
