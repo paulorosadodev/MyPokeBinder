@@ -26,6 +26,7 @@ import { resolveCardElementTypes } from "@/lib/pokemon/cardTypes";
 import { ALL_ARTISTS_FILTER, buildArtistFilterOptions, buildCollectionFilterResetKey, matchesCardSearch } from "@/lib/collection/listCards";
 import { useClientPagedWindow } from "@/lib/hooks/useClientPagedWindow";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
+import { useGridColumnCount, getCompleteRowItems } from "@/lib/hooks/useGridColumnCount";
 import { useDismissibleOverlay } from "@/lib/hooks/useDismissibleOverlay";
 import { useOverlayPresence } from "@/lib/hooks/useOverlayPresence";
 import { buildThemeCssVars } from "@/lib/profile/username";
@@ -353,6 +354,8 @@ export function TrainerProfileView({ username, fallbackData, publicGuestTheme }:
     );
 
     const { visibleItems: visiblePickerCards, hasMore: pickerHasMore, loadMore: loadMorePickerCards } = useClientPagedWindow(filteredPickerCards, { resetKey: pickerResetKey });
+    const { columns: pickerColumns, gridRef: pickerGridRef } = useGridColumnCount();
+    const displayedPickerCards = useMemo(() => getCompleteRowItems(visiblePickerCards, pickerColumns, pickerHasMore), [visiblePickerCards, pickerColumns, pickerHasMore]);
     const pickerSentinelRef = useInfiniteScroll({
         hasMore: pickerHasMore,
         onLoadMore: loadMorePickerCards,
@@ -958,8 +961,8 @@ export function TrainerProfileView({ username, fallbackData, publicGuestTheme }:
                                 </div>
                             ) : (
                                 <div className="flex flex-col gap-3">
-                                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5">
-                                        {visiblePickerCards.map((card) => {
+                                    <div ref={pickerGridRef} className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5">
+                                        {displayedPickerCards.map((card) => {
                                             const selectedPosition = draftFavoriteIds.indexOf(card.id);
                                             return <FeaturedPickerCard key={card.id} card={card} selectedPosition={selectedPosition} onToggle={() => toggleFavorite(card.id)} />;
                                         })}

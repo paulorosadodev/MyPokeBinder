@@ -5,6 +5,7 @@ import { Check, CircleOff, Search, X } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { COVER_POKEMON_PAGE_SIZE, filterCoverPokemon, getCoverPokemonPage } from "@/lib/binder/coverPokemon";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
+import { useGridColumnCount, getCompleteRowItems } from "@/lib/hooks/useGridColumnCount";
 import { useDismissibleOverlay } from "@/lib/hooks/useDismissibleOverlay";
 import { useOverlayPresence } from "@/lib/hooks/useOverlayPresence";
 import { getPokemonThemeSelectorSpriteUrl } from "@/lib/pokemon/constants";
@@ -23,6 +24,8 @@ export function CoverPokemonSelector({ value, onChange }: CoverPokemonSelectorPr
     useDismissibleOverlay(isOpen, () => setIsOpen(false));
     const { isPresent, state } = useOverlayPresence(isOpen);
     const { pokemon, hasMore } = useMemo(() => getCoverPokemonPage(query, page, COVER_POKEMON_PAGE_SIZE), [page, query]);
+    const { columns, gridRef } = useGridColumnCount();
+    const displayedPokemon = useMemo(() => getCompleteRowItems(pokemon, columns, hasMore), [pokemon, columns, hasMore]);
     const selectedPokemon = value ? filterCoverPokemon(`#${value}`)[0] : null;
 
     const openSelector = () => {
@@ -116,8 +119,8 @@ export function CoverPokemonSelector({ value, onChange }: CoverPokemonSelectorPr
 
                         <div ref={setScrollRoot} className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-6">
                             {pokemon.length > 0 ? (
-                                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5">
-                                    {pokemon.map((entry) => (
+                                <div ref={gridRef} className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5">
+                                    {displayedPokemon.map((entry) => (
                                         <button
                                             key={entry.dexId}
                                             type="button"

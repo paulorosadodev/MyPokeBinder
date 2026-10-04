@@ -12,6 +12,7 @@ import { CONDITION_SLIDER_OPTIONS, CONDITION_SELECT_OPTIONS } from "@/lib/pokemo
 import { ALL_EXPANSIONS_FILTER, ALL_ARTISTS_FILTER, COLLECTION_PAGE_SIZE, buildExpansionFilterOptions, buildArtistFilterOptions, filterCatalogCards } from "@/lib/collection/listCards";
 import { countCopiesForCombo, mergeCopyCounts, registerCopy, unregisterCopy, buildCopyGroupKey, totalCopies, type CopyCounts } from "@/lib/collection/copyCounts";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
+import { useGridColumnCount, getCompleteRowItems } from "@/lib/hooks/useGridColumnCount";
 import { PokeballLoader } from "@/components/loading/PokeballLoader";
 import { CardGridSkeleton } from "@/components/loading/CardGridSkeleton";
 import { LanguageSlider, type LanguageSliderOption } from "@/components/ui/LanguageSlider";
@@ -570,6 +571,8 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
             }),
         [cards, rarityFilter, expansionFilter, artistFilter, activeDexId],
     );
+    const { columns, gridRef } = useGridColumnCount();
+    const displayedCards = useMemo(() => getCompleteRowItems(filteredCards, columns, hasMore), [filteredCards, columns, hasMore]);
     const expansionOptions = useMemo(() => buildExpansionFilterOptions(cards.map((card) => card.setName)), [cards]);
     const artistOptions = useMemo(() => buildArtistFilterOptions(cards.map((card) => card.artist)), [cards]);
     const hasActiveCatalogFilters = Boolean(searchTerm.trim()) || rarityFilter !== "all" || expansionFilter !== ALL_EXPANSIONS_FILTER || artistFilter !== ALL_ARTISTS_FILTER;
@@ -891,8 +894,8 @@ export function CardSearchModal({ isOpen, hasOpenSibling = false, skipEnterAnima
                     ) : (
                         <div className="flex flex-col gap-4 sm:gap-6">
                             <div className="relative">
-                                <div className={`grid grid-cols-2 gap-2.5 sm:gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 transition-opacity duration-200 ${initialLoading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
-                                    {filteredCards.map((card, index) => {
+                                <div ref={gridRef} className={`grid grid-cols-2 gap-2.5 sm:gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 transition-opacity duration-200 ${initialLoading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
+                                    {displayedCards.map((card, index) => {
                                         const isSubmittingThis = submittingIds.includes(card.id);
                                         const comboCount = countCopiesForCombo(totalCopiesByCard, card.id, lang, variant, condition);
                                         const isOwnershipKnown = ownedCardIds.has(card.id);

@@ -70,9 +70,11 @@ describe("Regressões do fluxo de seleção e catálogo do Binder", () => {
 
         expect(selector).toContain("isPendingThisCard = pendingActionId === group.activeCard.id");
         expect(selector).toContain("isOtherActionPending = (isActionPending && !isPendingThisCard) || (isNavigating && !isEditingThisCard)");
-        expect(selector).toContain('isPendingThisCard ? "z-10 shadow-xl shadow-poke-blue/25 scale-[1.02]"');
+        expect(selector).not.toContain("scale-[1.02]");
+        expect(selector).not.toContain("shadow-poke-blue/25");
+        expect(selector).not.toContain("bg-black/60");
         expect(selector).not.toContain("ring-2 ring-poke-blue");
-        expect(selector).toContain('<PokeballLoader size="sm" message={isCurrent ? "Removendo..." : "Alocando..."} />');
+        expect(selector).toContain('<PokeballLoader size="sm" />');
         expect(selector).toContain('isOtherActionPending ? "cursor-not-allowed opacity-40 transition-opacity duration-200"');
     });
 
@@ -117,5 +119,23 @@ describe("Regressões do fluxo de seleção e catálogo do Binder", () => {
         expect(scrollHook).toContain("sentinelNode");
         expect(scrollHook).toContain("handleScroll");
         expect(scrollHook).toContain('scrollContainer.addEventListener("scroll", handleScroll');
+    });
+
+    it("garante que os modais com scroll infinito completam a linha de cartas antes do loading", () => {
+        const catalog = readSource("../src/components/modal/CardSearchModal.tsx");
+        const profile = readSource("../src/components/profile/TrainerProfileView.tsx");
+        const cover = readSource("../src/components/binder/CoverPokemonSelector.tsx");
+
+        expect(catalog).toContain("getCompleteRowItems(filteredCards, columns, hasMore)");
+        expect(catalog).toContain("displayedCards.map");
+        expect(catalog).toContain("ref={gridRef}");
+
+        expect(profile).toContain("getCompleteRowItems(visiblePickerCards, pickerColumns, pickerHasMore)");
+        expect(profile).toContain("displayedPickerCards.map");
+        expect(profile).toContain("ref={pickerGridRef}");
+
+        expect(cover).toContain("getCompleteRowItems(pokemon, columns, hasMore)");
+        expect(cover).toContain("displayedPokemon.map");
+        expect(cover).toContain("ref={gridRef}");
     });
 });
