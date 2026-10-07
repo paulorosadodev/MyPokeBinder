@@ -65,11 +65,8 @@ async function buildUserProfile(authUser: { id: string; email?: string | null; u
 
 export function AuthProvider({ children, initialUser = null }: { children: ReactNode; initialUser?: UserProfile | null }) {
     const router = useRouter();
-    const [user, setUser] = useState<UserProfile | null>(() => {
-        if (initialUser) return initialUser;
-        return getCachedUser();
-    });
-    const [isLoading, setIsLoading] = useState<boolean>(!initialUser && !getCachedUser());
+    const [user, setUser] = useState<UserProfile | null>(initialUser);
+    const [isLoading, setIsLoading] = useState<boolean>(!initialUser);
 
     const refreshUser = useCallback(async () => {
         try {

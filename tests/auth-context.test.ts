@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { UserProfile } from "@/lib/context/AuthContext";
 
 describe("AuthContext and User Profile Logic", () => {
@@ -114,5 +116,13 @@ describe("AuthContext and User Profile Logic", () => {
 
         expect(bioDraft).toBe("Mestre Pokémon");
         expect(profileHydrated).toBe(true);
+    });
+
+    it("should defer browser cache restoration until after the hydration render", () => {
+        const source = readFileSync(join(import.meta.dir, "../src/lib/context/AuthContext.tsx"), "utf8");
+
+        expect(source).toContain("const [user, setUser] = useState<UserProfile | null>(initialUser);");
+        expect(source).toContain("const [isLoading, setIsLoading] = useState<boolean>(!initialUser);");
+        expect(source).not.toContain("const [user, setUser] = useState<UserProfile | null>(() => {");
     });
 });

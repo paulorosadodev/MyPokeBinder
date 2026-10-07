@@ -222,6 +222,11 @@ Copie `.env.example` para `.env.local`:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
+CARD_IMAGES_R2_PUBLIC_URL=
+R2_ACCOUNT_ID=
+R2_BUCKET=
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
 ```
 
 ### Banco de dados
@@ -231,10 +236,8 @@ Aplique as migrations em `supabase/migrations/` no projeto Supabase (CLI ou SQL 
 ### Instalação e desenvolvimento
 
 ```bash
-npm install
-# ou: bun install
-
-npm run dev
+bun install
+bun run dev
 ```
 
 Abra [http://localhost:3000](http://localhost:3000).
@@ -242,9 +245,29 @@ Abra [http://localhost:3000](http://localhost:3000).
 ### Build de produção
 
 ```bash
-npm run build
-npm start
+bun run build
+bun start
 ```
+
+### Banco de imagens de cartas
+
+O acervo local não deve ser copiado para o repositório. Configure `CARD_IMAGES_ARCHIVE_PATH` apenas quando ele não estiver em `/mnt/e/OneDrive/Downloads/archive`, gere o de-para e revise o relatório local antes do upload:
+
+```bash
+bun scripts/card-images/buildCardImageMap.ts
+bun scripts/card-images/buildCardImageReviewQueue.ts
+bun scripts/card-images/uploadCardImagesToR2.ts
+```
+
+O segundo comando separa as imagens ainda sem par entre catálogo suplementar obrigatório e revisão manual. O terceiro comando é apenas uma simulação. Depois de fechar essa fila, criar um bucket R2 público, configurar domínio HTTPS próprio em `CARD_IMAGES_R2_PUBLIC_URL` e preencher as quatro credenciais R2 somente em `.env.local`, execute:
+
+```bash
+bun scripts/card-images/uploadCardImagesToR2.ts --confirm
+```
+
+Associações manuais verificadas vivem em `scripts/card-images/card-image-overrides.json`, com caminho relativo ao acervo e ID da TCGdex. O gerador rejeita override inválido ou duplicado; não use esse arquivo para cartas ausentes da TCGdex.
+
+O envio pode ser retomado com o mesmo comando: objetos existentes são ignorados. Use `--overwrite` apenas para substituir deliberadamente os objetos já publicados.
 
 ---
 
@@ -252,13 +275,13 @@ npm start
 
 | Comando                | Descrição                              |
 | ---------------------- | -------------------------------------- |
-| `npm run dev`          | Servidor de desenvolvimento Next.js    |
-| `npm run build`        | Build de produção                      |
-| `npm start`            | Serve o build                          |
-| `npm test`             | Suite de testes (Bun, `concurrency=1`) |
-| `npm run lint`         | ESLint                                 |
-| `npm run format`       | Prettier (write)                       |
-| `npm run format:check` | Prettier (check)                       |
+| `bun run dev`          | Servidor de desenvolvimento Next.js    |
+| `bun run build`        | Build de produção                      |
+| `bun start`            | Serve o build                          |
+| `bun test`             | Suite de testes (Bun, `concurrency=1`) |
+| `bun run lint`         | ESLint                                 |
+| `bun run format`       | Prettier (write)                       |
+| `bun run format:check` | Prettier (check)                       |
 
 ---
 
@@ -275,7 +298,7 @@ Testes em `tests/` cobrem, entre outros:
 - Feedback otimista (toasts)
 
 ```bash
-npm test
+bun test
 ```
 
 ---

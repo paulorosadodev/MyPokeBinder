@@ -1,11 +1,12 @@
 import type { NextConfig } from "next";
 
 function buildContentSecurityPolicy(allowEval: boolean): string {
+    const cardImagesOrigin = getCardImagesOrigin();
     return [
         "default-src 'self'",
         `script-src 'self' 'unsafe-inline'${allowEval ? " 'unsafe-eval'" : ""}`,
         "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data: blob: https://assets.tcgdex.net https://raw.githubusercontent.com https://lh3.googleusercontent.com https://*.googleusercontent.com",
+        `img-src 'self' data: blob: https://assets.tcgdex.net https://raw.githubusercontent.com https://lh3.googleusercontent.com https://*.googleusercontent.com${cardImagesOrigin ? ` ${cardImagesOrigin}` : ""}`,
         "font-src 'self' data:",
         "connect-src 'self' ws: wss: https://cauuttzkxcmqwlsfoeib.supabase.co wss://cauuttzkxcmqwlsfoeib.supabase.co",
         "media-src 'self' blob: data:",
@@ -14,6 +15,20 @@ function buildContentSecurityPolicy(allowEval: boolean): string {
         "form-action 'self'",
         "frame-ancestors 'none'",
     ].join("; ");
+}
+
+function getCardImagesOrigin(): string | null {
+    const configuredUrl = process.env.CARD_IMAGES_R2_PUBLIC_URL?.trim();
+    if (!configuredUrl) {
+        return null;
+    }
+
+    try {
+        const url = new URL(configuredUrl);
+        return url.protocol === "https:" ? url.origin : null;
+    } catch {
+        return null;
+    }
 }
 
 export function contentSecurityPolicyForTesting(allowEval: boolean): string {

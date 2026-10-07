@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { formatTcgdexImageUrl, hasCardImage, isPocketCard } from "@/lib/pokemon/tcgdex";
 import { resolveCardImageFallback } from "@/lib/pokemon/imageFallback";
+import { resolveStoredCardImage } from "@/lib/pokemon/cardImageStorage";
 import { revalidatePublicProfileForUserId } from "@/lib/profile/publicCache";
 import { isCardVariant } from "@/lib/pokemon/variant";
 import { isCardMatchingPokemon } from "@/lib/pokemon/match";
@@ -256,7 +257,7 @@ export async function POST(request: NextRequest) {
 
         const resolvedCardTypes = card_types === undefined ? resolveCardElementTypes(undefined, resolvedDexId) : card_types;
 
-        let resolvedImageUrl = formatTcgdexImageUrl(card_image_url.trim());
+        let resolvedImageUrl = resolveStoredCardImage(tcgdex_card_id.trim()) || formatTcgdexImageUrl(card_image_url.trim());
         if (!hasCardImage(resolvedImageUrl)) {
             const fallbackImage = await resolveCardImageFallback(tcgdex_card_id.trim());
             if (fallbackImage) {

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { formatTcgdexImageUrl, hasCardImage, isPocketCard, POKEMON_CARD_BACK_URL } from "@/lib/pokemon/tcgdex";
 import { resolveCardImageFallback } from "@/lib/pokemon/imageFallback";
+import { resolveStoredCardImage } from "@/lib/pokemon/cardImageStorage";
 import { coalesceRequest, getFromMemoryCache, setToMemoryCache } from "@/lib/pokemon/coalesce";
 import { normalizeVariantsFlags } from "@/lib/pokemon/variant";
 import { normalizeCardElementTypes } from "@/lib/pokemon/cardTypes";
@@ -369,7 +370,7 @@ export async function GET(request: NextRequest) {
                         id: card.id,
                         localId: card.localId,
                         name: card.name,
-                        image: formatTcgdexImageUrl(cachedDetail.image || card.image),
+                        image: resolveStoredCardImage(card.id) || formatTcgdexImageUrl(cachedDetail.image || card.image),
                         setName: cachedDetail.setName,
                         rarity: cachedDetail.rarity,
                         artist: cachedDetail.artist || "",
@@ -418,7 +419,10 @@ export async function GET(request: NextRequest) {
                     }
                 } catch {}
 
-                if (!hasCardImage(cardImage)) {
+                const storedImage = resolveStoredCardImage(card.id);
+                if (storedImage) {
+                    cardImage = storedImage;
+                } else if (!hasCardImage(cardImage)) {
                     const fallbackImage = await resolveCardImageFallback(card.id);
                     if (fallbackImage) {
                         cardImage = fallbackImage;

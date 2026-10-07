@@ -3,6 +3,7 @@ import { ALL_CARD_VARIANTS, isCardVariant } from "@/lib/pokemon/variant";
 import { isCardCondition } from "@/lib/pokemon/condition";
 import { formatTcgdexImageUrl, hasCardImage } from "@/lib/pokemon/tcgdex";
 import { resolveCardImageFallback } from "@/lib/pokemon/imageFallback";
+import { resolveStoredCardImage } from "@/lib/pokemon/cardImageStorage";
 import { revalidatePublicProfileForUserId } from "@/lib/profile/publicCache";
 import type { CardDetailsResponse } from "@/types/binder";
 
@@ -13,7 +14,12 @@ export async function getCardDetailData(supabase: SupabaseClient, userId: string
         return null;
     }
 
-    if (!hasCardImage(card.card_image_url)) {
+    const storedImage = resolveStoredCardImage(card.tcgdex_card_id);
+    if (storedImage && card.card_image_url !== storedImage) {
+        card.card_image_url = storedImage;
+        await supabase.from("user_cards").update({ card_image_url: storedImage }).eq("id", card.id);
+        await revalidatePublicProfileForUserId(supabase, userId);
+    } else if (!hasCardImage(card.card_image_url)) {
         const fallbackImage = await resolveCardImageFallback(card.tcgdex_card_id);
         if (fallbackImage) {
             const formattedImage = formatTcgdexImageUrl(fallbackImage);

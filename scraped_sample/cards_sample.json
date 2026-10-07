@@ -1,0 +1,30 @@
+[
+    {
+        "id": "pkmn-088",
+        "name": "Nidorina",
+        "setName": "30th Celebration",
+        "localId": "088",
+        "illustrator": "Miki Tanaka",
+        "rarity": "Common",
+        "imageUrl": "https://pkmncards.com/wp-content/uploads/me5-5_en_088_std.jpg",
+        "localImagePath": "scraped_sample/nidorina_088.jpg"
+    },
+    {
+        "id": "pkmn-115",
+        "name": "Team Rocket&#8217;s Nidorina",
+        "setName": "Destined Rivals",
+        "localId": "115",
+        "illustrator": "Taiga Kasai",
+        "rarity": "Common",
+        "imageUrl": "https://pkmncards.com/wp-content/uploads/sv10_en_115_std.jpg"
+    },
+    {
+        "id": "pkmn-030",
+        "name": "Nidorina",
+        "setName": "151",
+        "localId": "030",
+        "illustrator": "Teeziro",
+        "rarity": "Uncommon",
+        "imageUrl": "https://pkmncards.com/wp-content/uploads/sv3-5_en_030_std.jpg"
+    }
+]
